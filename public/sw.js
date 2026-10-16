@@ -1,6 +1,6 @@
 // Jednoduchý service worker: appka sa dá nainštalovať a vlastné súbory sa načítajú
 // aj pri slabom signáli. Vždy skúsi najprv sieť (aby sa zmeny prejavili hneď).
-const CACHE = 'vt-v1';
+const CACHE = 'vt-v2';
 const SHELL = ['./', 'index.html', 'js/app.js', 'js/pose.js', 'js/db.js', 'js/exercises.js', 'icon.svg', 'manifest.webmanifest'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });

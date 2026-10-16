@@ -12,6 +12,9 @@ const P = { nose: 0, lSh: 11, rSh: 12, lEl: 13, rEl: 14, lWr: 15, rWr: 16, lHip:
 const BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32], [27, 29], [28, 30]];
 
 let landmarkerPromise = null;
+// MediaPipe v režime VIDEO vyžaduje stále rastúce časy naprieč všetkými videami,
+// preto si pamätáme posledný použitý čas (inak druhé video v poradí spadne).
+let lastTs = 0;
 
 async function getLandmarker() {
   if (!landmarkerPromise) {
@@ -167,12 +170,17 @@ export async function analyzeVideo(file, { signal = null, onProgress = () => {} 
   const duration = Math.min(fullDuration, MAX_SECONDS);
   const step = Math.max(1 / 12, duration / 300);
   const frames = [];
-  let ts = 0;
+  const base = lastTs + 1000;
 
   for (let t = 0; t < duration; t += step) {
     await seek(v, t);
-    ts = Math.max(ts + 1, Math.round(t * 1000));
-    const res = landmarker.detectForVideo(v, ts);
+    lastTs = Math.max(lastTs + 1, base + Math.round(t * 1000));
+    let res;
+    try { res = landmarker.detectForVideo(v, lastTs); }
+    catch (e) {
+      landmarkerPromise = null; // model resetneme, pri ďalšom pokuse sa vytvorí nový
+      throw new Error('Rozpoznávanie postavy zlyhalo. Skús to znova, prípadne obnov stránku.');
+    }
     const lm = res.landmarks && res.landmarks[0];
     frames.push({ t, lm: lm || null, m: lm ? frameMetrics(lm, W, H) : null });
     onProgress(0.05 + 0.85 * (t / duration), 'Analyzujem pohyb…');
