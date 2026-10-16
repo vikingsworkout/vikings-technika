@@ -48,7 +48,7 @@ async function renderHome() {
       <img src="${esc(it.thumb || '')}" alt="">
       <div><div class="t">${esc(it.result?.exercise?.name || it.exercise?.name || 'Cvik')}</div>
       <div class="d">${new Date(it.created).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</div></div>
-      <div class="sc" style="color:${scoreColor(it.result?.score)}">${it.result?.score ?? '–'}</div>
+      <div class="sc" style="color:${scoreColor(it.result?.score)};border-color:color-mix(in srgb, ${scoreColor(it.result?.score)} 40%, transparent)">${it.result?.score ?? '–'}</div>
     </button>`).join('');
   box.querySelectorAll('.hitem').forEach(b => b.onclick = () => { location.hash = '#/r/' + b.dataset.id; });
 }
@@ -56,7 +56,7 @@ async function renderHome() {
 // ---------- výber cviku ----------
 function renderNew() {
   const all = [AUTO, ...EXERCISES];
-  $('chips').innerHTML = all.map(e => `<button class="chip${e.id === 'auto' ? ' auto' : ''}" data-id="${e.id}" aria-pressed="${e.id === selected.id}">${e.id === 'auto' ? '✨ ' : ''}${esc(e.name)}</button>`).join('');
+  $('chips').innerHTML = all.map(e => `<button class="chip${e.id === 'auto' ? ' auto' : ''}" data-id="${e.id}" aria-pressed="${e.id === selected.id}">${e.id === 'auto' ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"/></svg>' : ''}${esc(e.name)}</button>`).join('');
   $('chips').querySelectorAll('.chip').forEach(c => c.onclick = () => {
     selected = findExercise(c.dataset.id); ls.set('vt-ex', selected.id); renderNew();
   });
@@ -138,7 +138,7 @@ async function startAnalysis(file) {
   location.hash = '#/praca'; show('vWork');
   setProgress(0, 'Pripravujem…');
   try {
-    const { summary, keyframes, thumb } = await analyzeVideo(file, { signal: selected.signal, onProgress: (p, t) => setProgress(p * 0.5, t) });
+    const { summary, keyframes, thumb } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, onProgress: (p, t) => setProgress(p * 0.5, t) });
     Object.assign(current, { summary, keyframes, thumb });
     if (summary.video.duration_s > MAX_SECONDS) setProgress(0.5, `Video je dlhšie ako ${MAX_SECONDS} s, analyzujem prvých ${MAX_SECONDS} s.`);
   } catch (e) {
@@ -210,7 +210,7 @@ function renderResult(item) {
 
   $('vResult').innerHTML = `
     ${mismatch ? `<div class="card err small"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Ak to nesedí, zmeň cvik dole.</div>` : ''}
-    <div class="card hero">
+    <div class="card hero" style="--c:${scoreColor(score)}">
       <p class="exname">${esc(ex.name || item.exercise.name)}</p>
       <div class="exmeta">${item.exercise.id === 'auto' ? `Rozpoznané AI${ex.confidence ? ` · istota ${esc(ex.confidence)}` : ''}` : 'Vybraný cvik'} · ${new Date(item.created).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
       <div class="scorerow">
@@ -226,7 +226,7 @@ function renderResult(item) {
     </div>
 
     <div class="card">
-      <div class="sec"><div class="ic warn">!</div><h2>Čo zlepšiť</h2><span class="cnt">${issues.length || ''}</span></div>
+      <div class="sec"><div class="ic warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div><h2>Čo zlepšiť</h2><span class="cnt">${issues.length || ''}</span></div>
       ${issues.length ? issues.map((i, k) => `
         <div class="iss ${esc(i.severity || '')}">
           <div class="n">${k + 1}</div>
@@ -237,32 +237,32 @@ function renderResult(item) {
     </div>
 
     <div class="card">
-      <div class="sec"><div class="ic ok">✓</div><h2>Čo robíš dobre</h2></div>
+      <div class="sec"><div class="ic ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div><h2>Čo robíš dobre</h2></div>
       ${ckList(r.good)}
     </div>
 
     <div class="card">
-      <div class="sec"><div class="ic bad">⚠</div><h2>Na čo si dávať pozor</h2></div>
+      <div class="sec"><div class="ic bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg></div><h2>Na čo si dávať pozor</h2></div>
       ${ckList(r.watch_out, 'w')}
     </div>
 
     <div class="card">
-      <div class="sec"><div class="ic acc">◉</div><h2>Zapojené svaly</h2></div>
+      <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11M6.5 17.5h11M4 9v6M20 9v6M2 11v2M22 11v2"/></svg></div><h2>Zapojené svaly</h2></div>
       ${prim.length ? `<div class="mrow"><span>Hlavné</span><div class="muscles">${prim.map(m => `<span class="tag p">${esc(m)}</span>`).join('')}</div></div>` : ''}
       ${sec.length ? `<div class="mrow" style="margin:0"><span>Pomocné</span><div class="muscles">${sec.map(m => `<span class="tag">${esc(m)}</span>`).join('')}</div></div>` : ''}
     </div>
 
     <details class="card">
-      <summary><div class="ic mu">i</div>Správna technika</summary>
+      <summary><div class="ic mu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/></svg></div>Správna technika</summary>
       ${r.description ? `<p style="font-size:15px">${esc(r.description)}</p>` : ''}
       ${Array.isArray(r.cues) && r.cues.length ? `<p class="small mu" style="margin-bottom:4px">Pokyny na zapamätanie</p>${ckList(r.cues, 'c')}` : ''}
     </details>
 
-    ${r.camera_limits ? `<details class="card"><summary><div class="ic mu">⌖</div>Uhol kamery</summary><p style="margin:0;font-size:15px">${esc(r.camera_limits)}</p></details>` : ''}
+    ${r.camera_limits ? `<details class="card"><summary><div class="ic mu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>Uhol kamery</summary><p style="margin:0;font-size:15px">${esc(r.camera_limits)}</p></details>` : ''}
 
-    ${item.keyframes?.length ? `<details class="card"><summary><div class="ic mu">▣</div>Analyzované snímky</summary><div class="frames">${item.keyframes.map(k => `<figure><img src="${k.dataUrl}" alt=""><figcaption>${esc(k.label)} · ${k.t} s</figcaption></figure>`).join('')}</div></details>` : ''}
+    ${item.keyframes?.length ? `<details class="card"><summary><div class="ic mu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>Analyzované snímky</summary><div class="frames">${item.keyframes.map(k => `<figure><img src="${k.dataUrl}" alt=""><figcaption>${esc(k.label)} · ${k.t} s</figcaption></figure>`).join('')}</div></details>` : ''}
 
-    <div class="card"><div class="sec"><div class="ic mu">↻</div><h2>Iný cvik?</h2></div>
+    <div class="card"><div class="sec"><div class="ic mu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg></div><h2>Iný cvik?</h2></div>
       <p class="small mu">Ak AI rozpoznala cvik zle, vyber správny a rozbor sa zopakuje.</p>
       <div class="row"><select id="reEx">${EXERCISES.map(e => `<option value="${e.id}"${e.id === (matchExercise(ex.name)?.id || item.exercise.id) ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
       <button class="btn sec" id="btnRe" style="flex:0 0 auto;width:auto">Zopakovať</button></div>
