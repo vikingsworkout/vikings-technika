@@ -1,9 +1,10 @@
 import { EXERCISES, AUTO, findExercise, matchExercise } from './exercises.js';
 import { analyzeVideo, preload, MAX_SECONDS } from './pose.js';
 import * as db from './db.js';
+import { Recorder, recorderSupported } from './recorder.js';
 
 const $ = (id) => document.getElementById(id);
-const views = ['vHome', 'vNew', 'vWork', 'vResult'];
+const views = ['vHome', 'vNew', 'vRec', 'vWork', 'vResult'];
 const ls = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* nič */ } },
@@ -15,6 +16,7 @@ let current = null;        // práve spracovávaná analýza
 let pendingFile = null;    // video, ktoré sa analyzuje (pre "skúsiť znova")
 
 function show(view) {
+  if (view !== 'vRec') recorder.close();
   views.forEach(v => { $(v).hidden = v !== view; });
   $('btnHome').hidden = view === 'vHome';
   window.scrollTo(0, 0);
@@ -24,6 +26,7 @@ function show(view) {
 async function route() {
   const h = location.hash;
   if (h === '#/nova') { renderNew(); show('vNew'); preload(); return; }
+  if (h === '#/nahravanie') { show('vRec'); openRecorder(); return; }
   if (h.startsWith('#/r/')) {
     const item = (current && current.id === h.slice(4)) ? current : await db.get(h.slice(4));
     if (item && item.result) { current = item; renderResult(item); show('vResult'); return; }
@@ -67,6 +70,51 @@ for (const id of ['inCam', 'inFile']) {
     if (f) startAnalysis(f);
   });
 }
+
+
+// ---------- nahrávanie s odpočtom ----------
+const recorder = new Recorder($('recVideo'), {
+  onState: (st, n) => {
+    $('recCd').hidden = st !== 'countdown';
+    if (st === 'countdown') $('recCdNum').textContent = n;
+    $('recBadge').hidden = st !== 'recording';
+    $('btnRecStart').hidden = st !== 'ready';
+    $('btnRecStop').hidden = st !== 'recording';
+    $('btnRecCancel').hidden = st !== 'countdown';
+    $('btnFlip').hidden = st !== 'ready';
+    $('recHint').textContent = st === 'recording' ? `Cvič. Nahrávanie sa zastaví samo po ${MAX_SECONDS} s.`
+      : st === 'countdown' ? 'Zaujmi polohu…' : 'Polož mobil, zaujmi polohu. Po stlačení máš 5 sekúnd.';
+  },
+  onTick: (sec, max) => {
+    const left = Math.max(0, Math.ceil(max - sec));
+    $('recTime').textContent = `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}` + (left <= 5 ? ` · ${left}` : '');
+  },
+});
+
+$('btnRec').onclick = () => {
+  if (!recorderSupported()) { $('inCam').click(); return; } // starší prehliadač: systémová kamera
+  location.hash = '#/nahravanie';
+};
+
+async function openRecorder() {
+  try { await recorder.open(); preload(); }
+  catch (e) {
+    console.error(e);
+    // bez povolenia kamery → systémová kamera mobilu
+    location.hash = '#/nova';
+    setTimeout(() => $('inCam').click(), 50);
+  }
+}
+$('btnFlip').onclick = () => recorder.flip().catch(() => {});
+$('btnRecStart').onclick = async () => {
+  try {
+    const file = await recorder.start({ countdown: 5, maxSeconds: MAX_SECONDS });
+    recorder.close();
+    startAnalysis(file);
+  } catch (e) { if (e) console.error(e); }
+};
+$('btnRecStop').onclick = () => recorder.stop();
+$('btnRecCancel').onclick = () => recorder.cancel();
 
 // ---------- spracovanie ----------
 function setProgress(p, text) {
@@ -139,48 +187,82 @@ function scoreColor(s) {
   if (s == null) return 'var(--mu)';
   return s >= 80 ? 'var(--ok)' : s >= 55 ? 'var(--warn)' : 'var(--bad)';
 }
-const list = (arr, cls = '') => Array.isArray(arr) && arr.length ? `<ul class="list ${cls}">${arr.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="mu small">—</p>';
+function scoreLabel(s) {
+  if (s == null) return 'Nedá sa posúdiť';
+  return s >= 85 ? 'Výborná technika' : s >= 70 ? 'Dobrá technika' : s >= 55 ? 'Treba doladiť' : 'Treba opraviť';
+}
+const plural = (n, one, few, many) => n === 1 ? one : (n >= 2 && n <= 4) ? few : many;
+const ckList = (arr, cls = '') => Array.isArray(arr) && arr.length ? `<ul class="ck ${cls}">${arr.map(x => `<li><span>${esc(x)}</span></li>`).join('')}</ul>` : '<p class="mu small" style="margin:0">—</p>';
+const sevOrder = { 'vysoká': 0, 'stredná': 1, 'nízka': 2 };
 
 function renderResult(item) {
   const r = item.result || {};
   const ex = r.exercise || {};
   const score = typeof r.score === 'number' ? Math.max(0, Math.min(100, Math.round(r.score))) : null;
   const mismatch = item.exercise.id !== 'auto' && ex.matches_selected === false;
-  const reps = item.summary?.reps_detected;
-  const issues = Array.isArray(r.issues) ? r.issues : [];
+  const sm = item.summary || {};
+  const reps = sm.reps_detected || 0;
+  const act = sm.active_segment;
+  const dur = act ? Math.max(0, act.end_s - act.start_s) : sm.video?.analyzed_s;
+  const view = (sm.camera_view_estimate || '').replace(' alebo zozadu', '').replace(' (asi 45°)', '');
+  const issues = (Array.isArray(r.issues) ? r.issues : []).slice().sort((a, b) => (sevOrder[a.severity] ?? 1) - (sevOrder[b.severity] ?? 1));
+  const prim = r.muscles?.primary || [], sec = r.muscles?.secondary || [];
 
   $('vResult').innerHTML = `
-    <div class="exline">
-      <span class="tag">🏋️ ${esc(ex.name || item.exercise.name)}</span>
-      ${item.exercise.id === 'auto' ? `<span class="tag">rozpoznané AI${ex.confidence ? ` · istota ${esc(ex.confidence)}` : ''}</span>` : ''}
-      ${reps ? `<span class="tag">${reps}× opakovanie</span>` : ''}
-    </div>
-    ${mismatch ? `<div class="card err small"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Skontroluj a prípadne zmeň cvik nižšie.</div>` : ''}
-    <div class="card">
-      <div class="scorebox">
+    ${mismatch ? `<div class="card err small"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Ak to nesedí, zmeň cvik dole.</div>` : ''}
+    <div class="card hero">
+      <p class="exname">${esc(ex.name || item.exercise.name)}</p>
+      <div class="exmeta">${item.exercise.id === 'auto' ? `Rozpoznané AI${ex.confidence ? ` · istota ${esc(ex.confidence)}` : ''}` : 'Vybraný cvik'} · ${new Date(item.created).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+      <div class="scorerow">
         <div class="ring" style="--p:${score ?? 0};--c:${scoreColor(score)}"><div>${score ?? '?'}</div></div>
-        <div><p class="verdict">${esc(r.verdict || '')}</p><p class="mu small" style="margin:0">Hodnotenie techniky 0–100</p></div>
+        <div><div class="slabel" style="color:${scoreColor(score)}">${scoreLabel(score)}</div><p class="verdict">${esc(r.verdict || '')}</p></div>
       </div>
-      ${r.summary ? `<p style="margin:14px 0 0">${esc(r.summary)}</p>` : ''}
+      <div class="stats">
+        <div class="stat"><b>${reps || '–'}</b><span>${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}</span></div>
+        <div class="stat"><b>${dur != null ? Math.round(dur) + ' s' : '–'}</b><span>dĺžka série</span></div>
+        <div class="stat"><b style="font-size:15px;line-height:22px">${esc(view || '–')}</b><span>pohľad kamery</span></div>
+      </div>
+      ${r.summary ? `<p class="sum">${esc(r.summary)}</p>` : ''}
     </div>
 
-    <div class="card"><h3>Čo zlepšiť</h3>
-      ${issues.length ? issues.map(i => `<div class="issue ${esc(i.severity || '')}"><b>${esc(i.title)}</b><p>${esc(i.detail)}</p>${i.fix ? `<p class="fix">→ ${esc(i.fix)}</p>` : ''}</div>`).join('') : '<p class="mu">Žiadne podstatné chyby. Výborne!</p>'}
+    <div class="card">
+      <div class="sec"><div class="ic warn">!</div><h2>Čo zlepšiť</h2><span class="cnt">${issues.length || ''}</span></div>
+      ${issues.length ? issues.map((i, k) => `
+        <div class="iss ${esc(i.severity || '')}">
+          <div class="n">${k + 1}</div>
+          <div class="tt">${esc(i.title)}${i.severity ? `<span class="sev">${esc(i.severity)}</span>` : ''}</div>
+          ${i.detail ? `<div class="dt">${esc(i.detail)}</div>` : ''}
+          ${i.fix ? `<div class="fx"><b>Ako na to:</b> ${esc(i.fix)}</div>` : ''}
+        </div>`).join('') : '<p class="mu" style="margin:0">Žiadne podstatné chyby. Výborne!</p>'}
     </div>
-    <div class="card"><h3>Čo robíš dobre</h3>${list(r.good, 'good')}</div>
-    <div class="card"><h3>Na čo si dávať pozor</h3>${list(r.watch_out, 'warn')}</div>
-    <div class="card"><h3>Zapojené svaly</h3>
-      <div class="muscles">${(r.muscles?.primary || []).map(m => `<span class="tag p">${esc(m)}</span>`).join('')}${(r.muscles?.secondary || []).map(m => `<span class="tag">${esc(m)}</span>`).join('')}</div>
-      <p class="mu small" style="margin:10px 0 0">Oranžové sú hlavné svaly, sivé pomocné.</p>
-    </div>
-    <div class="card"><h3>Správna technika</h3>
-      ${r.description ? `<p>${esc(r.description)}</p>` : ''}
-      ${Array.isArray(r.cues) && r.cues.length ? `<p class="small mu" style="margin-bottom:6px">Pokyny na zapamätanie:</p>${list(r.cues)}` : ''}
-    </div>
-    ${r.camera_limits ? `<div class="card"><h3>Uhol kamery</h3><p style="margin:0">${esc(r.camera_limits)}</p></div>` : ''}
-    ${item.keyframes?.length ? `<h3 style="margin-top:18px">Analyzované snímky</h3><div class="frames">${item.keyframes.map(k => `<figure><img src="${k.dataUrl}" alt=""><figcaption>${esc(k.label)} · ${k.t} s</figcaption></figure>`).join('')}</div>` : ''}
 
-    <div class="card" style="margin-top:18px"><h3>Iný cvik?</h3>
+    <div class="card">
+      <div class="sec"><div class="ic ok">✓</div><h2>Čo robíš dobre</h2></div>
+      ${ckList(r.good)}
+    </div>
+
+    <div class="card">
+      <div class="sec"><div class="ic bad">⚠</div><h2>Na čo si dávať pozor</h2></div>
+      ${ckList(r.watch_out, 'w')}
+    </div>
+
+    <div class="card">
+      <div class="sec"><div class="ic acc">◉</div><h2>Zapojené svaly</h2></div>
+      ${prim.length ? `<div class="mrow"><span>Hlavné</span><div class="muscles">${prim.map(m => `<span class="tag p">${esc(m)}</span>`).join('')}</div></div>` : ''}
+      ${sec.length ? `<div class="mrow" style="margin:0"><span>Pomocné</span><div class="muscles">${sec.map(m => `<span class="tag">${esc(m)}</span>`).join('')}</div></div>` : ''}
+    </div>
+
+    <details class="card">
+      <summary><div class="ic mu">i</div>Správna technika</summary>
+      ${r.description ? `<p style="font-size:15px">${esc(r.description)}</p>` : ''}
+      ${Array.isArray(r.cues) && r.cues.length ? `<p class="small mu" style="margin-bottom:4px">Pokyny na zapamätanie</p>${ckList(r.cues, 'c')}` : ''}
+    </details>
+
+    ${r.camera_limits ? `<details class="card"><summary><div class="ic mu">⌖</div>Uhol kamery</summary><p style="margin:0;font-size:15px">${esc(r.camera_limits)}</p></details>` : ''}
+
+    ${item.keyframes?.length ? `<details class="card"><summary><div class="ic mu">▣</div>Analyzované snímky</summary><div class="frames">${item.keyframes.map(k => `<figure><img src="${k.dataUrl}" alt=""><figcaption>${esc(k.label)} · ${k.t} s</figcaption></figure>`).join('')}</div></details>` : ''}
+
+    <div class="card"><div class="sec"><div class="ic mu">↻</div><h2>Iný cvik?</h2></div>
       <p class="small mu">Ak AI rozpoznala cvik zle, vyber správny a rozbor sa zopakuje.</p>
       <div class="row"><select id="reEx">${EXERCISES.map(e => `<option value="${e.id}"${e.id === (matchExercise(ex.name)?.id || item.exercise.id) ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
       <button class="btn sec" id="btnRe" style="flex:0 0 auto;width:auto">Zopakovať</button></div>

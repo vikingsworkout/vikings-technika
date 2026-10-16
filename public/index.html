@@ -95,6 +95,67 @@ ul.warn li::before { background: var(--warn); }
 select, input[type=password], input[type=text] { width: 100%; font: inherit; font-size: 16px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--sf); color: var(--tx); }
 .err { background: color-mix(in srgb, var(--bad) 12%, var(--sf)); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
 .disc { font-size: 12px; color: var(--mu); text-align: center; margin-top: 18px; }
+
+/* ---- nahrávanie ---- */
+.recbox { position: relative; border-radius: 18px; overflow: hidden; background: #000; aspect-ratio: 3 / 4; max-height: 62vh; margin: 0 auto 14px; }
+.recbox video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.recbox video.mirror { transform: scaleX(-1); }
+.cd { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.35); color: #fff; font-size: 120px; font-weight: 800; text-shadow: 0 4px 30px rgba(0,0,0,.5); }
+.cd small { display: block; font-size: 16px; font-weight: 600; text-align: center; margin-top: -10px; opacity: .9; }
+.recbadge { position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.55); color: #fff; padding: 6px 12px; border-radius: 99px; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+.recbadge i { width: 10px; height: 10px; border-radius: 50%; background: #EF4444; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+.flip { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.flip svg { width: 22px; height: 22px; }
+.btn.rec { background: #EF4444; color: #fff; }
+.hint { font-size: 14px; color: var(--mu); text-align: center; margin: 0 0 12px; }
+
+/* ---- výsledok ---- */
+.hero { padding: 18px; }
+.hero .exname { font-size: 24px; font-weight: 800; letter-spacing: -.01em; margin: 0 0 2px; line-height: 1.2; }
+.hero .exmeta { font-size: 13px; color: var(--mu); margin-bottom: 16px; }
+.hero .scorerow { display: flex; gap: 16px; align-items: center; }
+.ring { width: 84px; height: 84px; }
+.ring > div { width: 68px; height: 68px; font-size: 26px; }
+.slabel { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.verdict { font-size: 17px; font-weight: 650; line-height: 1.35; margin: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 0; }
+.stat { background: var(--sf2); border-radius: 12px; padding: 10px; text-align: center; }
+.stat b { display: block; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11.5px; color: var(--mu); }
+.hero .sum { margin: 14px 0 0; font-size: 15px; line-height: 1.5; color: var(--tx); opacity: .85; }
+.sec { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+.ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; font-size: 15px; font-weight: 800; }
+.sec h2 { margin: 0; font-size: 17px; }
+.sec .cnt { margin-left: auto; font-size: 13px; color: var(--mu); font-weight: 600; }
+.ic.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.ic.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.ic.bad { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+.ic.acc { background: color-mix(in srgb, var(--acc) 18%, transparent); color: var(--acc); }
+.ic.mu { background: var(--sf2); color: var(--mu); }
+.iss { display: grid; grid-template-columns: 26px 1fr; gap: 0 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+.iss:first-of-type { border-top: 0; padding-top: 0; }
+.iss .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff; background: var(--warn); }
+.iss.vysoká .n { background: var(--bad); }
+.iss.nízka .n { background: var(--mu); }
+.iss .tt { font-weight: 700; font-size: 16px; line-height: 1.3; padding-top: 2px; }
+.iss .sev { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--mu); margin-left: 6px; }
+.iss .dt { grid-column: 2; font-size: 14.5px; color: var(--mu); margin: 4px 0 8px; line-height: 1.45; }
+.iss .fx { grid-column: 2; background: color-mix(in srgb, var(--ok) 12%, transparent); border-radius: 10px; padding: 9px 11px; font-size: 14.5px; line-height: 1.4; }
+.iss .fx b { color: var(--ok); }
+ul.ck { list-style: none; margin: 0; padding: 0; }
+ul.ck li { display: flex; gap: 10px; padding: 7px 0; line-height: 1.4; font-size: 15px; }
+ul.ck li::before { content: '✓'; flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); margin-top: 1px; }
+ul.ck.w li::before { content: '!'; background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+ul.ck.c li::before { content: '→'; background: var(--sf2); color: var(--acc); }
+.mrow { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+.mrow > span { font-size: 12px; color: var(--mu); width: 64px; flex: none; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+details.card > summary { list-style: none; display: flex; align-items: center; gap: 10px; color: var(--tx); font-size: 17px; font-weight: 700; }
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::after { content: '▾'; margin-left: auto; color: var(--mu); transition: transform .2s; }
+details.card[open] > summary::after { transform: rotate(180deg); }
+details.card[open] > summary { margin-bottom: 12px; }
+.wrap { padding-bottom: 120px; }
 [hidden] { display: none !important; }
 details summary { cursor: pointer; font-weight: 600; color: var(--mu); font-size: 14px; }
 </style>
@@ -128,10 +189,10 @@ details summary { cursor: pointer; font-weight: 600; color: var(--mu); font-size
       <div><b>Ako natočiť</b><p id="guideText"></p><p class="mu small" style="margin-top:6px">Max. 30 sekúnd, jedna séria. Dobré svetlo, celé telo v zábere.</p></div>
     </div>
     <div class="row">
-      <label class="btn pri" for="inCam">
+      <button class="btn pri" id="btnRec">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
         Natočiť
-      </label>
+      </button>
       <label class="btn sec" for="inFile">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
         Nahrať
@@ -139,6 +200,27 @@ details summary { cursor: pointer; font-weight: 600; color: var(--mu); font-size
     </div>
     <input type="file" id="inCam" accept="video/*" capture="environment" hidden>
     <input type="file" id="inFile" accept="video/*" hidden>
+  </section>
+
+
+  <!-- NAHRÁVANIE -->
+  <section id="vRec" hidden>
+    <div class="recbox">
+      <video id="recVideo" playsinline muted autoplay></video>
+      <div class="cd" id="recCd" hidden><div><span id="recCdNum">5</span><small>Priprav sa</small></div></div>
+      <div class="recbadge" id="recBadge" hidden><i></i><span id="recTime">0:00</span></div>
+      <button class="flip" id="btnFlip" aria-label="Prepnúť kameru"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3l2-3h8l2 3h3v12H3z"/><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2"/><path d="M14 9v2h2M10 17v-2H8"/></svg></button>
+    </div>
+    <p class="hint" id="recHint">Polož mobil, zaujmi polohu. Po stlačení máš 5 sekúnd.</p>
+    <button class="btn pri" id="btnRecStart">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+      Spustiť nahrávanie (odpočet 5 s)
+    </button>
+    <button class="btn rec" id="btnRecStop" hidden>
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+      Zastaviť nahrávanie
+    </button>
+    <button class="btn ghost" id="btnRecCancel" style="margin:10px auto 0;display:block" hidden>Zrušiť odpočet</button>
   </section>
 
   <!-- SPRACOVANIE -->

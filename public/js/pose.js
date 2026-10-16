@@ -65,9 +65,11 @@ function frameMetrics(lm, W, H) {
   const shM = mid(p[P.lSh], p[P.rSh]), hipM = mid(p[P.lHip], p[P.rHip]);
   const torso = Math.hypot(shM.x - hipM.x, shM.y - hipM.y) || 1;
   const kneeW = Math.abs(p[P.lKn].x - p[P.rKn].x), ankleW = Math.abs(p[P.lAn].x - p[P.rAn].x);
+  const anM = mid(p[P.lAn], p[P.rAn]);
   return {
     L, R,
     trunk: fromVertical(hipM, shM),
+    legs: fromVertical(anM, hipM), // 0 = nohy zvislo (stoj), ~90 = vodorovne (vzpor, ležmo)
     shoulderWidthRatio: Math.abs(p[P.lSh].x - p[P.rSh].x) / torso,
     kneeAnkleRatio: ankleW > 5 ? kneeW / ankleW : null,
   };
@@ -199,15 +201,70 @@ export async function analyzeVideo(file, { signal = null, onProgress = () => {} 
   const view = swr < 0.35 ? 'zboku' : swr > 0.6 ? 'spredu alebo zozadu' : 'šikmo (asi 45°)';
 
   const series = (k) => frames.map(f => f.m ? f.m[sideKey][k] : null);
-  let sig = signal;
-  if (!sig) { // automaticky: uhol s najväčším rozsahom
-    let best = 0;
-    for (const k of ['knee', 'hip', 'elbow']) {
-      const s = series(k); const range = (pct(s, 0.95) ?? 0) - (pct(s, 0.05) ?? 0);
-      if (range > best) { best = range; sig = k; }
-    }
+
+  // --- 1) rozdelenie videa podľa polohy tela (stoj vs. vodorovne), aby sa
+  //        prípravný pohyb (napr. zľahnutie do vzporu pred klikmi) nerátal ako opakovanie
+  const fps = 1 / step;
+  const rawPost = frames.map(f => f.m && f.m.legs != null ? (f.m.legs > 55 ? 'H' : 'V') : null);
+  for (let i = 0; i < rawPost.length; i++) if (rawPost[i] == null) rawPost[i] = i ? rawPost[i - 1] : null;
+  const firstKnown = rawPost.find(x => x) || 'V';
+  for (let i = 0; i < rawPost.length && rawPost[i] == null; i++) rawPost[i] = firstKnown;
+  const half = Math.max(2, Math.round(fps * 0.5));
+  const post = rawPost.map((_, i) => { // väčšinové hlasovanie v okne ~1 s
+    let h = 0, n = 0;
+    for (let j = Math.max(0, i - half); j <= Math.min(rawPost.length - 1, i + half); j++) { n++; if (rawPost[j] === 'H') h++; }
+    return h * 2 > n ? 'H' : 'V';
+  });
+  let segments = [];
+  for (let i = 0; i < post.length; i++) {
+    const last = segments[segments.length - 1];
+    if (last && last.p === post[i]) last.to = i; else segments.push({ p: post[i], from: i, to: i });
   }
-  const { reps } = detectReps(frames, series(sig));
+  // krátke úseky (< 1 s) pripojiť k susedom
+  segments = segments.reduce((acc, sg) => {
+    const dur = (sg.to - sg.from + 1) * step;
+    if (acc.length && (dur < 1 || acc[acc.length - 1].p === sg.p)) { acc[acc.length - 1].to = sg.to; return acc; }
+    acc.push({ ...sg }); return acc;
+  }, []);
+
+  // --- 2) v každom úseku a pre každý kandidátny kĺb nájdi opakovania; vyber
+  //        najpresvedčivejšiu sériu (viac podobných opakovaní = lepšie)
+  const joints = signal ? [signal] : ['elbow', 'knee', 'hip'];
+  const stats = (arr) => { const m = arr.reduce((a, b) => a + b, 0) / arr.length; const sd = Math.sqrt(arr.reduce((a, b) => a + (b - m) ** 2, 0) / arr.length); return { m, cv: m ? sd / m : 1 }; };
+  let best = null;
+  const consider = (from, to, joint, segP) => {
+    const vals = series(joint).slice(from, to + 1);
+    let { reps } = detectReps(frames.slice(from, to + 1), vals);
+    const sm = smooth(interpolate(vals));
+    reps = reps.map(r => ({ start: r.start + from, bottom: r.bottom + from, end: r.end + from,
+      amp: Math.max(...sm.slice(r.start, r.end + 1)) - sm[r.bottom], dur: (r.end - r.start) * step }))
+      .filter(r => r.dur >= 0.4);
+    if (reps.length > 1) { // odfiltruj výrazne menšie „opakovania“ (šum, prechodový pohyb)
+      const medAmp = [...reps.map(r => r.amp)].sort((a, b) => a - b)[Math.floor(reps.length / 2)];
+      reps = reps.filter(r => r.amp >= 0.45 * medAmp);
+    }
+    if (!reps.length) return;
+    const a = stats(reps.map(r => r.amp)), d = stats(reps.map(r => r.dur));
+    const consistency = reps.length > 1 ? 1 - Math.min(1, (a.cv + d.cv) / 2) : 0.3;
+    const score = reps.length * (0.6 + 0.4 * consistency) + (reps.length >= 2 ? 1 : 0) + a.m / 1000;
+    if (!best || score > best.score) best = { score, reps, joint, from, to, p: segP };
+  };
+  for (const sg of segments) {
+    if ((sg.to - sg.from + 1) * step < 1.5) continue;
+    for (const j of joints) consider(sg.from, sg.to, j, sg.p);
+  }
+  if (!best) for (const j of joints) consider(0, frames.length - 1, j, null); // záloha: celé video
+
+  const reps = best ? best.reps : [];
+  const sig = best ? best.joint : (signal || 'knee');
+  const pad = Math.round(0.7 * fps);
+  let actFrom = 0, actTo = frames.length - 1;
+  if (reps.length) { actFrom = Math.max(best.from, reps[0].start - pad); actTo = Math.min(best.to, reps[reps.length - 1].end + pad); }
+  else { // bez opakovaní: najdlhší úsek
+    const longest = segments.reduce((a, b) => (b.to - b.from > a.to - a.from ? b : a), segments[0]);
+    if (longest) { actFrom = longest.from; actTo = longest.to; }
+  }
+  const actPosture = (best?.p || post[actFrom]) === 'H' ? 'vodorovná (vzpor, ležmo, napr. kliky)' : 'vzpriamená (stoj, visenie)';
 
   const metricsOf = (from, to) => {
     const slice = frames.slice(from, to + 1).filter(f => f.m);
@@ -239,15 +296,18 @@ export async function analyzeVideo(file, { signal = null, onProgress = () => {} 
     frames_analyzed: frames.length, person_detected_pct: r0(100 * ok.length / frames.length),
     camera_view_estimate: view, measured_side: sideKey === 'L' ? 'ľavá' : 'pravá',
     rep_signal_joint: sig, reps_detected: repData.length,
+    active_segment: { start_s: r1(frames[actFrom].t), end_s: r1(frames[actTo].t), body_posture: actPosture,
+      note: 'Hodnoť len tento úsek. Pohyb pred ním a po ňom je príprava alebo odchod (napr. zaujatie polohy) a nie je súčasť cviku.' },
+    posture_timeline: segments.map(sg => ({ from_s: r1(frames[sg.from].t), to_s: r1(frames[sg.to].t), posture: sg.p === 'H' ? 'vodorovná' : 'vzpriamená' })),
     angle_notes: 'Uhly v stupňoch, 2D z kamery. knee/hip/elbow/shoulder: 180 = vystreté. trunk_lean/shin: odklon od zvislice (0 = kolmo). knee_to_ankle_width_ratio < 1 môže znamenať kolená idúce dovnútra (len pri pohľade spredu).',
-    overall: metricsOf(0, frames.length - 1),
+    overall_active_segment: metricsOf(actFrom, actTo),
     reps: repData,
   };
 
   // ---------- kľúčové snímky ----------
   onProgress(0.92, 'Pripravujem kľúčové snímky…');
   const picks = [];
-  const firstOk = frames.findIndex(f => f.m);
+  const firstOk = frames.findIndex((f, i) => f.m && i >= actFrom);
   picks.push({ i: reps.length ? reps[0].start : firstOk, label: 'Východisková poloha' });
   if (reps.length) {
     const sel = [...new Set([0, Math.floor((reps.length - 1) / 2), reps.length - 1])];
@@ -257,7 +317,7 @@ export async function analyzeVideo(file, { signal = null, onProgress = () => {} 
       picks.push({ i: r.bottom, label: `Opakovanie ${k + 1}: krajná poloha` });
     }
   } else {
-    for (let q = 1; q <= 4; q++) picks.push({ i: Math.round(q * (frames.length - 1) / 5), label: `Snímka ${q + 1}` });
+    for (let q = 1; q <= 4; q++) picks.push({ i: Math.round(actFrom + q * (actTo - actFrom) / 5), label: `Snímka ${q + 1}` });
   }
   const uniq = []; const seen = new Set();
   for (const p of picks) if (p.i >= 0 && !seen.has(p.i)) { seen.add(p.i); uniq.push(p); }
