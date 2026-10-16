@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vikings-technika",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-01",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  // premenné a secrets nastavené v Cloudflare dashboarde sa pri deployi nezmažú
+  "keep_vars": true,
+  "observability": { "enabled": true }
+}

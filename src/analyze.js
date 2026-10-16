@@ -1,8 +1,8 @@
-// Cloudflare Pages Function: POST /api/analyze
+// API: POST /api/analyze (volá sa z src/worker.js)
 // Prijme namerané uhly + kľúčové snímky, zavolá Claude API s web search
 // (živé dohľadanie správnej techniky) a vráti štruktúrovaný rozbor v slovenčine.
 //
-// Premenné prostredia (Cloudflare → projekt → Settings → Variables and Secrets):
+// Premenné prostredia (Cloudflare → Workers & Pages → vikings-technika → Settings → Variables and Secrets):
 //   ANTHROPIC_API_KEY  (povinné, typ Secret)
 //   ACCESS_CODE        (odporúčané – prístupový kód, ktorý zadáš raz v appke)
 //   CLAUDE_MODEL       (voliteľné, predvolene claude-sonnet-5-5)
