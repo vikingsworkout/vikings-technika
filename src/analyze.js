@@ -8,7 +8,7 @@
 //   CLAUDE_MODEL       (voliteľné, predvolene claude-sonnet-5-5)
 
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
-const MAX_IMAGES = 8;
+const MAX_IMAGES = 12;
 const MAX_IMAGE_B64 = 600_000;
 const API_DEADLINE_MS = 110_000; // celkový čas na odpoveď AI
 
@@ -19,8 +19,17 @@ Postup:
 1. Urči, aký cvik je na videu (ak ho používateľ zadal, over, či sedí so snímkami).
 2. Pomocou web search dohľadaj spoľahlivé zdroje o správnej technike tohto cviku (odborné weby o silovom tréningu, fyzioterapii, renomovaní tréneri; nie fóra). Stačia 1–3 vyhľadávania.
 3. Údaj "active_segment" hovorí, v ktorej časti videa prebieha samotný cvik. Pohyb pred ním a po ňom (napr. zľahnutie do vzporu pred klikmi, chôdza ku kamere) je len príprava: nehodnoť ho, nepočítaj ho ako opakovanie a podľa neho neurčuj cvik. Pri rozpoznávaní cviku sa opieraj hlavne o snímky z tohto úseku a o polohu tela (body_posture).
-4. Porovnaj namerané uhly, tempo a snímky so správnou technikou. Opieraj sa o konkrétne čísla a snímky, ale buď opatrný: 2D uhly z jedného pohľadu sú len odhad, posudzuj len to, čo sa z daného uhla kamery naozaj dá posúdiť.
-5. Odpovedz výhradne v slovenčine, prakticky a zrozumiteľne pre bežného cvičenca. Bez diagnóz, nie je to medicínska rada.
+4. Skontroluj celé telo, nielen hlavný kĺb: hlavu a krk (neck), ramená, lakte a predlaktia (forearm), trup (trunk_lean), línia tela (body_line), boky, kolená, členky a päty (ankle, heel_lift_pct), dráhu rúk/činky, symetriu ľavej a pravej strany (ak je pohľad spredu/zozadu), tempo, výdrž v krajnej polohe a to, či sa technika nezhoršuje s únavou (set_consistency, porovnaj prvé a posledné opakovanie). Ktoré časti tela sú pre daný cvik dôležité, posúď podľa dohľadanej techniky.
+5. Porovnaj namerané uhly, tempo a snímky so správnou technikou. Opieraj sa o konkrétne čísla a snímky, ale buď opatrný: 2D uhly z jedného pohľadu sú len odhad, posudzuj len to, čo sa z daného uhla kamery naozaj dá posúdiť.
+6. Skóre urči podľa pevnej stupnice, aby bolo férové a opakovateľné. Rozdeľ ho do 5 oblastí po 20 bodov:
+   - "Rozsah pohybu" (plný rozsah podľa cviku, hĺbka, vystretie v hornej polohe)
+   - "Poloha tela" (trup, línia tela, hlava, chrbát)
+   - "Kĺby a os pohybu" (kolená, lakte, ramená, členky, dráha činky/rúk)
+   - "Tempo a kontrola" (kontrolované spúšťanie, bez švihu a odrazu)
+   - "Stabilita a konzistencia" (symetria, rovnaká kvalita všetkých opakovaní)
+   Súčet bodov v oblastiach = score. Za každý stratený bod musí existovať konkrétny dôvod.
+7. Do "to_100" napíš presný plán, čo musí používateľ pri tomto cvičení zmeniť, aby dosiahol 100 bodov: každý krok = jedna konkrétna zmena a koľko bodov prinesie. Súčet "gain" = 100 − score. Zoraď od najväčšieho prínosu. Ak je score 100, nechaj pole prázdne.
+8. Odpovedz výhradne v slovenčine, prakticky a zrozumiteľne pre bežného cvičenca. Bez diagnóz, nie je to medicínska rada.
 
 Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) presne v tomto tvare:
 {
@@ -30,6 +39,8 @@ Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) pres
   "summary": "max. 2 krátke vety zhrnutia, bez čísel uhlov",
   "description": "stručný popis správnej techniky tohto cviku (3–4 krátke vety)",
   "good": ["čo robí dobre – krátko, max. 8 slov na bod", "..."],
+  "score_breakdown": [ { "area": "názov oblasti zo stupnice", "points": číslo 0–20, "max": 20, "note": "krátko prečo, max. 10 slov" } ],
+  "to_100": [ { "step": "konkrétna zmena, max. 14 slov (napr. 'Choď v drepe hlbšie, boky aspoň po úroveň kolien')", "gain": počet bodov } ],
   "issues": [ { "title": "krátky názov chyby, max. 5 slov", "detail": "1 veta: čo presne vidno (môžeš uviesť opakovanie alebo uhol)", "fix": "1 veta: konkrétny pokyn, ako to opraviť", "severity": "vysoká|stredná|nízka" } ],
   "watch_out": ["na čo si dávať pozor (bezpečnosť, typické chyby pri tomto cviku) – max. 3 body, krátko", "..."],
   "muscles": { "primary": ["hlavné zapojené svaly"], "secondary": ["pomocné svaly"] },
@@ -85,7 +96,7 @@ export async function onRequestPost({ request, env }) {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model, max_tokens: 4096, system: SYSTEM, messages,
+          model, max_tokens: 6000, system: SYSTEM, messages,
           tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
         }),
       });
@@ -106,6 +117,11 @@ export async function onRequestPost({ request, env }) {
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
     const result = parseJson(text);
     if (!result) return json({ error: 'AI nevrátila čitateľný výsledok. Skús to znova.', raw: text.slice(0, 2000) }, 502);
+    // skóre = súčet bodov v oblastiach (aby sedelo s rozpisom)
+    if (Array.isArray(result.score_breakdown) && result.score_breakdown.length && typeof result.score === 'number') {
+      const sum = result.score_breakdown.reduce((t, b) => t + (Number(b.points) || 0), 0);
+      if (sum > 0 && sum <= 100) result.score = Math.round(sum);
+    }
 
     const sources = [];
     for (const m of messages.concat([{ content: data.content }])) {

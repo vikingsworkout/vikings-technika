@@ -182,6 +182,19 @@ select, input[type=password], input[type=text] { width: 100%; font: inherit; fon
 .iss .dt { grid-column: 2; font-size: 14.5px; color: var(--mu); margin: 4px 0 8px; line-height: 1.45; }
 .iss .fx { grid-column: 2; background: color-mix(in srgb, var(--ok) 12%, transparent); border-radius: 10px; padding: 9px 11px; font-size: 14.5px; line-height: 1.4; }
 .iss .fx b { color: var(--ok); }
+/* cesta k 100 bodom */
+.bd { display: grid; gap: 12px; }
+.bdt { display: flex; justify-content: space-between; font-size: 14.5px; font-weight: 650; margin-bottom: 5px; }
+.bdt b { font-variant-numeric: tabular-nums; }
+.bdbar { height: 8px; border-radius: 99px; background: var(--glass2); overflow: hidden; }
+.bdbar div { height: 100%; border-radius: 99px; }
+.bdn { font-size: 13px; color: var(--mu); margin-top: 4px; line-height: 1.35; }
+ol.t100 { list-style: none; counter-reset: t; margin: 0; padding: 0; }
+ol.t100 li { counter-increment: t; display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.4; }
+ol.t100 li:first-child { border-top: 0; }
+ol.t100 li::before { content: counter(t); flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: var(--acc-soft); color: var(--acc); margin-top: 1px; }
+ol.t100 li span { flex: 1; }
+ol.t100 li b { flex: none; color: var(--ok); font-variant-numeric: tabular-nums; }
 ul.ck { list-style: none; margin: 0; padding: 0; }
 ul.ck li { display: flex; gap: 10px; padding: 7px 0; line-height: 1.4; font-size: 15px; }
 ul.ck li::before { content: '✓'; flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); margin-top: 1px; }

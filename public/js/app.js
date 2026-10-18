@@ -231,6 +231,9 @@ function renderResult(item) {
   const view = (sm.camera_view_estimate || '').replace(' alebo zozadu', '').replace(' (asi 45°)', '');
   const issues = (Array.isArray(r.issues) ? r.issues : []).slice().sort((a, b) => (sevOrder[a.severity] ?? 1) - (sevOrder[b.severity] ?? 1));
   const prim = r.muscles?.primary || [], sec = r.muscles?.secondary || [];
+  const breakdown = Array.isArray(r.score_breakdown) ? r.score_breakdown : [];
+  const to100 = (Array.isArray(r.to_100) ? r.to_100 : []).filter(x => x && x.step).sort((a, b) => (Number(b.gain) || 0) - (Number(a.gain) || 0));
+  const missing = score != null ? 100 - score : null;
 
   $('vResult').innerHTML = `
     ${mismatch ? `<div class="card err small"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Ak to nesedí, zmeň cvik dole.</div>` : ''}
@@ -248,6 +251,20 @@ function renderResult(item) {
       </div>
       ${r.summary ? `<p class="sum">${esc(r.summary)}</p>` : ''}
     </div>
+
+    ${score != null && (breakdown.length || to100.length) ? `
+    <div class="card">
+      <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></div><h2>Cesta k 100 bodom</h2>${missing ? `<span class="cnt">chýba ${missing} b.</span>` : ''}</div>
+      ${breakdown.length ? `<div class="bd">${breakdown.map(b => {
+        const pts = Math.max(0, Math.min(Number(b.max) || 20, Number(b.points) || 0)), max = Number(b.max) || 20;
+        return `<div class="bdr"><div class="bdt"><span>${esc(b.area)}</span><b>${pts}/${max}</b></div>
+          <div class="bdbar"><div style="width:${Math.round(100 * pts / max)}%;background:${scoreColor(100 * pts / max)}"></div></div>
+          ${b.note ? `<div class="bdn">${esc(b.note)}</div>` : ''}</div>`;
+      }).join('')}</div>` : ''}
+      ${to100.length ? `<p class="small mu" style="margin:14px 0 4px">Čo zmeniť, aby si mal 100 bodov:</p>
+        <ol class="t100">${to100.map(x => `<li><span>${esc(x.step)}</span>${Number(x.gain) ? `<b>+${Math.round(Number(x.gain))}</b>` : ''}</li>`).join('')}</ol>`
+        : (missing === 0 ? '<p class="mu" style="margin:10px 0 0">Plný počet! Technika je bez výhrad.</p>' : '')}
+    </div>` : ''}
 
     <div class="card">
       <div class="sec"><div class="ic warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div><h2>Čo zlepšiť</h2><span class="cnt">${issues.length || ''}</span></div>
