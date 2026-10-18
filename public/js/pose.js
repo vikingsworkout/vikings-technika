@@ -16,9 +16,16 @@ let landmarkerPromise = null;
 // preto si pamätáme posledný použitý čas (inak druhé video v poradí spadne).
 let lastTs = 0;
 
+// Promise s časovým limitom – nič nesmie visieť donekonečna.
+function withTimeout(promise, ms, message) {
+  let t;
+  return Promise.race([promise, new Promise((_, rej) => { t = setTimeout(() => rej(new Error(message)), ms); })])
+    .finally(() => clearTimeout(t));
+}
+
 async function getLandmarker() {
   if (!landmarkerPromise) {
-    landmarkerPromise = (async () => {
+    landmarkerPromise = withTimeout((async () => {
       const { PoseLandmarker, FilesetResolver } = await import(`${MP_URL}/vision_bundle.mjs`);
       const fileset = await FilesetResolver.forVisionTasks(`${MP_URL}/wasm`);
       const opts = (delegate) => ({
@@ -26,9 +33,10 @@ async function getLandmarker() {
         runningMode: 'VIDEO', numPoses: 1,
         minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
       });
-      try { return await PoseLandmarker.createFromOptions(fileset, opts('GPU')); }
+      // GPU na niektorých mobiloch zlyhá alebo zamrzne – vtedy prejdeme na CPU
+      try { return await withTimeout(PoseLandmarker.createFromOptions(fileset, opts('GPU')), 25_000, 'gpu'); }
       catch { return await PoseLandmarker.createFromOptions(fileset, opts('CPU')); }
-    })();
+    })(), 90_000, 'Model na rozpoznanie postavy sa nepodarilo načítať (slabý internet?). Skús to znova na Wi-Fi.');
     landmarkerPromise.catch(() => { landmarkerPromise = null; });
   }
   return landmarkerPromise;
@@ -82,12 +90,18 @@ function frameMetrics(lm, W, H) {
 
 // ---------- načítanie videa a seekovanie ----------
 function loadVideo(file) {
+  return withTimeout(loadVideoInner(file), 20_000, 'Video sa nepodarilo otvoriť. Skús ho nahrať znova, prípadne vo formáte MP4.');
+}
+function loadVideoInner(file) {
   return new Promise((resolve, reject) => {
     const v = document.createElement('video');
     v.muted = true; v.playsInline = true; v.preload = 'auto'; v.crossOrigin = 'anonymous';
     v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
     v.src = URL.createObjectURL(file);
-    v.onloadeddata = async () => {
+    // iOS Safari pri skrytom videu často nevyšle loadeddata, preto stačí loadedmetadata
+    let started = false;
+    const ready = async () => {
+      if (started) return; started = true;
       // niektoré videá (WebM z prehliadača, časť Androidov) hlásia dĺžku Infinity –
       // skok na koniec prinúti prehliadač dĺžku zistiť
       if (!isFinite(v.duration)) {
@@ -101,6 +115,8 @@ function loadVideo(file) {
       }
       resolve(v);
     };
+    v.onloadedmetadata = ready;
+    v.onloadeddata = ready;
     v.onerror = () => reject(new Error('Video sa nepodarilo načítať. Skús iný formát (MP4/MOV).'));
     v.load();
   });

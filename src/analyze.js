@@ -10,6 +10,7 @@
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const MAX_IMAGES = 8;
 const MAX_IMAGE_B64 = 600_000;
+const API_DEADLINE_MS = 110_000; // celkový čas na odpoveď AI
 
 const SYSTEM = `Si skúsený silový a kondičný tréner a odborník na techniku cvikov (silový tréning, kalistenika).
 Dostaneš údaje z analýzy videa jedného človeka pri cvičení: uhly kĺbov namerané pomocou pose detection (2D, z kamery) po jednotlivých opakovaniach a niekoľko kľúčových snímok s vyznačenou kostrou.
@@ -68,9 +69,15 @@ export async function onRequestPost({ request, env }) {
     const messages = [{ role: 'user', content }];
     const model = env.CLAUDE_MODEL || DEFAULT_MODEL;
     let resp, data;
-    // web search môže vrátiť pause_turn – vtedy pokračujeme (max. 3×)
+    const started = Date.now();
+    // web search môže vrátiť pause_turn – vtedy pokračujeme, ale len kým neprekročíme časový limit,
+    // aby používateľ nečakal donekonečna
     for (let round = 0; round < 4; round++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), Math.max(15_000, API_DEADLINE_MS - (Date.now() - started)));
+      try {
       resp = await fetch('https://api.anthropic.com/v1/messages', {
+        signal: ctrl.signal,
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -79,15 +86,20 @@ export async function onRequestPost({ request, env }) {
         },
         body: JSON.stringify({
           model, max_tokens: 4096, system: SYSTEM, messages,
-          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
         }),
       });
       data = await resp.json().catch(() => null);
+      } catch (e) {
+        if (e?.name === 'AbortError') return json({ error: 'AI odpovedala príliš dlho. Skús to znova.', code: 'timeout' }, 504);
+        throw e;
+      } finally { clearTimeout(timer); }
       if (!resp.ok) {
         const msg = data?.error?.message || `HTTP ${resp.status}`;
         return json({ error: `Chyba Claude API: ${msg}` }, 502);
       }
       if (data.stop_reason !== 'pause_turn') break;
+      if (Date.now() - started > API_DEADLINE_MS - 20_000) break; // už nestihneme ďalšie kolo
       messages.push({ role: 'assistant', content: data.content });
     }
 
@@ -109,7 +121,11 @@ export async function onRequestPost({ request, env }) {
   }
 }
 
-export function onRequestGet() {
+// GET slúži aj na rýchle overenie prístupového kódu ešte pred analýzou videa.
+export function onRequestGet({ request, env } = {}) {
+  if (env?.ACCESS_CODE && request?.headers.get('x-access-code') !== env.ACCESS_CODE) {
+    return json({ error: 'Nesprávny alebo chýbajúci prístupový kód.', code: 'auth' }, 401);
+  }
   return json({ ok: true, info: 'POST /api/analyze' });
 }
 

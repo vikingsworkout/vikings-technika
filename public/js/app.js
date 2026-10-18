@@ -136,6 +136,13 @@ async function startAnalysis(file) {
   vid.src = URL.createObjectURL(file); vid.hidden = false;
   vid.play().catch(() => {});
   location.hash = '#/praca'; show('vWork');
+  setProgress(0, 'Overujem prístup…');
+  // kód overíme hneď, nie až po minútovej analýze videa
+  if (await accessDenied()) {
+    showError('Táto appka je chránená prístupovým kódom. Zadaj ho a pokračuj.', true);
+    current = null;
+    return;
+  }
   setProgress(0, 'Pripravujem…');
   try {
     const { summary, keyframes, thumb } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, onProgress: (p, t) => setProgress(p * 0.5, t) });
@@ -150,14 +157,27 @@ async function startAnalysis(file) {
   await runAi();
 }
 
+// true = server chce kód a ten uložený nesedí; pri výpadku siete pokračujeme (chyba príde neskôr)
+async function accessDenied() {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10_000);
+    const res = await fetch('/api/analyze', { headers: { 'x-access-code': ls.get('vt-code') || '' }, cache: 'no-store', signal: ctrl.signal });
+    clearTimeout(t);
+    return res.status === 401;
+  } catch { return false; }
+}
+
 async function runAi() {
   $('workErr').hidden = true;
   setProgress(0.55, 'AI hľadá správnu techniku a vyhodnocuje tvoj pohyb… (zvyčajne 20–60 s)');
   let fake = 0.55;
   const tick = setInterval(() => { fake = Math.min(0.95, fake + 0.01); setProgress(fake); }, 700);
+  const ctrl = new AbortController();
+  const killer = setTimeout(() => ctrl.abort(), 150_000); // poistka, aby appka nevisela donekonečna
   try {
     const res = await fetch('/api/analyze', {
-      method: 'POST',
+      method: 'POST', signal: ctrl.signal,
       headers: { 'content-type': 'application/json', 'x-access-code': ls.get('vt-code') || '' },
       body: JSON.stringify({ exercise: current.exercise, summary: current.summary, keyframes: current.keyframes }),
     });
@@ -171,12 +191,16 @@ async function runAi() {
     location.hash = '#/r/' + current.id;
   } catch (e) {
     console.error(e);
-    showError(e.code === 'auth' ? 'Táto appka je chránená prístupovým kódom.' : (e.message || 'Spojenie so serverom zlyhalo.'), e.code === 'auth');
-  } finally { clearInterval(tick); }
+    const msg = e.code === 'auth' ? 'Táto appka je chránená prístupovým kódom.'
+      : e.name === 'AbortError' ? 'Server neodpovedal včas. Skontroluj internet a skús to znova (video netreba nahrávať znova).'
+      : (e.message || 'Spojenie so serverom zlyhalo.');
+    showError(msg, e.code === 'auth');
+  } finally { clearInterval(tick); clearTimeout(killer); }
 }
 
 $('btnRetry').onclick = () => {
   if (!$('codeBox').hidden) ls.set('vt-code', $('codeInput').value.trim());
+  $('workErr').hidden = true;
   if (current && current.summary) { location.hash = '#/praca'; runAi(); }
   else if (pendingFile) startAnalysis(pendingFile);
 };
