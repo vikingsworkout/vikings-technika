@@ -13,9 +13,25 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
+<script>
+// v appke Viking's Workout: náhľad cviku sa začne sťahovať hneď (ešte pred skriptami appky),
+// písma Barlow sa v appke nepoužívajú, mimo appky sa načítajú bez blokovania stránky
+(function () {
+  var q = new URLSearchParams(location.search), h = document.head, l;
+  if (q.get('vw') === '1') {
+    l = document.createElement('link'); l.rel = 'preconnect'; l.href = 'https://videa.vikingsworkout.com'; h.appendChild(l);
+    var p = (q.get('img') || '').replace(/^https:\/\/videa\.vikingsworkout\.com\//, '');
+    if (/^[A-Za-z0-9._~%\/-]{1,200}\.(jpg|jpeg|webp|png)(\?[A-Za-z0-9._~%=&-]{0,80})?$/i.test(p) && p.indexOf('..') < 0) {
+      l = document.createElement('link'); l.rel = 'preload'; l.as = 'image'; l.href = 'https://videa.vikingsworkout.com/' + p;
+      l.setAttribute('fetchpriority', 'high'); h.appendChild(l);
+    }
+    return;
+  }
+  l = document.createElement('link'); l.rel = 'stylesheet';
+  l.href = 'https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700;800&family=Barlow+Condensed:wght@700;800&display=swap';
+  h.appendChild(l);
+})();
+</script>
 <style>
 @font-face { font-family: 'Texturina'; font-style: normal; font-weight: 500; font-display: swap; src: url('fonts/texturina-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
@@ -427,13 +443,19 @@ html.vw.vw-light .pk-ai-ch { color: var(--acc); }
 .sh-sub { margin: 0 2px 14px; font-size: 14px; font-weight: 600; color: var(--mu); }
 .sh-prev { position: relative; height: 262px; flex: none; border-radius: 24px; overflow: hidden; margin-bottom: 14px; color: #F3F6F9;
   background: radial-gradient(70% 80% at 50% 40%, rgba(255,122,61,.16), rgba(0,0,0,0) 70%), linear-gradient(160deg, #1E2838, #111722); }
-.sh-prev img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 48%; }
+.sh-ph { position: absolute; inset: 0; transition: opacity .25s ease; }
+.sh-prev.loading .sh-ph { opacity: .3; }
+.sh-prev.loading::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.07) 50%, rgba(255,255,255,0) 70%); background-size: 200% 100%; animation: shshim 1.2s linear infinite; }
+@keyframes shshim { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.sh-img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; max-width: none; display: block; opacity: 0; transition: opacity .25s ease; }
+.sh-img.on { opacity: 1; }
+.sh-prev:has(.sh-img.on) .sh-ph { opacity: 0; }
 .sh-prev .sh-pic { position: absolute; left: 50%; top: 50%; width: 150px; height: 150px; transform: translate(-50%, -50%); color: #F3F6F9; }
 .sh-prev .sh-pic .fig { color: #F3F6F9; } .sh-prev .sh-pic .eq { color: rgba(255,255,255,.35); }
 .sh-prev .sh-pic.ai { width: 96px; height: 96px; color: #FF7A45; }
 .sh-prev .sh-vig { position: absolute; inset: 0; background: radial-gradient(60% 70% at 50% 50%, rgba(11,16,29,0) 55%, rgba(11,16,29,.55) 100%); }
-.sh-frame { position: absolute; inset: 0; width: 100%; height: 100%; }
-.sh-ok { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 5px 11px 5px 8px; border-radius: 99px; background: rgba(11,16,29,.62); border: 1px solid rgba(255,255,255,.18);
+.sh-frame { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.sh-ok { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1; padding: 5px 11px 5px 8px; border-radius: 99px; background: rgba(11,16,29,.62); border: 1px solid rgba(255,255,255,.18);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px; white-space: nowrap; color: #F3F6F9; }
 .sh-ok svg { width: 14px; height: 14px; color: #4FE0A0; }
 .sh-tip { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }

@@ -19,10 +19,16 @@ export const IC = {
   pause: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>',
 };
 
-// Natoč: rámik záberu (prerušovaný obdĺžnik + oranžové rohy)
-export const FRAME_SVG = '<svg class="sh-frame" viewBox="0 0 358 262" preserveAspectRatio="xMidYMid meet" aria-hidden="true">'
-  + '<rect x="86" y="24" width="186" height="222" rx="16" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-dasharray="7 6"/>'
-  + '<path d="M86 50V40a16 16 0 0 1 16-16h10M246 24h10a16 16 0 0 1 16 16v10M272 220v10a16 16 0 0 1-16 16h-10M112 246h-10a16 16 0 0 1-16-16v-10" fill="none" stroke="#FF7A45" stroke-width="4" stroke-linecap="round"/></svg>';
+// Natoč: rámik záberu okolo postavy (prerušovaný obdĺžnik + oranžové rohy ako v návrhu)
+export function frameSvg(x, y, w, h) {
+  const r = Math.min(16, w / 4, h / 4), L = Math.min(10, w / 6, h / 6), f = (n) => n.toFixed(1);
+  const X = x + w, Y = y + h;
+  return `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="${f(r)}" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-dasharray="7 6"/>`
+    + `<path d="M${f(x)} ${f(y + r + L)}V${f(y + r)}A${f(r)} ${f(r)} 0 0 1 ${f(x + r)} ${f(y)}H${f(x + r + L)}`
+    + `M${f(X - r - L)} ${f(y)}H${f(X - r)}A${f(r)} ${f(r)} 0 0 1 ${f(X)} ${f(y + r)}V${f(y + r + L)}`
+    + `M${f(X)} ${f(Y - r - L)}V${f(Y - r)}A${f(r)} ${f(r)} 0 0 1 ${f(X - r)} ${f(Y)}H${f(X - r - L)}`
+    + `M${f(x + r + L)} ${f(Y)}H${f(x + r)}A${f(r)} ${f(r)} 0 0 1 ${f(x)} ${f(Y - r)}V${f(Y - r - L)}" fill="none" stroke="#FF7A45" stroke-width="4" stroke-linecap="round"/>`;
+}
 
 // ---------- Natoč (sekcia vNew) ----------
 export const NEW_HTML = `

@@ -1,6 +1,6 @@
 // Režim „v appke Viking's Workout“: Technika je otvorená v hlavnej appke (iframe).
 // Parametre: ?vw=1&ex=<názov cviku z appky>&from=detail|set|home&theme=dark|light&po=<origin appky>&r=<id rozboru>
-//   &img=<cesta k náhľadu cviku na videa.vikingsworkout.com>&day=<JSON dnešného tréningu z plánu>
+//   &img=<cesta k náhľadu cviku na videa.vikingsworkout.com>&box=<poloha postavy na náhľade>&day=<JSON dnešného tréningu z plánu>
 const q = new URLSearchParams(location.search);
 
 export const VW = q.get('vw') === '1';
@@ -15,8 +15,14 @@ export const vwImgUrl = (path) => {
   return IMG_PATH.test(x) && !x.includes('..') ? 'https://videa.vikingsworkout.com/' + x : '';
 };
 export const vwImg = vwImgUrl(q.get('img'));
+// poloha postavy na náhľade (x0,y0,x1,y1 v 0–1) – podľa nej sa obrázok vycentruje a nakreslí rámik
+export function vwBoxOf(v) {
+  const a = (Array.isArray(v) ? v : String(v || '').split(',')).slice(0, 4).map(Number);
+  return a.length === 4 && a.every(x => Number.isFinite(x) && x >= 0 && x <= 1) && a[2] - a[0] > 0.03 && a[3] - a[1] > 0.03 ? a : null;
+}
+export const vwBox = vwBoxOf(q.get('box'));
 
-// dnešný (alebo najbližší) tréning z plánu: { l: 'Deň 1 — Ťahy', d: 1 = dnes, x: [{ n, e, s, r, t, sc, p }] }
+// dnešný (alebo najbližší) tréning z plánu: { l: 'Deň 1 — Ťahy', d: 1 = dnes, x: [{ n, e, s, r, t, sc, p, b }] }
 function parseDay(raw) {
   if (!raw) return null;
   try {
@@ -25,7 +31,7 @@ function parseDay(raw) {
     const x = (Array.isArray(o.x) ? o.x : []).slice(0, 14).map(e => ({
       n: String(e.n || '').replace(/\s+/g, ' ').trim().slice(0, 80), e: String(e.e || '').slice(0, 60),
       s: num(e.s, 20), r: num(e.r, 500), t: num(e.t, 3600), sc: e.sc == null ? null : Math.max(0, Math.min(100, num(e.sc, 100))),
-      img: vwImgUrl(e.p),
+      img: vwImgUrl(e.p), box: vwBoxOf(e.b),
     })).filter(e => e.n);
     return x.length ? { l: String(o.l || '').slice(0, 60), d: !!o.d, x } : null;
   } catch { return null; }

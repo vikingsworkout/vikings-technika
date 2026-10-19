@@ -2,8 +2,8 @@ import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor } f
 import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive, liveAngle } from './pose.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
-import { VW, vwFrom, vwExName, vwResultId, vwPost, vwImg, vwDay, vwEmbedded, vwNoMap } from './vw.js';
-import { IC, FRAME_SVG, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
+import { VW, vwFrom, vwExName, vwResultId, vwPost, vwImg, vwBox, vwDay, vwEmbedded, vwNoMap } from './vw.js';
+import { IC, frameSvg, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
 
 const $ = (id) => document.getElementById(id);
 const on = (id, fn, ev = 'click') => { const el = $(id); if (el) el.addEventListener(ev, fn); };
@@ -37,17 +37,17 @@ let pendingFile = null;    // video, ktoré sa analyzuje (pre "skúsiť znova")
 // ktorého sa meria (výdrže a cviky, ktoré nevieme merať presne, rozpozná automatický režim s názvom ako nápovedou),
 // `guide` je cvik, podľa ktorého ukážeme návod na natočenie a čo appka skontroluje.
 let vwHint = '';
-let pick = null;           // { src: 'app' | 'list' | 'auto', name, eid, img, guide, measure }
-function makePick(src, name, { id = null, eid = '', img = '' } = {}) {
+let pick = null;           // { src: 'app' | 'list' | 'auto', name, eid, img, box, guide, measure }
+function makePick(src, name, { id = null, eid = '', img = '', box = null } = {}) {
   const e = id ? findExercise(id) : (name && !vwNoMap(name) ? matchExercise(name) : null);
   const guide = e && e.id !== 'auto' ? e : null;
-  return { src, name, eid, img, guide, measure: guide && !isHold(guide) ? guide : AUTO };
+  return { src, name, eid, img, box: img ? box : null, guide, measure: guide && !isHold(guide) ? guide : AUTO };
 }
 function applyPick(p) {
   pick = p; selected = p.measure;
   vwHint = selected.id === 'auto' && p.src !== 'auto' ? p.name : '';
 }
-const appPick = VW && vwExName ? makePick('app', vwExName, { img: vwImg }) : null;
+const appPick = VW && vwExName ? makePick('app', vwExName, { img: vwImg, box: vwBox }) : null;
 if (appPick) applyPick(appPick);
 const ICON_BACK = IC.back;
 const ICON_X = IC.x;
@@ -79,10 +79,10 @@ function show(view) {
 // ---------- smerovanie ----------
 async function route() {
   const h = location.hash;
-  if (h === '#/vyber' && VW) { renderPick(); show('vPick'); preload(); return; }
+  if (h === '#/vyber' && VW) { renderPick(); show('vPick'); preloadSoon(); return; }
   if (h === '#/nova') {
     if (VW && !pick) { go('#/vyber'); return; }
-    renderNew(); show('vNew'); preload(); return;
+    renderNew(); show('vNew'); if (VW) layoutShot(); preloadSoon(); return;
   }
   if (h === '#/nahravanie') { show('vRec'); openRecorder(); return; }
   if (h.startsWith('#/r/')) {
@@ -91,8 +91,8 @@ async function route() {
   }
   if (h === '#/praca' && current) { show('vWork'); return; }
   if (VW) { // v appke sa začína natáčaním cviku z appky, inak výberom cviku
-    if (pick) { renderNew(); show('vNew'); } else { renderPick(); show('vPick'); }
-    preload(); return;
+    if (pick) { renderNew(); show('vNew'); layoutShot(); } else { renderPick(); show('vPick'); }
+    preloadSoon(); return;
   }
   renderHome(); show('vHome');
 }
@@ -211,16 +211,89 @@ function renderShoot() {
   $('newTitle').textContent = auto ? 'Natoč cvik' : 'Natoč ' + lowerName(pick.name);
   $('newSub').textContent = auto ? 'Cvik aj výdrž spoznám automaticky' : `${pick.name} · ${pickHold() ? 'jedna výdrž' : g ? 'jedna séria' : 'séria alebo výdrž'}`;
   const pic = g && EX_PIC[g.id] ? picSvg(g.id).replace('class="pic"', 'class="sh-pic"') : `<span class="sh-pic ai">${ICON_AI}</span>`;
-  $('shPrev').innerHTML = (pick.img ? `<img src="${esc(pick.img)}" alt="Ukážka cviku" referrerpolicy="no-referrer">` : pic)
-    + `<div class="sh-vig"></div>${FRAME_SVG}<span class="sh-ok">${IC.check}Celé telo v zábere</span>`;
-  const img = $('shPrev').querySelector('img');
-  if (img) img.onerror = () => { img.replaceWith(document.createRange().createContextualFragment(pic)); };
+  $('shPrev').innerHTML = `<div class="sh-ph">${pic}</div>`
+    + (pick.img ? `<img class="sh-img" alt="Ukážka cviku" decoding="async" fetchpriority="high">` : '')
+    + `<div class="sh-vig"></div><svg class="sh-frame" id="shFrame" aria-hidden="true"></svg><span class="sh-ok" id="shOk">${IC.check}Celé telo v zábere</span>`;
+  $('shPrev').classList.toggle('loading', !!pick.img);
+  const img = $('shPrev').querySelector('.sh-img');
+  if (img) {
+    // obrázok sa predčítava už v hlavičke stránky; keď je v pamäti, ukáže sa hneď
+    const ok = () => { img.classList.add('on'); $('shPrev').classList.remove('loading'); layoutShot(); preloadSoon(300); keepImg(img.src); };
+    img.onload = ok;
+    img.onerror = () => {
+      // náhľad v strednej veľkosti chýba → plný náhľad, inak piktogram
+      if (/-mid\.jpg/i.test(img.src)) { img.src = img.src.replace(/-mid\.jpg/i, '.jpg'); return; }
+      img.remove(); pick.img = ''; pick.box = null; $('shPrev').classList.remove('loading'); layoutShot(); preloadSoon(300);
+    };
+    img.src = pick.img;
+    if (img.complete && img.naturalWidth) ok();
+  }
   const row = (ic, html) => `<div class="sh-tip"><span class="sh-ic">${ic}</span><span>${html}</span></div>`;
   $('shTips').innerHTML = row(IC.phone, `<b>${esc(G.hint)}</b>, ${esc(G.dist)}`)
     + row(IC.tripod, '<b>Mobil opri stabilne</b> alebo daj na statív')
     + row(IC.timer, pickHold() ? `<b>Jedna výdrž</b>, najviac ${max} sekúnd` : g ? `<b>Jedna séria</b>, najviac ${max} sekúnd` : `<b>Jedna séria alebo výdrž</b>, najviac ${max} sekúnd`);
   $('shChecks').innerHTML = (G.checks || []).map(c => `<span>${esc(c)}</span>`).join('');
   $('btnRec').innerHTML = '<span class="dot"></span>Nahrávať';
+}
+
+// výrez obrázka a rámik „Celé telo v zábere“: podľa polohy postavy na náhľade (zistenej vopred na GitHube),
+// bez nej podľa piktogramu alebo tvaru cviku (kliky, plank… naležato, ostatné nastojato)
+const WIDE = new Set(['klik', 'plank', 'planche', 'hip-thrust', 'bench', 'front-lever', 'back-lever', 'l-sit']);
+function layoutShot() {
+  const box = $('shPrev');
+  if (!VW || !box || !pick || $('vNew').hidden) return;
+  const CW = box.clientWidth, CH = box.clientHeight;
+  if (!CW || !CH) return;
+  const img = box.querySelector('.sh-img.on');
+  let fr = null;
+  if (img && img.naturalWidth) {
+    const W = img.naturalWidth, H = img.naturalHeight, b = pick.box;
+    const cover = Math.max(CW / W, CH / H);
+    // postava zaberie väčšinu výšky karty (najviac 1,6× priblíženie, aby obrázok nebol rozmazaný)
+    const fit = b ? Math.min(0.74 * CH / ((b[3] - b[1]) * H), 0.84 * CW / ((b[2] - b[0]) * W)) : cover;
+    const s = Math.max(cover, Math.min(1.6 * cover, fit)), DW = W * s, DH = H * s;
+    const cx = b ? (b[0] + b[2]) / 2 : 0.5, cy = b ? (b[1] + b[3]) / 2 : 0.48;
+    const ox = Math.min(0, Math.max(CW - DW, CW / 2 - cx * DW)), oy = Math.min(0, Math.max(CH - DH, CH / 2 - cy * DH));
+    Object.assign(img.style, { left: ox + 'px', top: oy + 'px', width: DW + 'px', height: DH + 'px' });
+    if (b) {
+      const pad = 0.07 * Math.max((b[2] - b[0]) * DW, (b[3] - b[1]) * DH) + 6;
+      fr = { x: ox + b[0] * DW - pad, y: oy + b[1] * DH - pad, w: (b[2] - b[0]) * DW + 2 * pad, h: (b[3] - b[1]) * DH + 2 * pad };
+    }
+  }
+  if (!fr && !img) {
+    const svg = box.querySelector('.sh-ph svg.sh-pic');
+    if (svg && svg.getBBox) {
+      try {
+        const bb = svg.getBBox(), r = svg.getBoundingClientRect(), rb = box.getBoundingClientRect(), k = r.width / 48;
+        if (bb.width && r.width) fr = { x: r.left - rb.left + bb.x * k - 14, y: r.top - rb.top + bb.y * k - 14, w: bb.width * k + 28, h: bb.height * k + 28 };
+      } catch { /* nič */ }
+    }
+  }
+  if (!fr) { // tvar podľa cviku
+    const wide = pick.guide && WIDE.has(pick.guide.id);
+    const w = wide ? 0.8 * CW : Math.min(0.52 * CW, 0.62 * CH), h = wide ? 0.58 * CH : 0.86 * CH;
+    fr = { x: (CW - w) / 2, y: wide ? CH * 0.6 - h / 2 : (CH - h) / 2, w, h };
+  }
+  // rámik ostane v karte
+  const m = 6;
+  fr.x = Math.max(m, fr.x); fr.y = Math.max(m, fr.y);
+  fr.w = Math.min(CW - m - fr.x, fr.w); fr.h = Math.min(CH - m - fr.y, fr.h);
+  $('shFrame').setAttribute('viewBox', `0 0 ${CW} ${CH}`);
+  $('shFrame').innerHTML = frameSvg(fr.x, fr.y, fr.w, fr.h);
+  const ok = $('shOk'), bw = ok.offsetWidth || 160;
+  ok.style.left = Math.max(8 + bw / 2, Math.min(CW - 8 - bw / 2, fr.x + fr.w / 2)) + 'px';
+  ok.style.top = Math.max(8, fr.y - 15) + 'px';
+}
+window.addEventListener('resize', () => layoutShot());
+// načítaný náhľad cviku do pamäte zariadenia (service worker ho nabudúce vráti hneď, bez ďalšieho sťahovania)
+function keepImg(url) {
+  try { navigator.serviceWorker?.controller?.postMessage({ type: 'vt-img-ok', url }); } catch { /* nič */ }
+}
+// model na rozpoznanie postavy (≈ 20 MB) sťahujeme až po obrázku, aby ho nespomaľoval
+let preloadT = 0;
+function preloadSoon(ms = 2500) {
+  if (!VW) { preload(); return; }
+  clearTimeout(preloadT); preloadT = setTimeout(preload, ms);
 }
 
 // ---------- v appke: Výber cviku ----------
@@ -243,7 +316,7 @@ function renderPick() {
     }).join('')}</section>` : '';
   $('pkDay').querySelectorAll('.pk-row').forEach(b => b.onclick = () => {
     const x = d.x[Number(b.dataset.i)];
-    applyPick(makePick('list', x.n, { eid: x.e, img: x.img })); go('#/nova');
+    applyPick(makePick('list', x.n, { eid: x.e, img: x.img, box: x.box })); go('#/nova');
   });
   $('pkGrid').innerHTML = PICK_TILES.map((t, i) => `<button class="pk-tile" data-i="${i}"><b>${esc(t.n)}</b><span>${esc(t.c)}</span></button>`).join('');
   $('pkGrid').querySelectorAll('.pk-tile').forEach(b => b.onclick = () => {
@@ -306,6 +379,7 @@ async function openRecorder() {
     $('recName').textContent = isAutoPick() ? 'Rozpoznám automaticky' : pick.name;
     hide('recCount', true); recState = 'off'; liveStatus(true);
   }
+  clearTimeout(preloadT);
   try { await recorder.open(); preload(); liveStart(); }
   catch (e) {
     console.error(e);
