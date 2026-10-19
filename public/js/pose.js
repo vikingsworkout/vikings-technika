@@ -414,7 +414,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     keyframes.push({ t: r1(f.t), label: p.label, dataUrl: drawFrame(v, f.lm, 600, true) });
   }
   await seek(v, frames[chosen[0].i].t);
-  const thumb = drawFrame(v, null, 200, false);
+  const thumb = drawFrame(v, null, 360, false);
 
   URL.revokeObjectURL(v.src);
   onProgress(1, 'Hotovo');

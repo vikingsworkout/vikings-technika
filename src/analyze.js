@@ -28,14 +28,16 @@ Postup:
    - "Tempo a kontrola" (kontrolované spúšťanie, bez švihu a odrazu)
    - "Stabilita a konzistencia" (symetria, rovnaká kvalita všetkých opakovaní)
    Súčet bodov v oblastiach = score. Za každý stratený bod musí existovať konkrétny dôvod.
-7. Do "to_100" napíš presný plán, čo musí používateľ pri tomto cvičení zmeniť, aby dosiahol 100 bodov: každý krok = jedna konkrétna zmena a koľko bodov prinesie. Súčet "gain" = 100 − score. Zoraď od najväčšieho prínosu. Ak je score 100, nechaj pole prázdne.
-8. Odpovedz výhradne v slovenčine, prakticky a zrozumiteľne pre bežného cvičenca. Bez diagnóz, nie je to medicínska rada.
+7. Do "today" daj JEDNU najdôležitejšiu vec, ktorú má používateľ zmeniť pri ďalšej sérii (zvyčajne prvý krok z "to_100"). Napíš ju ako krátky pokyn v 2. osobe, jednoducho, ako by to povedal tréner. "frame" = číslo snímky (podľa "Snímka N"), na ktorej je táto chyba najlepšie vidieť.
+8. Do "to_100" napíš presný plán, čo musí používateľ pri tomto cvičení zmeniť, aby dosiahol 100 bodov: každý krok = jedna konkrétna zmena a koľko bodov prinesie. Súčet "gain" = 100 − score. Zoraď od najväčšieho prínosu. Ak je score 100, nechaj pole prázdne.
+9. Odpovedz výhradne v slovenčine, prakticky a zrozumiteľne pre bežného cvičenca. Bez diagnóz, nie je to medicínska rada.
 
 Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) presne v tomto tvare:
 {
   "exercise": { "name": "krátky názov cviku po slovensky, max. 3 slová (napr. 'Klik', 'Drep s činkou')", "confidence": "vysoká|stredná|nízka", "matches_selected": true | false | null },
   "score": číslo 0–100 (celkové hodnotenie techniky),
-  "verdict": "celkový verdikt, max. 8 slov (napr. 'Dobrá technika, pozor na boky')",
+  "verdict": "celkový verdikt, 1 krátka veta, max. 9 slov (napr. 'Dobré. Ešte jedna vec a budeš nad 85.')",
+  "today": { "title": "jedna vec na dnes, max. 8 slov (napr. 'Zatni zadok, nech ti nepadajú boky.')", "detail": "1 krátka veta: ako to urobiť alebo čo pri tom cítiť", "gain": počet bodov, ktoré to prinesie, "frame": číslo snímky alebo null },
   "summary": "max. 2 krátke vety zhrnutia, bez čísel uhlov",
   "description": "stručný popis správnej techniky tohto cviku (3–4 krátke vety)",
   "good": ["čo robí dobre – krátko, max. 8 slov na bod", "..."],
@@ -69,12 +71,12 @@ export async function onRequestPost({ request, env }) {
       ? `Používateľ zadal cvik: ${exercise.name} (${exercise.en || ''}).`
       : 'Používateľ cvik nezadal – rozpoznaj ho zo snímok a údajov.';
     content.push({ type: 'text', text: `${exText}\n\nNamerané údaje z pose detection (JSON):\n${JSON.stringify(summary)}\n\nNasledujú kľúčové snímky z videa (oranžová = rozpoznaná kostra):` });
-    for (const f of frames) {
+    frames.forEach((f, idx) => {
       const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(f?.dataUrl || '');
-      if (!m || m[2].length > MAX_IMAGE_B64) continue;
-      content.push({ type: 'text', text: `${String(f.label || 'Snímka').slice(0, 80)} (čas ${Number(f.t) || 0} s):` });
+      if (!m || m[2].length > MAX_IMAGE_B64) return;
+      content.push({ type: 'text', text: `Snímka ${idx + 1}: ${String(f.label || 'Snímka').slice(0, 80)} (čas ${Number(f.t) || 0} s):` });
       content.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
-    }
+    });
     content.push({ type: 'text', text: 'Vyhodnoť techniku a vráť iba JSON podľa zadania.' });
 
     const messages = [{ role: 'user', content }];

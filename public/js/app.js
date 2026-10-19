@@ -10,6 +10,8 @@ const ls = {
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* nič */ } },
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
 
 let selected = findExercise(ls.get('vt-ex')) || AUTO;
 let current = null;        // práve spracovávaná analýza
@@ -19,6 +21,8 @@ function show(view) {
   if (view !== 'vRec') recorder.close();
   views.forEach(v => { $(v).hidden = v !== view; });
   $('btnHome').hidden = view === 'vHome';
+  $('btnNew').hidden = view !== 'vHome';
+  closeViewer();
   window.scrollTo(0, 0);
 }
 
@@ -35,31 +39,62 @@ async function route() {
   renderHome(); show('vHome');
 }
 window.addEventListener('hashchange', route);
-$('btnHome').onclick = () => { location.hash = '#/'; };
+$('btnHome').onclick = () => {
+  // z výsledku a výberu cviku späť domov, z nahrávania späť na výber cviku
+  location.hash = location.hash === '#/nahravanie' ? '#/nova' : '#/';
+};
 $('btnNew').onclick = () => { location.hash = '#/nova'; };
 
-// ---------- domov ----------
+function selectExercise(id) {
+  const e = findExercise(id);
+  if (e) { selected = e; ls.set('vt-ex', e.id); }
+}
+
+// ---------- domov: mriežka videí ----------
+function dayLabel(ts) {
+  const d = new Date(ts), now = new Date();
+  const days = Math.round((new Date(now.toDateString()) - new Date(d.toDateString())) / 864e5);
+  if (days === 0) return 'dnes';
+  if (days === 1) return 'včera';
+  return d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'numeric' });
+}
+const fmtT = (t) => { const x = Math.max(0, Math.round(Number(t) || 0)); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`; };
+const mmss = (s) => s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+
 async function renderHome() {
   const items = await db.list();
   const box = $('hist');
-  if (!items.length) { box.innerHTML = '<div class="empty">Zatiaľ žiadne analýzy. Začni tlačidlom vyššie.</div>'; return; }
-  box.innerHTML = items.map(it => `
-    <button class="hitem" data-id="${esc(it.id)}">
-      <img src="${esc(it.thumb || '')}" alt="">
-      <div><div class="t">${esc(it.result?.exercise?.name || it.exercise?.name || 'Cvik')}</div>
-      <div class="d">${new Date(it.created).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</div></div>
-      <div class="sc" style="color:${scoreColor(it.result?.score)};border-color:color-mix(in srgb, ${scoreColor(it.result?.score)} 40%, transparent)">${it.result?.score ?? '–'}</div>
-    </button>`).join('');
-  box.querySelectorAll('.hitem').forEach(b => b.onclick = () => { location.hash = '#/r/' + b.dataset.id; });
+  if (!items.length) {
+    box.innerHTML = `<button class="vadd wide" data-ex="">${ICON_CAM}<b>Natoč prvé video</b>Appka spočíta opakovania a povie ti, čo zlepšiť.</button>`;
+  } else {
+    const last = items[0];
+    const lastEx = last.exercise?.id !== 'auto' ? last.exercise : (matchExercise(last.result?.exercise?.name) || null);
+    box.innerHTML = items.map((it, k) => {
+      const s = it.result?.score;
+      const name = it.result?.exercise?.name || it.exercise?.name || 'Cvik';
+      const today = k === 0 ? todayOf(it.result || {}) : null;
+      const dur = it.summary?.active_segment ? it.summary.active_segment.end_s - it.summary.active_segment.start_s : it.summary?.video?.analyzed_s;
+      return `<button class="vt" data-id="${esc(it.id)}">
+        <div class="ph">${it.thumb ? `<img src="${esc(it.thumb)}" alt="">` : ''}
+          <span class="sc" style="color:${scoreColor(s)}">${s ?? '–'}</span>
+          ${today && today.title && !today.good ? `<span class="today">Dnes: ${esc(today.title)}</span>` : ''}
+        </div>
+        <div class="meta"><b>${esc(name)}</b><span>${dayLabel(it.created)}${dur ? ' · ' + mmss(dur) : ''}</span></div>
+      </button>`;
+    }).join('') + `<button class="vadd" data-ex="${esc(lastEx?.id || '')}">${ICON_CAM}${lastEx ? `Natoč ${esc(lastEx.name.toLowerCase())} znova a porovnaj` : 'Natoč ďalšie video'}</button>`;
+  }
+  box.querySelectorAll('.vt').forEach(b => b.onclick = () => { location.hash = '#/r/' + b.dataset.id; });
+  box.querySelectorAll('.vadd').forEach(b => b.onclick = () => { if (b.dataset.ex) selectExercise(b.dataset.ex); location.hash = '#/nova'; });
 }
 
-// ---------- výber cviku ----------
+// ---------- nové video: výber cviku ----------
 function renderNew() {
-  const all = [AUTO, ...EXERCISES];
-  $('chips').innerHTML = all.map(e => `<button class="chip${e.id === 'auto' ? ' auto' : ''}" data-id="${e.id}" aria-pressed="${e.id === selected.id}">${e.id === 'auto' ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z"/></svg>' : ''}${esc(e.name)}</button>`).join('');
-  $('chips').querySelectorAll('.chip').forEach(c => c.onclick = () => {
-    selected = findExercise(c.dataset.id); ls.set('vt-ex', selected.id); renderNew();
-  });
+  const all = [...EXERCISES, AUTO];
+  $('chips').innerHTML = all.map(e => {
+    const on = e.id === selected.id;
+    return `<button class="ex${e.id === 'auto' ? ' auto' : ''}" data-id="${e.id}" aria-pressed="${on}">${e.id === 'auto' ? 'Iný cvik / rozpoznať automaticky' : esc(e.name)}${on ? ICON_CHECK : ''}</button>`;
+  }).join('');
+  $('chips').querySelectorAll('.ex').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
   $('guideText').textContent = selected.camera;
 }
 
@@ -211,13 +246,40 @@ function scoreColor(s) {
   if (s == null) return 'var(--mu)';
   return s >= 80 ? 'var(--ok)' : s >= 55 ? 'var(--warn)' : 'var(--bad)';
 }
-function scoreLabel(s) {
-  if (s == null) return 'Nedá sa posúdiť';
-  return s >= 85 ? 'Výborná technika' : s >= 70 ? 'Dobrá technika' : s >= 55 ? 'Treba doladiť' : 'Treba opraviť';
-}
 const plural = (n, one, few, many) => n === 1 ? one : (n >= 2 && n <= 4) ? few : many;
 const ckList = (arr, cls = '') => Array.isArray(arr) && arr.length ? `<ul class="ck ${cls}">${arr.map(x => `<li><span>${esc(x)}</span></li>`).join('')}</ul>` : '<p class="mu small" style="margin:0">—</p>';
 const sevOrder = { 'vysoká': 0, 'stredná': 1, 'nízka': 2 };
+
+// "Jedna vec na dnes": z poľa today od AI, inak z prvého kroku k 100 bodom alebo najväčšej chyby
+function todayOf(r) {
+  const steps = (Array.isArray(r.to_100) ? r.to_100 : []).filter(x => x && x.step).sort((a, b) => (Number(b.gain) || 0) - (Number(a.gain) || 0));
+  const issues = (Array.isArray(r.issues) ? r.issues : []).slice().sort((a, b) => (sevOrder[a.severity] ?? 1) - (sevOrder[b.severity] ?? 1));
+  if (r.today && r.today.title) return { title: r.today.title, detail: r.today.detail || issues[0]?.fix || '', gain: Number(r.today.gain) || Number(steps[0]?.gain) || 0, frame: r.today.frame };
+  if (steps.length) return { title: steps[0].step, detail: issues[0]?.detail || '', gain: Number(steps[0].gain) || 0 };
+  if (issues.length) return { title: issues[0].title, detail: issues[0].fix || issues[0].detail || '', gain: 0 };
+  if (typeof r.score === 'number') return { good: true, title: 'Drž túto techniku', detail: (Array.isArray(r.good) && r.good[0]) || 'Nič podstatné na opravu.', gain: 0 };
+  return null;
+}
+
+// snímka, na ktorej je chyba najlepšie vidieť
+function focusFrame(item, today) {
+  const kf = item.keyframes || [];
+  if (!kf.length) return null;
+  const n = Number(today?.frame);
+  if (n >= 1 && n <= kf.length) return kf[n - 1];
+  return kf.find(k => /najmenší rozsah/.test(k.label) && /krajná/.test(k.label))
+    || [...kf].reverse().find(k => /krajná poloha/.test(k.label)) || kf[Math.floor(kf.length / 2)];
+}
+
+function openViewer(k) {
+  $('viewerImg').src = k.dataUrl;
+  $('viewerCap').innerHTML = `${esc(k.label)}<span>${fmtT(k.t)} vo videu · oranžová = rozpoznaná kostra</span>`;
+  $('viewer').hidden = false;
+}
+function closeViewer() { $('viewer').hidden = true; }
+$('btnViewerClose').onclick = closeViewer;
+$('viewer').addEventListener('click', (e) => { if (e.target === $('viewer')) closeViewer(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('viewer').hidden) closeViewer(); });
 
 function renderResult(item) {
   const r = item.result || {};
@@ -234,84 +296,112 @@ function renderResult(item) {
   const breakdown = Array.isArray(r.score_breakdown) ? r.score_breakdown : [];
   const to100 = (Array.isArray(r.to_100) ? r.to_100 : []).filter(x => x && x.step).sort((a, b) => (Number(b.gain) || 0) - (Number(a.gain) || 0));
   const missing = score != null ? 100 - score : null;
+  const today = todayOf(r);
+  const frame = focusFrame(item, today);
+  const after = today && today.gain && score != null ? Math.min(100, score + today.gain) : null;
 
   $('vResult').innerHTML = `
-    ${mismatch ? `<div class="card err small"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Ak to nesedí, zmeň cvik dole.</div>` : ''}
-    <div class="card hero" style="--c:${scoreColor(score)}">
-      <p class="exname">${esc(ex.name || item.exercise.name)}</p>
-      <div class="exmeta">${item.exercise.id === 'auto' ? `Rozpoznané AI${ex.confidence ? ` · istota ${esc(ex.confidence)}` : ''}` : 'Vybraný cvik'} · ${new Date(item.created).toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-      <div class="scorerow">
-        <div class="ring" style="--p:${score ?? 0};--c:${scoreColor(score)}"><div>${score ?? '?'}</div></div>
-        <div><div class="slabel" style="color:${scoreColor(score)}">${scoreLabel(score)}</div><p class="verdict">${esc(r.verdict || '')}</p></div>
-      </div>
+    <div class="rmeta">${esc(ex.name || item.exercise.name)}${reps ? ` · ${reps} ${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}` : ''}</div>
+    ${mismatch ? `<div class="card err mismatch"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Ak to nesedí, zmeň cvik v celom rozbore dole.</div>` : ''}
+    <div class="bigscore"><span class="n" style="color:${scoreColor(score)}">${score ?? '?'}</span><span class="of">/100</span></div>
+    <p class="rverdict">${esc(r.verdict || '')}</p>
+
+    ${today ? `<div class="todaycard${today.good ? ' good' : ''}">
+      <div class="k">${today.good ? 'VÝBORNE' : 'JEDNA VEC NA DNES'}</div>
+      <div class="t">${esc(today.title)}</div>
+      ${today.detail ? `<div class="d">${esc(today.detail)}</div>` : ''}
+      ${after ? `<div class="g">Oprav to a máš ${after} bodov.</div>` : ''}
+    </div>` : ''}
+
+    ${frame ? `<button class="seeframe" id="btnSee">
+      <span class="th"><img src="${frame.dataUrl}" alt=""><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>
+      <span style="flex:1"><b>${today && !today.good ? 'Pozri, kde sa to stalo' : 'Pozri si snímku'}</b><span>${esc(frame.label)} · ${fmtT(frame.t)}</span></span>
+    </button>` : ''}
+
+    <button class="linkbtn" id="btnFull" aria-expanded="false">Zobraziť celý rozbor</button>
+
+    <div class="full" id="full" hidden>
       <div class="stats">
         <div class="stat"><b>${reps || '–'}</b><span>${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}</span></div>
         <div class="stat"><b>${dur != null ? Math.round(dur) + ' s' : '–'}</b><span>dĺžka série</span></div>
-        <div class="stat"><b style="font-size:15px;line-height:22px">${esc(view || '–')}</b><span>pohľad kamery</span></div>
+        <div class="stat"><b style="font-size:17px;line-height:29px">${esc(view || '–')}</b><span>pohľad kamery</span></div>
       </div>
       ${r.summary ? `<p class="sum">${esc(r.summary)}</p>` : ''}
+
+      ${score != null && (breakdown.length || to100.length) ? `
+      <div class="card">
+        <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></div><h2>Cesta k 100 bodom</h2>${missing ? `<span class="cnt">chýba ${missing} b.</span>` : ''}</div>
+        ${breakdown.length ? `<div class="bd">${breakdown.map(b => {
+          const max = Number(b.max) || 20, pts = Math.max(0, Math.min(max, Number(b.points) || 0));
+          return `<div><div class="bdt"><span>${esc(b.area)}</span><b>${pts}/${max}</b></div>
+            <div class="bdbar"><div style="width:${Math.round(100 * pts / max)}%;background:${scoreColor(100 * pts / max)}"></div></div>
+            ${b.note ? `<div class="bdn">${esc(b.note)}</div>` : ''}</div>`;
+        }).join('')}</div>` : ''}
+        ${to100.length ? `<p class="small mu" style="margin:14px 0 4px">Čo zmeniť, aby si mal 100 bodov:</p>
+          <ol class="t100">${to100.map(x => `<li><span>${esc(x.step)}</span>${Number(x.gain) ? `<b>+${Math.round(Number(x.gain))}</b>` : ''}</li>`).join('')}</ol>` : ''}
+      </div>` : ''}
+
+      <div class="card">
+        <div class="sec"><div class="ic warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div><h2>Čo zlepšiť</h2><span class="cnt">${issues.length || ''}</span></div>
+        ${issues.length ? issues.map((i, k) => `
+          <div class="iss ${esc(i.severity || '')}">
+            <div class="n">${k + 1}</div>
+            <div class="tt">${esc(i.title)}${i.severity ? `<span class="sev">${esc(i.severity)}</span>` : ''}</div>
+            ${i.detail ? `<div class="dt">${esc(i.detail)}</div>` : ''}
+            ${i.fix ? `<div class="fx"><b>Ako na to:</b> ${esc(i.fix)}</div>` : ''}
+          </div>`).join('') : '<p class="mu" style="margin:0">Žiadne podstatné chyby. Výborne!</p>'}
+      </div>
+
+      <div class="card">
+        <div class="sec"><div class="ic ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div><h2>Čo robíš dobre</h2></div>
+        ${ckList(r.good)}
+      </div>
+
+      <div class="card">
+        <div class="sec"><div class="ic bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg></div><h2>Na čo si dávať pozor</h2></div>
+        ${ckList(r.watch_out, 'w')}
+      </div>
+
+      ${prim.length || sec.length ? `<div class="card">
+        <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11M6.5 17.5h11M4 9v6M20 9v6M2 11v2M22 11v2"/></svg></div><h2>Zapojené svaly</h2></div>
+        ${prim.length ? `<div class="mrow"><span>Hlavné</span><div class="muscles">${prim.map(m => `<span class="tag p">${esc(m)}</span>`).join('')}</div></div>` : ''}
+        ${sec.length ? `<div class="mrow" style="margin:0"><span>Pomocné</span><div class="muscles">${sec.map(m => `<span class="tag">${esc(m)}</span>`).join('')}</div></div>` : ''}
+      </div>` : ''}
+
+      <details class="card">
+        <summary>Správna technika</summary>
+        ${r.description ? `<p style="font-size:16px">${esc(r.description)}</p>` : ''}
+        ${Array.isArray(r.cues) && r.cues.length ? `<p class="small mu" style="margin-bottom:4px">Pokyny na zapamätanie</p>${ckList(r.cues, 'c')}` : ''}
+      </details>
+
+      ${r.camera_limits ? `<details class="card"><summary>Uhol kamery</summary><p style="margin:0;font-size:16px">${esc(r.camera_limits)}</p></details>` : ''}
+
+      ${item.keyframes?.length ? `<details class="card"><summary>Snímky z videa</summary><div class="frames">${item.keyframes.map((k, i) => `<button data-k="${i}"><img src="${k.dataUrl}" alt=""><span>${esc(k.label)} · ${fmtT(k.t)}</span></button>`).join('')}</div></details>` : ''}
+
+      <div class="card"><h2 style="margin-bottom:6px">Iný cvik?</h2>
+        <p class="small mu">Ak AI rozpoznala cvik zle, vyber správny a rozbor sa zopakuje.</p>
+        <div class="row"><select id="reEx" aria-label="Cvik">${EXERCISES.map(e => `<option value="${e.id}"${e.id === (matchExercise(ex.name)?.id || item.exercise.id) ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+        <button class="btn sec" id="btnRe" style="flex:0 0 auto;width:auto;padding:13px 16px;font-size:16px">Zopakovať</button></div>
+      </div>
+      <button class="btn ghost" id="btnDel" style="margin:4px auto 0;display:block;color:var(--mu)">Vymazať z histórie</button>
     </div>
 
-    ${score != null && (breakdown.length || to100.length) ? `
-    <div class="card">
-      <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></div><h2>Cesta k 100 bodom</h2>${missing ? `<span class="cnt">chýba ${missing} b.</span>` : ''}</div>
-      ${breakdown.length ? `<div class="bd">${breakdown.map(b => {
-        const pts = Math.max(0, Math.min(Number(b.max) || 20, Number(b.points) || 0)), max = Number(b.max) || 20;
-        return `<div class="bdr"><div class="bdt"><span>${esc(b.area)}</span><b>${pts}/${max}</b></div>
-          <div class="bdbar"><div style="width:${Math.round(100 * pts / max)}%;background:${scoreColor(100 * pts / max)}"></div></div>
-          ${b.note ? `<div class="bdn">${esc(b.note)}</div>` : ''}</div>`;
-      }).join('')}</div>` : ''}
-      ${to100.length ? `<p class="small mu" style="margin:14px 0 4px">Čo zmeniť, aby si mal 100 bodov:</p>
-        <ol class="t100">${to100.map(x => `<li><span>${esc(x.step)}</span>${Number(x.gain) ? `<b>+${Math.round(Number(x.gain))}</b>` : ''}</li>`).join('')}</ol>`
-        : (missing === 0 ? '<p class="mu" style="margin:10px 0 0">Plný počet! Technika je bez výhrad.</p>' : '')}
-    </div>` : ''}
-
-    <div class="card">
-      <div class="sec"><div class="ic warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div><h2>Čo zlepšiť</h2><span class="cnt">${issues.length || ''}</span></div>
-      ${issues.length ? issues.map((i, k) => `
-        <div class="iss ${esc(i.severity || '')}">
-          <div class="n">${k + 1}</div>
-          <div class="tt">${esc(i.title)}${i.severity ? `<span class="sev">${esc(i.severity)}</span>` : ''}</div>
-          ${i.detail ? `<div class="dt">${esc(i.detail)}</div>` : ''}
-          ${i.fix ? `<div class="fx"><b>Ako na to:</b> ${esc(i.fix)}</div>` : ''}
-        </div>`).join('') : '<p class="mu" style="margin:0">Žiadne podstatné chyby. Výborne!</p>'}
-    </div>
-
-    <div class="card">
-      <div class="sec"><div class="ic ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div><h2>Čo robíš dobre</h2></div>
-      ${ckList(r.good)}
-    </div>
-
-    <div class="card">
-      <div class="sec"><div class="ic bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg></div><h2>Na čo si dávať pozor</h2></div>
-      ${ckList(r.watch_out, 'w')}
-    </div>
-
-    <div class="card">
-      <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11M6.5 17.5h11M4 9v6M20 9v6M2 11v2M22 11v2"/></svg></div><h2>Zapojené svaly</h2></div>
-      ${prim.length ? `<div class="mrow"><span>Hlavné</span><div class="muscles">${prim.map(m => `<span class="tag p">${esc(m)}</span>`).join('')}</div></div>` : ''}
-      ${sec.length ? `<div class="mrow" style="margin:0"><span>Pomocné</span><div class="muscles">${sec.map(m => `<span class="tag">${esc(m)}</span>`).join('')}</div></div>` : ''}
-    </div>
-
-    <details class="card">
-      <summary><div class="ic mu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/></svg></div>Správna technika</summary>
-      ${r.description ? `<p style="font-size:15px">${esc(r.description)}</p>` : ''}
-      ${Array.isArray(r.cues) && r.cues.length ? `<p class="small mu" style="margin-bottom:4px">Pokyny na zapamätanie</p>${ckList(r.cues, 'c')}` : ''}
-    </details>
-
-    ${r.camera_limits ? `<details class="card"><summary><div class="ic mu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>Uhol kamery</summary><p style="margin:0;font-size:15px">${esc(r.camera_limits)}</p></details>` : ''}
-
-    ${item.keyframes?.length ? `<details class="card"><summary><div class="ic mu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>Analyzované snímky</summary><div class="frames">${item.keyframes.map(k => `<figure><img src="${k.dataUrl}" alt=""><figcaption>${esc(k.label)} · ${k.t} s</figcaption></figure>`).join('')}</div></details>` : ''}
-
-    <div class="card"><div class="sec"><div class="ic mu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg></div><h2>Iný cvik?</h2></div>
-      <p class="small mu">Ak AI rozpoznala cvik zle, vyber správny a rozbor sa zopakuje.</p>
-      <div class="row"><select id="reEx">${EXERCISES.map(e => `<option value="${e.id}"${e.id === (matchExercise(ex.name)?.id || item.exercise.id) ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
-      <button class="btn sec" id="btnRe" style="flex:0 0 auto;width:auto">Zopakovať</button></div>
-    </div>
-    <button class="btn pri" id="btnAgain" style="margin-top:6px">Nová analýza</button>
-    <button class="btn ghost" id="btnDel" style="margin:10px auto 0;display:block">Vymazať z histórie</button>
+    <div class="stickybar"><button class="btn pri" id="btnAgain">${today && !today.good ? 'Skúsiť to opraviť' : 'Natočiť ďalšiu sériu'}</button></div>
   `;
-  $('btnAgain').onclick = () => { location.hash = '#/nova'; };
+
+  if ($('btnSee')) $('btnSee').onclick = () => openViewer(frame);
+  $('vResult').querySelectorAll('.frames button').forEach(b => b.onclick = () => openViewer(item.keyframes[Number(b.dataset.k)]));
+  $('btnFull').onclick = () => {
+    const open = $('full').hidden;
+    $('full').hidden = !open;
+    $('btnFull').textContent = open ? 'Skryť celý rozbor' : 'Zobraziť celý rozbor';
+    $('btnFull').setAttribute('aria-expanded', String(open));
+  };
+  $('btnAgain').onclick = () => {
+    const exId = item.exercise.id !== 'auto' ? item.exercise.id : (matchExercise(ex.name)?.id || 'auto');
+    selectExercise(exId);
+    location.hash = '#/nova';
+  };
   $('btnDel').onclick = async () => { await db.remove(item.id); location.hash = '#/'; };
   $('btnRe').onclick = () => {
     const e = findExercise($('reEx').value);
