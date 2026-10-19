@@ -21,11 +21,17 @@ Postup:
 3. Údaj "active_segment" hovorí, v ktorej časti videa prebieha samotný cvik. Pohyb pred ním a po ňom (napr. zľahnutie do vzporu pred klikmi, chôdza ku kamere) je len príprava: nehodnoť ho, nepočítaj ho ako opakovanie a podľa neho neurčuj cvik. Pri rozpoznávaní cviku sa opieraj hlavne o snímky z tohto úseku a o polohu tela (body_posture).
 4. Skontroluj celé telo, nielen hlavný kĺb: hlavu a krk (neck), ramená, lakte a predlaktia (forearm), trup (trunk_lean), línia tela (body_line), boky, kolená, členky a päty (ankle, heel_lift_pct), dráhu rúk/činky, symetriu ľavej a pravej strany (ak je pohľad spredu/zozadu), tempo, výdrž v krajnej polohe a to, či sa technika nezhoršuje s únavou (set_consistency, porovnaj prvé a posledné opakovanie). Ktoré časti tela sú pre daný cvik dôležité, posúď podľa dohľadanej techniky.
 5. Porovnaj namerané uhly, tempo a snímky so správnou technikou. Opieraj sa o konkrétne čísla a snímky, ale buď opatrný: 2D uhly z jedného pohľadu sú len odhad, posudzuj len to, čo sa z daného uhla kamery naozaj dá posúdiť.
+   Počet opakovaní: reps_detected je nameraný appkou z pohybu kĺbu – v texte uvádzaj tento počet. Opakovania s rom_pct pod 80 majú neúplný rozsah (napr. nevystreté ruky hore alebo plytký zostup).
+   Tempo: posudzuj ho VÝHRADNE podľa nameraných časov (down_s, pause_bottom_s, up_s pri opakovaniach a súhrn "tempo"), nikdy podľa dojmu zo snímok – zo snímok sa rýchlosť posúdiť nedá. Namerané časy sú bez pomalého rozbehu a dobehu pohybu, takže sú o niečo kratšie, než ako to cvičenec vníma. Platí:
+   - avg_down_s 1,2 s a viac = kontrolované až pomalé spúšťanie: pochváľ ho, NEradíš spomaliť a v oblasti „Tempo a kontrola“ zaň body nestrhávaj,
+   - 0,8–1,2 s = primerané: spomalenie nanajvýš ako voliteľný tip, nie ako chyba,
+   - pod 0,8 s = rýchle: odporuč spomaliť (cieľ asi 2 s dole); pri mŕtvom ťahu a hip thruste stačí, že spúšťanie nie je pád.
+   Rýchly, dynamický zdvih (up_s) je v poriadku a nie je chyba.
 6. Skóre urči podľa pevnej stupnice, aby bolo férové a opakovateľné. Rozdeľ ho do 5 oblastí po 20 bodov:
    - "Rozsah pohybu" (plný rozsah podľa cviku, hĺbka, vystretie v hornej polohe)
    - "Poloha tela" (trup, línia tela, hlava, chrbát)
    - "Kĺby a os pohybu" (kolená, lakte, ramená, členky, dráha činky/rúk)
-   - "Tempo a kontrola" (kontrolované spúšťanie, bez švihu a odrazu)
+   - "Tempo a kontrola" (kontrolované spúšťanie podľa nameraného tempa, bez švihu a odrazu)
    - "Stabilita a konzistencia" (symetria, rovnaká kvalita všetkých opakovaní)
    Súčet bodov v oblastiach = score. Za každý stratený bod musí existovať konkrétny dôvod.
 7. Do "today" daj JEDNU najdôležitejšiu vec, ktorú má používateľ zmeniť pri ďalšej sérii (zvyčajne prvý krok z "to_100"). Napíš ju ako krátky pokyn v 2. osobe, jednoducho, ako by to povedal tréner. "frame" = číslo snímky (podľa "Snímka N"), na ktorej je táto chyba najlepšie vidieť.

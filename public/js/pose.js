@@ -172,31 +172,75 @@ function smooth(s, w = 2) {
   });
 }
 
-function detectReps(frames, values) {
-  const s = smooth(interpolate(values));
-  const lo = pct(s, 0.05), hi = pct(s, 0.95);
-  if (lo == null || hi - lo < 20) return { reps: [], range: hi - lo };
-  const upTh = lo + 0.7 * (hi - lo), downTh = lo + 0.4 * (hi - lo);
-  const reps = []; let state = null, start = 0, minI = 0;
-  for (let i = 0; i < s.length; i++) {
-    if (state === null) {
-      if (s[i] >= upTh) { state = 'up'; start = i; }
-      else if (s[i] <= downTh) { state = 'down'; start = i; minI = i; } // video začína dole (napr. mŕtvy ťah)
-      continue;
-    }
-    if (state === 'up') {
-      if (s[i] >= upTh) start = i; // posledný bod hore pred zostupom
-      else if (s[i] <= downTh) { state = 'down'; minI = i; }
-    } else if (state === 'down') {
-      if (s[i] < s[minI]) minI = i;
-      if (s[i] >= upTh) { reps.push({ start, bottom: minI, end: i }); state = 'up'; start = i; }
+const median = (a) => { const b = a.filter(x => x != null).sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : 0; };
+
+// Vrcholy (P) a doliny (V) signálu s hysterézou: zmena smeru platí, až keď sa uhol vráti aspoň o `delta`.
+// Vďaka tomu sa každé opakovanie hodnotí podľa vlastného pohybu dole a hore – aj keď v niektorom
+// opakovaní nevystrieš ruky úplne, nezleje sa so susedným.
+function zigzag(s, delta) {
+  const ext = [];
+  let lo = 0, hi = 0, i = 1, dir = 0;
+  for (; i < s.length; i++) {
+    if (s[i] > s[hi]) hi = i;
+    if (s[i] < s[lo]) lo = i;
+    if (s[hi] - s[lo] >= delta) { dir = hi > lo ? 1 : -1; break; }
+  }
+  if (!dir) return ext;
+  const first = dir === 1 ? lo : hi;
+  if (first > 0) ext.push({ i: 0, t: dir === 1 ? 'P' : 'V', edge: true }); // začiatok videa (napr. uprostred pohybu)
+  ext.push({ i: first, t: dir === 1 ? 'V' : 'P' });
+  let c = dir === 1 ? hi : lo;
+  for (i += 1; i < s.length; i++) {
+    if (dir === 1) {
+      if (s[i] >= s[c]) c = i;
+      else if (s[c] - s[i] >= delta) { ext.push({ i: c, t: 'P' }); dir = -1; c = i; }
+    } else {
+      if (s[i] <= s[c]) c = i;
+      else if (s[i] - s[c] >= delta) { ext.push({ i: c, t: 'V' }); dir = 1; c = i; }
     }
   }
-  return { reps, range: hi - lo };
+  ext.push({ i: c, t: dir === 1 ? 'P' : 'V', edge: true }); // posledný, ešte nepotvrdený extrém
+  return ext;
+}
+
+// Opakovanie = horná poloha → krajná poloha (dolina hlavného uhla) → horná poloha.
+// startType: 'top' (kliky, drepy, príťahy – séria začína hore), 'bottom' (mŕtvy ťah, tlak nad hlavu,
+// hip thrust – začína dole, prvý výstup je opakovanie), null = odhadnúť z priebehu.
+// Časy: start = koniec hornej polohy, reach = príchod dole, leave = odchod zdola, end = príchod hore.
+function detectReps(values, { minAmp = 25, startType = null } = {}) {
+  const s = smooth(interpolate(values));
+  const lo = pct(s, 0.05), hi = pct(s, 0.95);
+  if (lo == null || hi - lo < 20) return { reps: [], range: lo == null ? 0 : hi - lo };
+  const delta = Math.max(12, 0.5 * minAmp, 0.22 * (hi - lo));
+  let ext = zigzag(s, delta);
+  if (ext.length > 1 && ext[0].edge && Math.abs(s[ext[0].i] - s[ext[1].i]) < delta) ext = ext.slice(1);
+  if (ext.length < 2) return { reps: [], range: hi - lo };
+  const type = startType || (ext[0].t === 'V' && ext[ext.length - 1].t === 'V' ? 'bottom' : 'top');
+  const eps = (a, b) => Math.max(2.5, 0.035 * Math.abs(a - b));
+  const reps = [];
+  for (let k = 0; k < ext.length; k++) {
+    const V = ext[k];
+    if (V.t !== 'V') continue;
+    const P1 = ext[k - 1], P2 = ext[k + 1];
+    if (!P2) continue;                        // bez návratu hore to nie je opakovanie (napr. ľahnutie na konci)
+    if (!P1 && type !== 'bottom') continue;   // začiatok dole pri kliku/drepe (z ľahu, z drepu) nie je opakovanie
+    const v = s[V.i], e2 = eps(s[P2.i], v);
+    let leave = V.i; for (let j = V.i; j <= P2.i; j++) if (s[j] <= v + e2) leave = j;
+    let end = P2.i; for (let j = leave; j <= P2.i; j++) if (s[j] >= s[P2.i] - e2) { end = j; break; }
+    let start = leave, reach = leave, ampDown = 0;
+    if (P1) {
+      const e1 = eps(s[P1.i], v);
+      start = P1.i; for (let j = P1.i; j <= V.i; j++) if (s[j] >= s[P1.i] - e1) start = j;
+      reach = V.i; for (let j = start; j <= V.i; j++) if (s[j] <= v + e1) { reach = j; break; }
+      ampDown = s[P1.i] - v;
+    }
+    reps.push({ start, reach, bottom: V.i, leave, end, ampDown, ampUp: s[P2.i] - v });
+  }
+  return { reps, range: hi - lo, type };
 }
 
 // ---------- hlavná funkcia ----------
-export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, onProgress = () => {} } = {}) {
+export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, onProgress = () => {} } = {}) {
   onProgress(0, 'Načítavam model na rozpoznanie postavy…');
   const [landmarker, v] = await Promise.all([getLandmarker(), loadVideo(file)]);
   try { await v.play(); v.pause(); } catch { /* iOS niekedy potrebuje play pred seekovaním */ }
@@ -286,6 +330,12 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     if (acc.length && (dur < 1 || acc[acc.length - 1].p === sg.p)) { acc[acc.length - 1].to = sg.to; return acc; }
     acc.push({ ...sg }); return acc;
   }, []);
+  // krátky výpadok inej polohy uprostred série (< 2 s, napr. chybné rozpoznanie) sériu nerozdelí
+  for (let k = 1; k < segments.length - 1;) {
+    const a = segments[k - 1], m = segments[k], b = segments[k + 1];
+    if (a.p === b.p && (m.to - m.from + 1) * step < 2) { a.to = b.to; segments.splice(k, 2); }
+    else k++;
+  }
 
   // --- 2) v každom úseku a pre každý kandidátny kĺb nájdi opakovania; vyber
   //        najpresvedčivejšiu sériu (viac podobných opakovaní = lepšie)
@@ -294,14 +344,13 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   let best = null;
   const consider = (from, to, joint, segP) => {
     const vals = series(joint).slice(from, to + 1);
-    let { reps } = detectReps(frames.slice(from, to + 1), vals);
-    const sm = smooth(interpolate(vals));
-    reps = reps.map(r => ({ start: r.start + from, bottom: r.bottom + from, end: r.end + from,
-      amp: Math.max(...sm.slice(r.start, r.end + 1)) - sm[r.bottom], dur: (r.end - r.start) * step }))
-      .filter(r => r.dur >= 0.5 && r.dur <= 10 && r.amp >= minAmp);
+    let reps = detectReps(vals, { minAmp, startType }).reps
+      .map(r => ({ start: r.start + from, reach: r.reach + from, bottom: r.bottom + from, leave: r.leave + from, end: r.end + from,
+        amp: Math.max(r.ampDown, r.ampUp), ampMin: r.ampDown ? Math.min(r.ampDown, r.ampUp) : r.ampUp, dur: (r.end - r.start) * step }))
+      .filter(r => r.dur >= 0.4 && r.dur <= 12 && r.ampMin >= 0.6 * minAmp);
     if (reps.length > 1) { // odfiltruj výrazne menšie „opakovania“ (šum, prechodový pohyb)
-      const medAmp = [...reps.map(r => r.amp)].sort((a, b) => a - b)[Math.floor(reps.length / 2)];
-      reps = reps.filter(r => r.amp >= 0.45 * medAmp);
+      const med = median(reps.map(r => r.ampMin));
+      reps = reps.filter(r => r.ampMin >= 0.4 * med);
     }
     if (reps.length >= 3) { // opakovanie v inej výške tela (zoskok z hrazdy, odchod) nie je opakovanie
       const hipAt = (i) => { for (let d = 0; d < 6; d++) { const f = frames[i + d] || frames[i - d]; if (f && f.m) return f.m.hipY; } return null; };
@@ -365,20 +414,24 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   };
 
   const sigAt = (i) => { const v = frames[i]?.m?.[sideKey]?.[sig]; return v == null ? null : r0(v); };
-  // pauza v krajnej polohe: koľko snímok je hlavný uhol do 5° od minima
-  const pauseAt = (r) => {
-    const b = sigAt(r.bottom); if (b == null) return null;
-    let n = 0; for (let i = r.start; i <= r.end; i++) { const v = sigAt(i); if (v != null && v - b <= 5) n++; }
-    return r1(n * step);
-  };
+  const maxAmpMin = Math.max(1, ...reps.map(r => r.ampMin));
   const repData = reps.map((r, i) => ({
     n: i + 1,
     start_s: r1(frames[r.start].t), bottom_s: r1(frames[r.bottom].t), end_s: r1(frames[r.end].t),
-    down_s: r1(frames[r.bottom].t - frames[r.start].t), up_s: r1(frames[r.end].t - frames[r.bottom].t),
-    pause_bottom_s: pauseAt(r),
-    main_joint: { top: sigAt(r.start), bottom: sigAt(r.bottom), range: r0(r.amp) },
+    down_s: r1(frames[r.reach].t - frames[r.start].t),
+    pause_bottom_s: r1(frames[r.leave].t - frames[r.reach].t),
+    up_s: r1(frames[r.end].t - frames[r.leave].t),
+    pause_top_before_s: i ? r1(Math.max(0, frames[r.start].t - frames[reps[i - 1].end].t)) : null,
+    rom_pct: r0(100 * r.ampMin / maxAmpMin),
+    main_joint: { top: sigAt(r.start), bottom: sigAt(r.bottom), top_end: sigAt(r.end), range: r0(r.amp) },
     angles: metricsOf(r.start, r.end),
   }));
+  const mean = (a) => a.length ? r1(a.reduce((x, y) => x + y, 0) / a.length) : null;
+  const downs = repData.map(r => r.down_s).filter(x => x > 0);
+  const tempo = repData.length ? {
+    avg_down_s: mean(downs), avg_pause_bottom_s: mean(repData.map(r => r.pause_bottom_s)), avg_up_s: mean(repData.map(r => r.up_s)),
+    fastest_down_s: downs.length ? Math.min(...downs) : null, slowest_down_s: downs.length ? Math.max(...downs) : null,
+  } : null;
   // konzistencia série: rozsah a tempo prvého vs. posledného opakovania (únava)
   const consistency = repData.length >= 2 ? {
     range_first_last: [repData[0].main_joint.range, repData[repData.length - 1].main_joint.range],
@@ -394,9 +447,10 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     active_segment: { start_s: r1(frames[actFrom].t), end_s: r1(frames[actTo].t), body_posture: actPosture,
       note: 'Hodnoť len tento úsek. Pohyb pred ním a po ňom je príprava alebo odchod (napr. zaujatie polohy) a nie je súčasť cviku.' },
     posture_timeline: segments.map(sg => ({ from_s: r1(frames[sg.from].t), to_s: r1(frames[sg.to].t), posture: { H: 'vodorovná', P: 'visenie', V: 'vzpriamená' }[sg.p] })),
-    angle_notes: 'Uhly v stupňoch, 2D z kamery (meraná strana tela). knee/hip/elbow/shoulder: 180 = vystreté. body_line: rameno–bok–členok, 180 = telo v rovine (kliky, vzpor, visenie). neck: ucho–rameno–bok, ~170–180 = hlava v predĺžení trupu, menej = predsunutá alebo zaklonená hlava. ankle: koleno–členok–špička, menej = väčší predklon holene. forearm: odklon predlaktia od zvislice (0 = zápästie presne nad/pod lakťom). trunk_lean/shin: odklon od zvislice (0 = kolmo). heel_lift_pct: zdvih päty v % dĺžky trupu (>8 = päta sa odlepuje). wrist_horizontal_travel_pct: vodorovný pohyb rúk/činky v % dĺžky trupu. Pohľad spredu/zozadu: knee_to_ankle_width_ratio < 1 = kolená idú dovnútra; left_right_*_diff = rozdiel ľavej a pravej strany; shoulder/hip_tilt_pct = naklonenie; hip_side_shift_pct = posun bokov do strany. main_joint = hlavný kĺb opakovania (top = horná poloha, bottom = krajná poloha, range = rozsah). pause_bottom_s = výdrž v krajnej polohe.',
+    angle_notes: 'Uhly v stupňoch, 2D z kamery (meraná strana tela). knee/hip/elbow/shoulder: 180 = vystreté. body_line: rameno–bok–členok, 180 = telo v rovine (kliky, vzpor, visenie). neck: ucho–rameno–bok, ~170–180 = hlava v predĺžení trupu, menej = predsunutá alebo zaklonená hlava. ankle: koleno–členok–špička, menej = väčší predklon holene. forearm: odklon predlaktia od zvislice (0 = zápästie presne nad/pod lakťom). trunk_lean/shin: odklon od zvislice (0 = kolmo). heel_lift_pct: zdvih päty v % dĺžky trupu (>8 = päta sa odlepuje). wrist_horizontal_travel_pct: vodorovný pohyb rúk/činky v % dĺžky trupu. Pohľad spredu/zozadu: knee_to_ankle_width_ratio < 1 = kolená idú dovnútra; left_right_*_diff = rozdiel ľavej a pravej strany; shoulder/hip_tilt_pct = naklonenie; hip_side_shift_pct = posun bokov do strany. main_joint = hlavný kĺb opakovania (top = horná poloha na začiatku, bottom = krajná poloha, top_end = horná poloha na konci, range = rozsah). Tempo (z hlavného kĺbu, presnosť ~0,1 s): down_s = spúšťanie od opustenia hornej polohy po príchod do krajnej polohy, pause_bottom_s = výdrž dole, up_s = návrat hore, pause_top_before_s = oddych hore pred opakovaním. Meria sa bez pomalého rozbehu a dobehu pohybu, takže vnímané tempo je asi o 20–25 % dlhšie. rom_pct = rozsah opakovania v % najväčšieho rozsahu v sérii (pod 80 = neúplný rozsah).',
     overall_active_segment: metricsOf(actFrom, actTo),
     reps: repData,
+    tempo,
     set_consistency: consistency,
   };
 

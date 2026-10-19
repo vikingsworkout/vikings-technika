@@ -211,7 +211,7 @@ async function startAnalysis(file) {
   }
   setProgress(0, 'Pripravujem…');
   try {
-    const { summary, keyframes, thumb, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, onProgress: (p, t) => setProgress(p * 0.5, t) });
+    const { summary, keyframes, thumb, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, start: selected.start ?? null, onProgress: (p, t) => setProgress(p * 0.5, t) });
     Object.assign(current, { summary, keyframes, thumb, clip });
     if (summary.video.duration_s > MAX_SECONDS) setProgress(0.5, `Video je dlhšie ako ${MAX_SECONDS} s, analyzujem prvých ${MAX_SECONDS} s.`);
   } catch (e) {
