@@ -278,6 +278,96 @@ details.card[open] > summary { margin-bottom: 12px; }
 .viewer p span { display: block; font-size: 14px; font-weight: 500; color: var(--mu); margin-top: 4px; }
 
 .disc { font-size: 12.5px; color: var(--dim); text-align: center; margin-top: 26px; }
+
+/* ===== v appke Viking's Workout (?vw=1): vzhľad hlavnej appky ===== */
+html.vw {
+  --bg: #0B101D; --s1: rgba(22,30,46,.75); --s2: rgba(30,40,60,.72); --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.14);
+  --tx: #F3F6F9; --tx2: #C9D2DE; --mu: #9AA9BA; --dim: #7A889A;
+  --acc: #FF7A45; --btn: #FF5A1F; --btn-hi: #FF7A3D;
+  --ok: #4FE0A0; --warn: #FFB547; --bad: #FF8A8A;
+  --num: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+  --grad: linear-gradient(135deg, #FF7A3D 0%, #FF5A1F 55%, #E8450F 100%);
+  --card-sh: inset 0 1px 0 rgba(255,255,255,.1), 0 12px 30px -10px rgba(0,0,0,.7);
+  --hl: #161F2E; --kick: #FF8A5C;
+  --page: radial-gradient(90% 38% at 72% 6%, rgba(30,58,138,.25), rgba(0,0,0,0) 65%), radial-gradient(70% 34% at 12% 44%, rgba(30,58,138,.18), rgba(0,0,0,0) 66%), radial-gradient(85% 36% at 60% 96%, rgba(30,58,138,.16), rgba(0,0,0,0) 68%), linear-gradient(#0B101D 0%, #0D1322 55%, #0B101D 100%);
+}
+html.vw.vw-light {
+  --bg: #EEF2F8; --s1: #FFFFFF; --s2: #F2F5F9; --line: rgba(16,24,40,.08); --line2: #D6DEE7;
+  --tx: #101820; --tx2: #3D4A57; --mu: #5A6878; --dim: #64717F;
+  --acc: #D2400C; --ok: #13804A; --warn: #B45309; --bad: #B3261E;
+  --card-sh: 0 10px 25px -5px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
+  --hl: #FFFFFF; --kick: #D2400C;
+  --page: radial-gradient(92% 58% at 12% -5%, rgba(255,214,120,.44), rgba(255,214,120,.14) 46%, rgba(0,0,0,0) 82%), radial-gradient(86% 62% at 95% 30%, rgba(150,190,255,.44), rgba(150,190,255,.14) 44%, rgba(0,0,0,0) 80%), radial-gradient(88% 52% at 22% 100%, rgba(255,170,160,.32), rgba(255,170,160,.1) 46%, rgba(0,0,0,0) 84%), linear-gradient(#DCE6F2 0%, #E8EDF5 55%, #EEF2F8 100%);
+  color-scheme: light;
+}
+html.vw body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; background: var(--bg); }
+html.vw body::before { content: ''; position: fixed; inset: 0; z-index: -1; background-image: var(--page); pointer-events: none; }
+html.vw .brand, html.vw #btnNew { display: none !important; }
+html.vw header { justify-content: flex-start; min-height: 56px; padding: 4px 0 12px; }
+html.vw header::after { content: 'TECHNIKA'; margin-left: auto; font-size: 11.5px; font-weight: 800; letter-spacing: .12em; color: var(--kick); }
+html.vw .round { width: 42px; height: 42px; background: var(--s1); border: 1px solid var(--line2); box-shadow: var(--card-sh); }
+html.vw h1, html.vw h1.big { font-size: 28px; font-weight: 800; letter-spacing: -.02em; margin: 0 2px 14px; }
+html.vw .btn { border-radius: 18px; font-size: 17px; padding: 17px 18px; }
+html.vw .btn.pri { background: var(--grad); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 16px 30px -12px rgba(255,90,31,.85); }
+html.vw .btn.sec { background: var(--s1); border: 1px solid var(--line2); color: var(--tx); }
+html.vw .btn.rec { background: #E5484D; }
+html.vw .stickybar .btn.sec { box-shadow: var(--card-sh); }
+html.vw .stickybar .btn.ghost { box-shadow: none; }
+html.vw .card, html.vw .stat, html.vw .hintcard, html.vw .seeframe, html.vw .tile, html.vw .vwsel {
+  background: var(--s1); border: 1px solid var(--line); box-shadow: var(--card-sh); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+html.vw .card { border-radius: 22px; }
+html.vw .err { background: color-mix(in srgb, var(--bad) 14%, var(--s1)); }
+html.vw .hintcard, html.vw .seeframe { border-radius: 20px; }
+html.vw .tile { border-width: 1.5px; border-radius: 18px; }
+html.vw .tile .fig { color: var(--tx); }
+html.vw .tile .eq { color: var(--dim); }
+html.vw .tile[aria-pressed="true"] { border-color: var(--btn); background: rgba(255,90,31,.12); }
+html.vw .tile.ai { color: var(--tx); background: linear-gradient(150deg, rgba(255,122,61,.28), rgba(255,122,61,.07)); border-color: rgba(255,122,61,.42); }
+html.vw .tile .aibox, html.vw .tile .chk { background: var(--grad); }
+html.vw .newbar { background: linear-gradient(to bottom, rgba(0,0,0,0) 0, var(--bg) 22px, var(--bg) 100%); }
+html.vw .progress { background: var(--line2); }
+html.vw .progress > div { background: linear-gradient(90deg, #FF8A5C, #E8450F); }
+html.vw .rmeta { font-weight: 700; margin: -2px 2px 12px; }
+html.vw .todaycard { background: var(--hl); border: 1px solid #FF5A1F; border-radius: 24px; box-shadow: var(--card-sh); }
+html.vw .todaycard .k { font-size: 12px; font-weight: 700; letter-spacing: .12em; color: var(--kick); }
+html.vw .todaycard .t { font-size: 21px; font-weight: 900; }
+html.vw .todaycard .d { font-size: 15px; }
+html.vw .todaycard.good { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+html.vw .todaycard.good .k { color: var(--ok); }
+html.vw .fullbtn { background: var(--s1); border: 1px solid rgba(255,122,61,.45); box-shadow: var(--card-sh); border-radius: 20px; }
+html.vw .bdbar { height: 6px; background: var(--line2); }
+html.vw ol.t100 li::before, html.vw .pplay { background: var(--grad); }
+html.vw .stat b { font-weight: 900; }
+html.vw select, html.vw input[type=password], html.vw input[type=text] { background: var(--s2); border-color: var(--line2); }
+html.vw .cd small { font-family: inherit; }
+html.vw .disc { margin-top: 20px; }
+.vwsel { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 12px; border-radius: 20px; }
+.vwsel-ic { flex: none; width: 46px; height: 46px; border-radius: 15px; background: var(--grad); color: #fff; display: grid; place-items: center; }
+.vwsel-ic svg { width: 30px; height: 30px; }
+.vwsel-ic .fig { color: #fff; }
+.vwsel-ic .eq { color: rgba(255,255,255,.6); }
+.vwsel-t { flex: 1; min-width: 0; }
+.vwsel-t b { display: block; font-size: 16.5px; font-weight: 800; line-height: 1.25; }
+.vwsel-t span { font-size: 13px; color: var(--mu); }
+.vwsel .linkbtn { flex: none; padding: 10px 2px; font-size: 15px; }
+.vwscore { display: flex; flex-direction: column; gap: 16px; padding: 18px 16px 16px; border-radius: 24px; margin-bottom: 14px; color: #F3F6F9;
+  background: #111722; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 18px 44px -14px rgba(255,90,31,.42), 0 0 50px -10px rgba(255,90,31,.15); }
+html.vw.vw-light .vwscore { color: var(--tx); background: #FFFFFF; border-color: rgba(16,24,40,.06); box-shadow: 0 14px 32px -8px rgba(16,24,40,.14), 0 4px 6px -2px rgba(0,0,0,.04); }
+.vwscore .top { display: flex; align-items: center; gap: 18px; }
+.vwscore .ring { position: relative; flex: none; width: 124px; height: 124px; }
+.vwscore .ring svg { width: 124px; height: 124px; display: block; }
+.vwscore .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.vwscore .num b { font-size: 42px; line-height: 1; font-weight: 900; letter-spacing: -.03em; }
+.vwscore .num span { font-size: 12px; font-weight: 800; color: var(--mu); }
+.vwscore .k { font-size: 11.5px; font-weight: 800; letter-spacing: .12em; color: var(--mu); }
+.vwscore .lab { font-size: 22px; line-height: 1.1; font-weight: 900; margin: 5px 0 6px; }
+.vwscore .vd { font-size: 13.5px; line-height: 1.4; color: var(--tx2); margin: 0; }
+.vwscore .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.vwscore .tl { padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,.05); min-width: 0; }
+html.vw.vw-light .vwscore .tl { background: #F2F5F9; }
+.vwscore .tl b { display: block; font-size: 21px; font-weight: 900; white-space: nowrap; }
+.vwscore .tl span { font-size: 11.5px; font-weight: 700; color: var(--mu); }
+.vwbar { display: grid; gap: 10px; }
 </style>
 </head>
 <body>
@@ -320,7 +410,7 @@ details.card[open] > summary { margin-bottom: 12px; }
 
   <!-- NOVÉ VIDEO -->
   <section id="vNew" hidden>
-    <h1 class="big">Čo natočíš?</h1>
+    <h1 class="big" id="newTitle">Čo natočíš?</h1>
     <div class="exlist" id="chips"></div>
     <div class="hintcard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>

@@ -75,9 +75,14 @@ export async function onRequestPost({ request, env }) {
     const frames = Array.isArray(keyframes) ? keyframes.slice(0, MAX_IMAGES) : [];
 
     const content = [];
+    // názov cviku z hlavnej appky (automatický režim) – len ako nápoveda, krátky a bez riadkov
+    const hint = exercise && exercise.id === 'auto' && typeof exercise.hint === 'string'
+      ? exercise.hint.replace(/[\r\n\t"`]+/g, ' ').trim().slice(0, 80) : '';
     const exText = exercise && exercise.id !== 'auto'
       ? `Používateľ zadal cvik: ${exercise.name} (${exercise.en || ''})${exercise.type === 'hold' ? ' – výdrž, statický cvik' : ''}.`
-      : 'Používateľ cvik nezadal – rozpoznaj ho zo snímok a údajov.';
+      : hint
+        ? `Používateľ v appke vybral cvik „${hint}“. Over zo snímok a údajov, či to sedí; ak áno, hodnoť ho ako tento cvik a v exercise.name použi tento názov.`
+        : 'Používateľ cvik nezadal – rozpoznaj ho zo snímok a údajov.';
     content.push({ type: 'text', text: `${exText}\n\nNamerané údaje z pose detection (JSON):\n${JSON.stringify(summary)}\n\nNasledujú kľúčové snímky z videa (oranžová = rozpoznaná kostra):` });
     frames.forEach((f, idx) => {
       const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(f?.dataUrl || '');

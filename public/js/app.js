@@ -2,8 +2,11 @@ import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor } f
 import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES } from './pose.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
+import { VW, vwFrom, vwExName, vwResultId, vwPost, vwPick } from './vw.js';
 
 const $ = (id) => document.getElementById(id);
+// v appke Viking's Workout meníme obrazovky bez nových záznamov v histórii (Späť v appke zatvorí Techniku)
+const go = (h) => { if (VW) location.replace(h); else location.hash = h; };
 const views = ['vHome', 'vNew', 'vRec', 'vWork', 'vResult'];
 const ls = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -17,11 +20,31 @@ const storedEx = findExercise(ls.get('vt-ex'));
 let selected = storedEx && !isHold(storedEx) ? storedEx : AUTO; // výdrže rozpozná automatický režim
 let current = null;        // práve spracovávaná analýza
 let pendingFile = null;    // video, ktoré sa analyzuje (pre "skúsiť znova")
+// v appke: cvik príde z detailu cviku alebo z tréningu; čo nevieme merať presne, rozpozná automatický režim s názvom ako nápovedou
+let vwHint = '';
+let vwGrid = false;        // v appke najprv len vybraný cvik, mriežka až po „Iný cvik“
+if (VW && vwExName) {
+  const m = vwPick(matchExercise);
+  selected = m && !isHold(m) ? m : AUTO;
+  vwHint = selected.id === 'auto' ? vwExName : '';
+}
+const ICON_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
 function show(view) {
   if (view !== 'vRec') recorder.close();
   views.forEach(v => { $(v).hidden = v !== view; });
-  $('btnHome').hidden = view === 'vHome';
+  $('btnHome').hidden = VW ? false : view === 'vHome';
+  if (VW) {
+    // na začiatku a na výsledku krížik zatvorí Techniku, pri nahrávaní a analýze šípka vráti späť
+    const mode = view === 'vNew' || view === 'vResult' || view === 'vHome' ? 'close' : 'back';
+    const b = $('btnHome');
+    if (b.dataset.mode !== mode) {
+      b.dataset.mode = mode;
+      b.innerHTML = mode === 'close' ? ICON_X : ICON_BACK;
+      b.setAttribute('aria-label', mode === 'close' ? 'Zavrieť Techniku' : 'Späť');
+    }
+  }
   $('btnNew').hidden = true; // na domove je hlavné tlačidlo priamo v karte
   closeViewer(); closePlayer();
   window.scrollTo(0, 0);
@@ -37,18 +60,20 @@ async function route() {
     if (item && item.result) { current = item; renderResult(item); show('vResult'); return; }
   }
   if (h === '#/praca' && current) { show('vWork'); return; }
+  if (VW) { renderNew(); show('vNew'); preload(); return; } // v appke sa začína rovno natáčaním
   renderHome(); show('vHome');
 }
 window.addEventListener('hashchange', route);
 $('btnHome').onclick = () => {
+  if (VW && $('btnHome').dataset.mode === 'close') { vwPost('close'); return; }
   // z výsledku a výberu cviku späť domov, z nahrávania späť na výber cviku
-  location.hash = location.hash === '#/nahravanie' ? '#/nova' : '#/';
+  go(location.hash === '#/nahravanie' ? '#/nova' : '#/');
 };
-$('btnNew').onclick = () => { location.hash = '#/nova'; };
+$('btnNew').onclick = () => { go('#/nova'); };
 
 function selectExercise(id) {
   const e = findExercise(id);
-  if (e) { selected = isHold(e) ? AUTO : e; ls.set('vt-ex', selected.id); } // výdrže → automatické rozpoznanie
+  if (e) { selected = isHold(e) ? AUTO : e; ls.set('vt-ex', selected.id); vwHint = ''; } // výdrže → automatické rozpoznanie
 }
 
 // ---------- domov: mriežka videí ----------
@@ -73,8 +98,8 @@ async function renderHome() {
       <span class="sc" style="color:${scoreColor(last.result?.score)}">${last.result?.score ?? '–'}</span>
       <span><span class="k" style="display:block">POSLEDNE: ${esc(lastName.toUpperCase())}</span><span class="t" style="display:block">Dnes sa sústreď: ${esc(tip.title)}</span></span><span class="ar" aria-hidden="true">›</span>
     </button>` : '';
-  if ($('btnLast')) $('btnLast').onclick = () => { location.hash = '#/r/' + last.id; };
-  $('btnStart').onclick = () => { location.hash = '#/nova'; };
+  if ($('btnLast')) $('btnLast').onclick = () => { go('#/r/' + last.id); };
+  $('btnStart').onclick = () => { go('#/nova'); };
 
   $('histWrap').hidden = !items.length;
   $('histCount').textContent = items.length ? `${items.length} ${plural(items.length, 'video', 'videá', 'videí')}` : '';
@@ -90,9 +115,9 @@ async function renderHome() {
       <button class="again" data-ex="${esc(exId)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Skúsiť znova lepšie</button>
     </div>`;
   }).join('');
-  $('hist').querySelectorAll('.vt .open').forEach(b => b.onclick = () => { location.hash = '#/r/' + b.dataset.id; });
+  $('hist').querySelectorAll('.vt .open').forEach(b => b.onclick = () => { go('#/r/' + b.dataset.id); });
   // rovnaký cvik ako na videu, rovno na výber s predvoleným cvikom
-  $('hist').querySelectorAll('.vt .again').forEach(b => b.onclick = () => { selectExercise(b.dataset.ex); location.hash = '#/nova'; });
+  $('hist').querySelectorAll('.vt .again').forEach(b => b.onclick = () => { selectExercise(b.dataset.ex); go('#/nova'); });
 }
 
 // ---------- nové video: výber cviku ----------
@@ -123,17 +148,31 @@ function renderNew() {
   const on = (id) => id === selected.id;
   const tick = `<span class="chk">${ICON_TICK}</span>`;
   const tile = (e) => `<button class="tile" data-id="${e.id}" aria-pressed="${on(e.id)}">${on(e.id) ? tick : ''}${picSvg(e.id)}<span class="nm">${esc(e.name)}</span></button>`;
-  $('chips').innerHTML = `
+  // v appke s cvikom z detailu alebo z tréningu: len tento cvik, mriežka až po „Iný cvik“
+  const fixed = VW && vwExName && !vwGrid;
+  $('newTitle').textContent = fixed ? 'Natoč ' + lowerName(vwExName) : 'Čo natočíš?';
+  if (fixed) {
+    $('chips').innerHTML = `
+      <div class="vwsel">
+        <span class="vwsel-ic">${selected.id === 'auto' ? ICON_AI : (picSvg(selected.id) || ICON_AI)}</span>
+        <span class="vwsel-t"><b>${esc(vwExName)}</b><span>${selected.id === 'auto' ? 'Cvik aj výdrž spoznám automaticky' : 'Jedna séria, celé telo v zábere'}</span></span>
+        <button class="linkbtn" id="btnOther">Iný cvik</button>
+      </div>`;
+    $('btnOther').onclick = () => { vwGrid = true; renderNew(); };
+  } else {
+    $('chips').innerHTML = `
     <div class="exgrid">
       <button class="tile ai" data-id="auto" aria-pressed="${on('auto')}">${on('auto') ? tick : ''}<span class="aibox">${ICON_AI}</span><span class="nm">Rozpoznať automaticky</span></button>
       ${EXERCISES.filter(e => !isHold(e)).map(tile).join('')}
     </div>`;
-  $('chips').querySelectorAll('[data-id]').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
-  $('guideText').innerHTML = selected.id === 'auto' ? esc(selected.camera) : `<b>${esc(selected.name)}:</b> ${esc(selected.camera)}`;
+    $('chips').querySelectorAll('[data-id]').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
+  }
+  const shownName = fixed ? vwExName : selected.name; // v appke názov cviku z appky
+  $('guideText').innerHTML = selected.id === 'auto' ? (vwHint ? `<b>${esc(vwHint)}:</b> ${esc(selected.camera)}` : esc(selected.camera)) : `<b>${esc(shownName)}:</b> ${esc(selected.camera)}`;
   $('guideSub').textContent = selected.id === 'auto'
     ? `Jedna séria alebo výdrž (plank, stojka, front lever…), najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`
     : `Jedna séria, najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`;
-  $('btnRec').innerHTML = `<span class="dot"></span>${selected.id === 'auto' ? 'Nahrávať' : 'Nahrávať ' + esc(selected.acc || lowerName(selected.name))}`;
+  $('btnRec').innerHTML = `<span class="dot"></span>${selected.id === 'auto' || fixed ? 'Nahrávať' : 'Nahrávať ' + esc(selected.acc || lowerName(selected.name))}`;
 }
 
 for (const id of ['inCam', 'inFile']) {
@@ -167,7 +206,7 @@ const recorder = new Recorder($('recVideo'), {
 
 $('btnRec').onclick = () => {
   if (!recorderSupported()) { $('inCam').click(); return; } // starší prehliadač: systémová kamera
-  location.hash = '#/nahravanie';
+  go('#/nahravanie');
 };
 
 async function openRecorder() {
@@ -175,7 +214,7 @@ async function openRecorder() {
   catch (e) {
     console.error(e);
     // bez povolenia kamery → systémová kamera mobilu
-    location.hash = '#/nova';
+    go('#/nova');
     setTimeout(() => $('inCam').click(), 50);
   }
 }
@@ -204,12 +243,16 @@ function showError(msg, needCode = false) {
 async function startAnalysis(file) {
   pendingFile = file;
   current = { id: String(Date.now()), created: Date.now(), exercise: { id: selected.id, name: selected.name, en: selected.en, type: selected.type || null }, signal: selected.signal };
+  if (VW && vwExName && !vwGrid) {
+    current.vwName = vwExName; // v appke ukazujeme názov cviku z appky
+    if (selected.id === 'auto' && vwHint) Object.assign(current.exercise, { name: vwHint, hint: vwHint });
+  }
   $('workErr').hidden = true; $('workTitle').textContent = 'Analyzujem…';
   const vid = $('workVideo');
   if (vid.src) URL.revokeObjectURL(vid.src);
   vid.src = URL.createObjectURL(file); vid.hidden = false;
   vid.play().catch(() => {});
-  location.hash = '#/praca'; show('vWork');
+  go('#/praca'); show('vWork');
   setProgress(0, 'Overujem prístup…');
   // kód overíme hneď, nie až po minútovej analýze videa
   if (await accessDenied()) {
@@ -263,8 +306,9 @@ async function runAi() {
     current.result = data.result; current.sources = data.sources || [];
     await db.save(current);
     db.pruneClips(15);
+    if (VW) vwPost('result', { data: vwSummary(current) }); // hlavná appka si uloží skóre (domov, profil)
     setProgress(1, 'Hotovo');
-    location.hash = '#/r/' + current.id;
+    go('#/r/' + current.id);
   } catch (e) {
     console.error(e);
     const msg = e.code === 'auth' ? 'Táto appka je chránená prístupovým kódom.'
@@ -277,10 +321,47 @@ async function runAi() {
 $('btnRetry').onclick = () => {
   if (!$('codeBox').hidden) ls.set('vt-code', $('codeInput').value.trim());
   $('workErr').hidden = true;
-  if (current && current.summary) { location.hash = '#/praca'; runAi(); }
+  if (current && current.summary) { go('#/praca'); runAi(); }
   else if (pendingFile) startAnalysis(pendingFile);
 };
-$('btnBack').onclick = () => { location.hash = '#/nova'; };
+$('btnBack').onclick = () => { go('#/nova'); };
+
+// krátky súhrn rozboru pre hlavnú appku (domov, profil, zápis do tréningu)
+function vwSummary(item) {
+  const r = item.result || {}, sm = item.summary || {};
+  const isH = sm.exercise_type === 'hold';
+  const t = todayOf(r);
+  return {
+    id: item.id, t: item.created,
+    name: item.vwName || r.exercise?.name || item.exercise?.name || 'Cvik',
+    score: typeof r.score === 'number' ? Math.max(0, Math.min(100, Math.round(r.score))) : null,
+    reps: isH ? 0 : (sm.reps_detected || 0),
+    hold: isH ? Math.round(sm.hold?.duration_s || 0) : 0,
+    tip: t && !t.good ? String(t.title || '') : '',
+  };
+}
+
+// skóre ako krúžok v štýle hlavnej appky
+function vwScoreHead(score, r, sm, reps, isH, holdS, dur) {
+  const C = 2 * Math.PI * 54, pct = score != null ? score / 100 : 0;
+  const lab = score == null ? 'Rozbor' : score >= 90 ? 'Výborná technika' : score >= 80 ? 'Dobrá technika' : score >= 65 ? 'Solídny základ' : score >= 50 ? 'Je čo zlepšovať' : 'Treba popracovať';
+  const down = sm.tempo?.avg_down_s;
+  const tl = (v, k) => `<div class="tl"><b>${v}</b><span>${k}</span></div>`;
+  const tiles = isH
+    ? tl(holdS + ' s', 'výdrž') + tl(dur != null ? Math.round(dur) + ' s' : '–', 'dĺžka videa') + tl(esc(String(r.exercise?.confidence || '–')), 'istota cviku')
+    : tl(reps || '–', plural(reps, 'opakovanie', 'opakovania', 'opakovaní')) + tl(down != null ? String(down).replace('.', ',') + ' s' : '–', 'spúšťanie') + tl(dur != null ? Math.round(dur) + ' s' : '–', 'dĺžka série');
+  return `<div class="vwscore">
+    <div class="top">
+      <div class="ring"><svg viewBox="0 0 124 124" role="img" aria-label="Skóre ${score ?? '?'} zo 100">
+        <defs><linearGradient id="vwg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A5C"/><stop offset=".55" stop-color="#FF5A1F"/><stop offset="1" stop-color="#E8450F"/></linearGradient></defs>
+        <circle cx="62" cy="62" r="54" fill="none" stroke="currentColor" stroke-opacity=".1" stroke-width="10"/>
+        <circle cx="62" cy="62" r="54" fill="none" stroke="url(#vwg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(C * pct).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 62 62)"/>
+      </svg><div class="num"><b>${score ?? '?'}</b><span>zo 100</span></div></div>
+      <div style="min-width:0"><div class="k">TVOJE SKÓRE</div><div class="lab">${lab}</div>${r.verdict ? `<p class="vd">${esc(r.verdict)}</p>` : ''}</div>
+    </div>
+    <div class="tiles">${tiles}</div>
+  </div>`;
+}
 
 // ---------- výsledok ----------
 function scoreColor(s) {
@@ -472,11 +553,15 @@ function renderResult(item) {
   const hasClip = !!(item.clip && item.clip.frames && item.clip.frames.length);
   const errT = today && !today.good && frame ? Number(frame.t) : null;
 
+  // v appke: zápis do tréningu (z rozbehnutej série) alebo návrat do appky
+  const vwUse = VW && vwFrom === 'set' ? (isH ? (holdS > 0 ? { hold: holdS, label: `Zapísať ${holdS} s do tréningu` } : null)
+    : (reps > 0 ? { reps, label: `Zapísať ${reps} ${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')} do tréningu` } : null)) : null;
+
   $('vResult').innerHTML = `
-    <div class="rmeta">${esc(ex.name || item.exercise.name)}${isH ? ` · výdrž ${holdS} s` : reps ? ` · ${reps} ${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}` : ''}</div>
+    <div class="rmeta">${esc((VW && item.vwName) || ex.name || item.exercise.name)}${isH ? ` · výdrž ${holdS} s` : reps ? ` · ${reps} ${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}` : ''}</div>
     ${mismatch ? `<div class="card err mismatch"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Ak to nesedí, zmeň cvik v celom rozbore dole.</div>` : ''}
-    <div class="bigscore"><span class="n" style="color:${scoreColor(score)}">${score ?? '?'}</span><span class="of">/100</span></div>
-    <p class="rverdict">${esc(r.verdict || '')}</p>
+    ${VW ? vwScoreHead(score, r, sm, reps, isH, holdS, dur) : `<div class="bigscore"><span class="n" style="color:${scoreColor(score)}">${score ?? '?'}</span><span class="of">/100</span></div>
+    <p class="rverdict">${esc(r.verdict || '')}</p>`}
 
     ${today ? `<div class="todaycard${today.good ? ' good' : ''}">
       <div class="k">${today.good ? 'VÝBORNE' : 'JEDNA VEC NA DNES'}</div>
@@ -567,8 +652,12 @@ function renderResult(item) {
       <button class="btn ghost" id="btnDel" style="margin:4px auto 0;display:block;color:var(--mu)">Vymazať z histórie</button>
     </div>
 
-    <div class="stickybar"><button class="btn pri" id="btnAgain">${today && !today.good ? 'Skúsiť to opraviť' : 'Natočiť ďalšiu sériu'}</button></div>
+    ${VW ? `<div class="stickybar vwbar">
+      <button class="btn pri" id="btnVwMain">${vwUse ? `${ICON_CHECK}${esc(vwUse.label)}` : 'Hotovo'}</button>
+      <button class="btn sec" id="btnAgain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Skúsiť znova lepšie</button>
+    </div>` : `<div class="stickybar"><button class="btn pri" id="btnAgain">${today && !today.good ? 'Skúsiť to opraviť' : 'Natočiť ďalšiu sériu'}</button></div>`}
   `;
+  if ($('btnVwMain')) $('btnVwMain').onclick = () => { if (vwUse) vwPost('use', { reps: vwUse.reps || 0, hold: vwUse.hold || 0 }); else vwPost('close'); };
 
   if ($('btnSee')) $('btnSee').onclick = () => hasClip ? openPlayer(item.clip, errT) : openViewer(frame);
   $('vResult').querySelectorAll('.frames button').forEach(b => b.onclick = () => openViewer(item.keyframes[Number(b.dataset.k)]));
@@ -581,19 +670,22 @@ function renderResult(item) {
   };
   $('btnAgain').onclick = () => {
     const exId = item.exercise.id !== 'auto' ? item.exercise.id : (matchExercise(ex.name)?.id || 'auto');
-    selectExercise(exId);
-    location.hash = '#/nova';
+    // v appke ostáva cvik z appky (napr. „Zhyby nadhmatom“), mimo appky sa vyberie zodpovedajúci cvik
+    if (!(VW && item.vwName && vwExName && item.vwName === vwExName && !vwGrid)) selectExercise(exId);
+    go('#/nova');
   };
-  $('btnDel').onclick = async () => { await db.remove(item.id); location.hash = '#/'; };
+  $('btnDel').onclick = async () => { await db.remove(item.id); go('#/'); };
   $('btnRe').onclick = () => {
     const e = findExercise($('reEx').value);
-    current = { ...item, id: String(Date.now()), created: Date.now(), exercise: { id: e.id, name: e.name, en: e.en }, result: null };
+    current = { ...item, id: String(Date.now()), created: Date.now(), exercise: { id: e.id, name: e.name, en: e.en }, result: null, vwName: undefined };
     $('workTitle').textContent = 'Opakujem rozbor…';
     $('workVideo').removeAttribute('src'); $('workVideo').hidden = true;
-    location.hash = '#/praca'; show('vWork'); runAi();
+    go('#/praca'); show('vWork'); runAi();
   };
 }
 
 // ---------- štart ----------
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (VW && vwResultId && !location.hash) location.replace('#/r/' + vwResultId); // z appky: otvoriť uložený rozbor
 route();
+if (VW) vwPost('ready');
