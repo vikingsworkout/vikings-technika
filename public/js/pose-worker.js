@@ -35,18 +35,21 @@ async function init() {
     runningMode: 'VIDEO', numPoses: 1,
     minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
   });
+  // skúšobný výpočet na rovnakom type obrázka ako naostro: niektoré prehliadače model vytvoria, ale výpočet vo workeri zlyhá
+  const probe = async (m) => {
+    const c = new OffscreenCanvas(64, 64); c.getContext('2d').fillRect(0, 0, 64, 64);
+    const b = await createImageBitmap(c);
+    try { m.detectForVideo(b, ++lastTs); } finally { b.close(); }
+  };
   // GPU je rýchlejšie, ale na niektorých mobiloch zlyhá alebo zamrzne – vtedy CPU
-  if (typeof OffscreenCanvas !== 'undefined') {
-    try {
-      const g = await withTimeout(PoseLandmarker.createFromOptions(fileset, opts('GPU')), 20000, 'gpu timeout');
-      // skúšobný výpočet: niektoré GPU sa vytvoria, ale prvý výpočet zlyhá
-      const c = new OffscreenCanvas(64, 64); c.getContext('2d').fillRect(0, 0, 64, 64);
-      g.detectForVideo(c, ++lastTs);
-      lmk = g; return 'GPU';
-    } catch { /* CPU */ }
-  }
-  lmk = await PoseLandmarker.createFromOptions(fileset, opts('CPU'));
-  return 'CPU';
+  try {
+    const g = await withTimeout(PoseLandmarker.createFromOptions(fileset, opts('GPU')), 20000, 'gpu timeout');
+    await probe(g);
+    lmk = g; return 'GPU';
+  } catch { /* CPU */ }
+  const c = await PoseLandmarker.createFromOptions(fileset, opts('CPU'));
+  await probe(c); // keď ani CPU vo workeri nejde, stránka použije záložný spôsob
+  lmk = c; return 'CPU';
 }
 
 self.onmessage = async (e) => {

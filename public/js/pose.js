@@ -48,10 +48,11 @@ async function getLandmarker() {
 
 // ---------- rozpoznávanie postavy: vo workeri (stránka nikdy nezamrzne), záloha na hlavnom vlákne ----------
 // engine.detect(video, ts) → Promise<33 bodov { x, y, z, visibility } | null>
-let engineP = null;
+let engineP = null, workerBroken = /[?&]pose=main\b/.test(location.search); // ?pose=main = bez workera (záložný spôsob)
 export function getEngine() {
   if (!engineP) {
-    engineP = workerEngine().catch((err) => { console.warn('Rozpoznávanie postavy vo workeri nejde, skúšam priamo:', err); return mainEngine(); });
+    engineP = (workerBroken ? Promise.reject(new Error('worker vypnutý')) : workerEngine())
+      .catch((err) => { workerBroken = true; console.warn('Rozpoznávanie postavy vo workeri nejde, skúšam priamo:', err); return mainEngine(); });
     engineP.catch(() => { engineP = null; });
   }
   return engineP;
@@ -76,7 +77,7 @@ async function workerEngine() {
   const pending = new Map();
   let seq = 0, dead = null;
   const failAll = (msg) => { dead = msg; for (const [, p] of pending) { clearTimeout(p.t); p.rej(new Error(msg)); } pending.clear(); };
-  await new Promise((res, rej) => {
+  const delegate = await new Promise((res, rej) => {
     const t = setTimeout(() => { rej(new Error('worker sa nepripravil včas')); }, 100_000);
     w.onmessage = (e) => {
       const m = e.data || {};
@@ -98,7 +99,7 @@ async function workerEngine() {
   // snímka z videa → zmenšený obrázok pre worker (stačí 640 px, model si ho aj tak zmenší)
   const cv = document.createElement('canvas'), g = cv.getContext('2d');
   return {
-    kind: 'worker',
+    kind: 'worker', delegate,
     close() { failAll('zatvorené'); try { w.terminate(); } catch { /* nič */ } },
     async detect(video, ts) {
       if (dead) throw new Error(dead);
@@ -345,7 +346,7 @@ function detectReps(values, { minAmp = 25, startType = null } = {}) {
 // ---------- hlavná funkcia ----------
 export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, onProgress = () => {}, onFrame = null } = {}) {
   onProgress(0, 'Načítavam model na rozpoznanie postavy…');
-  const [engine, v] = await Promise.all([getEngine(), loadVideo(file)]);
+  let [engine, v] = await Promise.all([getEngine(), loadVideo(file)]);
   try { await v.play(); v.pause(); } catch { /* iOS niekedy potrebuje play pred seekovaním */ }
 
   const W = v.videoWidth, H = v.videoHeight;
@@ -370,10 +371,17 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     let lm;
     try { lm = await engine.detect(v, lastTs); }
     catch (e) {
-      // rozpoznávanie resetneme, pri ďalšom pokuse sa vytvorí nové
-      if (engine.kind === 'main') landmarkerPromise = null;
-      resetEngine(engine);
-      throw new Error('Rozpoznávanie postavy zlyhalo. Skús to znova, prípadne obnov stránku.');
+      let ok = false;
+      if (engine.kind === 'worker') { // worker prestal fungovať → záložný spôsob a tú istú snímku znova
+        workerBroken = true; resetEngine(engine);
+        try { engine = await getEngine(); lastTs += 1; lm = await engine.detect(v, lastTs); ok = true; } catch { /* nižšie */ }
+      }
+      if (!ok) {
+        // rozpoznávanie resetneme, pri ďalšom pokuse sa vytvorí nové
+        if (engine.kind === 'main') landmarkerPromise = null;
+        resetEngine(engine);
+        throw new Error('Rozpoznávanie postavy zlyhalo. Skús to znova, prípadne obnov stránku.');
+      }
     }
     frames.push({ t, lm: lm || null, m: lm ? frameMetrics(lm, W, H) : null });
     if (clipOk && (frames.length - 1) % stride === 0) {
@@ -736,6 +744,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     reps: isHoldResult ? [] : repData.map(r => ({ s: r.start_s, b: r.bottom_s, e: r.end_s })),
     hold: isHoldResult && holdRun ? { s: r1(frames[holdRun.from].t), e: r1(frames[holdRun.to].t) } : null,
   } : null;
+  try { if (/[?&]debug=1\b/.test(location.search)) window.__vtDebug = { engine: engine.kind + (engine.delegate ? ' ' + engine.delegate : ''), summary, series: { elbowL: frames.map(f => f.m && f.m.L.elbow), elbowR: frames.map(f => f.m && f.m.R.elbow), post: rawPost } }; } catch { /* nič */ }
   return { summary, keyframes, thumb, clip };
 }
 

@@ -26,7 +26,8 @@ jobs:
           cd /tmp/t
           curl -sSL -A Mozilla/5.0 "https://videa.vikingsworkout.com/exercises/h1-slucka3.mp4?v=1791493724977&l=1791964006762" -o h1.mp4
           ffmpeg -v error -y -stream_loop 2 -i h1.mp4 -t 14 -vf "scale=-2:720" -c:v libvpx-vp9 -b:v 1500k -an video.webm
-          ffmpeg -v error -y -stream_loop 6 -i h1.mp4 -t 40 -vf "scale=640:360,fps=24" -pix_fmt yuv420p cam.y4m
+          ffmpeg -v error -y -stream_loop 6 -i h1.mp4 -t 30 -vf "scale=480:270,fps=20" -pix_fmt yuv420p cam.y4m
+          ffprobe -v error -show_entries format=duration -of csv=p=0 h1.mp4
           ls -la
       - name: Skúška
         run: |
