@@ -36,3 +36,11 @@ export async function get(id) {
 export async function remove(id) {
   try { await tx('readwrite', s => s.delete(id)); } catch { /* nič */ }
 }
+
+// záznamy videí zaberajú miesto – necháme ich len pri posledných `keep` analýzach
+export async function pruneClips(keep = 15) {
+  try {
+    const all = await list();
+    for (const it of all.slice(keep)) if (it.clip) { delete it.clip; await save(it); }
+  } catch { /* nič */ }
+}

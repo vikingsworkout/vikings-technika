@@ -232,6 +232,23 @@ details.card > summary::after { content: '▾'; margin-left: auto; color: var(--
 details.card[open] > summary::after { transform: rotate(180deg); }
 details.card[open] > summary { margin-bottom: 12px; }
 
+/* prehrávač videa analýzy */
+.viewer.player { background: var(--bg); }
+.viewer.player .vtop { align-items: center; justify-content: space-between; }
+.ptitle { font-size: 18px; font-weight: 800; margin-left: 4px; }
+.pstage { flex: 1; min-height: 0; display: grid; place-items: center; }
+.pstage canvas { display: block; max-width: 100%; max-height: 100%; border-radius: 14px; background: #000; }
+.pctrl { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.pplay { background: var(--btn); color: #fff; }
+.pplay svg { width: 20px; height: 20px; }
+.pbar { position: relative; flex: 1; height: 44px; display: flex; align-items: center; }
+.pbar input { width: 100%; accent-color: var(--acc); margin: 0; }
+.pmark { position: absolute; top: 6px; width: 4px; height: 10px; border-radius: 2px; background: var(--bad); transform: translateX(-50%); pointer-events: none; }
+.ptime { font-size: 14px; font-weight: 700; color: var(--mu); font-variant-numeric: tabular-nums; min-width: 34px; }
+.pspeed { appearance: none; border: 0; background: var(--s2); color: var(--tx); border-radius: 10px; padding: 9px 10px; font-weight: 800; font-size: 14px; min-width: 44px; cursor: pointer; }
+.pjump { margin-top: 10px; padding: 13px; font-size: 15px; }
+.plegend { margin: 10px 4px 0 !important; font-size: 13px !important; font-weight: 500 !important; color: var(--mu); text-align: center; }
+
 /* prehliadač snímky */
 .viewer { position: fixed; inset: 0; z-index: 10; background: rgba(5,7,10,.94); display: flex; flex-direction: column; padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }
 .viewer .vtop { display: flex; justify-content: flex-end; margin-bottom: 12px; }
@@ -333,6 +350,19 @@ details.card[open] > summary { margin-bottom: 12px; }
   <section id="vResult" hidden></section>
 
   <p class="disc">Rozbor je orientačný, vytvára ho AI z 2D záznamu. Nenahrádza trénera ani lekára.</p>
+</div>
+
+<div class="viewer player" id="player" hidden role="dialog" aria-modal="true" aria-label="Video analýzy">
+  <div class="vtop"><div class="ptitle">Video analýzy</div><button class="round" id="btnPlayerClose" aria-label="Zavrieť"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="pstage"><canvas id="pCanvas"></canvas></div>
+  <div class="pctrl">
+    <button class="round pplay" id="pPlay" aria-label="Prehrať"><svg id="pIcoPlay" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><svg id="pIcoPause" viewBox="0 0 24 24" fill="currentColor" hidden><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
+    <div class="pbar"><input type="range" id="pRange" min="0" max="1000" value="0" aria-label="Posun vo videu"><span class="pmark" id="pMark" hidden></span></div>
+    <span class="ptime" id="pTime">0:00</span>
+    <button class="pspeed" id="pSpeed" aria-label="Rýchlosť prehrávania">1×</button>
+  </div>
+  <button class="btn sec pjump" id="pJump" hidden></button>
+  <p class="plegend">Oranžová = kostra, ktorú appka sleduje. Krúžok = hlavný kĺb a jeho uhol.</p>
 </div>
 
 <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Snímka z videa">

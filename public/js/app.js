@@ -1,5 +1,5 @@
 import { EXERCISES, AUTO, findExercise, matchExercise } from './exercises.js';
-import { analyzeVideo, preload, MAX_SECONDS } from './pose.js';
+import { analyzeVideo, preload, MAX_SECONDS, CLIP_PTS, CLIP_BONES } from './pose.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
 
@@ -22,7 +22,7 @@ function show(view) {
   views.forEach(v => { $(v).hidden = v !== view; });
   $('btnHome').hidden = view === 'vHome';
   $('btnNew').hidden = true; // na domove je hlavné tlačidlo priamo v karte
-  closeViewer();
+  closeViewer(); closePlayer();
   window.scrollTo(0, 0);
 }
 
@@ -187,8 +187,8 @@ async function startAnalysis(file) {
   }
   setProgress(0, 'Pripravujem…');
   try {
-    const { summary, keyframes, thumb } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, onProgress: (p, t) => setProgress(p * 0.5, t) });
-    Object.assign(current, { summary, keyframes, thumb });
+    const { summary, keyframes, thumb, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, onProgress: (p, t) => setProgress(p * 0.5, t) });
+    Object.assign(current, { summary, keyframes, thumb, clip });
     if (summary.video.duration_s > MAX_SECONDS) setProgress(0.5, `Video je dlhšie ako ${MAX_SECONDS} s, analyzujem prvých ${MAX_SECONDS} s.`);
   } catch (e) {
     console.error(e);
@@ -229,6 +229,7 @@ async function runAi() {
     }
     current.result = data.result; current.sources = data.sources || [];
     await db.save(current);
+    db.pruneClips(15);
     setProgress(1, 'Hotovo');
     location.hash = '#/r/' + current.id;
   } catch (e) {
@@ -288,6 +289,129 @@ $('btnViewerClose').onclick = closeViewer;
 $('viewer').addEventListener('click', (e) => { if (e.target === $('viewer')) closeViewer(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('viewer').hidden) closeViewer(); });
 
+// ---------- prehrávač videa analýzy (snímky + kostra) ----------
+const JOINT_PTS = { knee: [25, 26], hip: [23, 24], elbow: [13, 14], shoulder: [11, 12] };
+const JOINT_SK = { knee: 'koleno', hip: 'bok', elbow: 'lakeť', shoulder: 'rameno' };
+const P = { clip: null, urls: [], imgs: [], t: 0, playing: false, speed: 1, raf: 0, last: 0, cur: -1 };
+
+function openPlayer(clip, jumpT) {
+  closePlayer();
+  Object.assign(P, { clip, urls: clip.frames.map(f => URL.createObjectURL(f.img)), imgs: [], t: 0, playing: false, speed: 1, cur: -1 });
+  const c = $('pCanvas');
+  c.width = clip.w * 2; c.height = clip.h * 2;
+  c.style.aspectRatio = `${clip.w} / ${clip.h}`;
+  $('pSpeed').textContent = '1×';
+  if (jumpT != null && jumpT <= clip.duration) {
+    $('pMark').hidden = false; $('pMark').style.left = `${(100 * jumpT / clip.duration).toFixed(2)}%`;
+    $('pJump').hidden = false; $('pJump').textContent = `Skočiť na chybu (${fmtT(jumpT)})`;
+    $('pJump').onclick = () => { pause(); seekTo(Math.max(0, jumpT - 0.6)); P.speed = 0.5; $('pSpeed').textContent = '½×'; play(); };
+  } else { $('pMark').hidden = true; $('pJump').hidden = true; }
+  $('player').hidden = false;
+  seekTo(0);
+  play();
+}
+function closePlayer() {
+  if (!P.clip) return;
+  pause();
+  P.urls.forEach(u => URL.revokeObjectURL(u));
+  Object.assign(P, { clip: null, urls: [], imgs: [] });
+  $('player').hidden = true;
+}
+function getImg(i) {
+  if (!P.imgs[i] && P.urls[i]) { const im = new Image(); im.decoding = 'async'; im.src = P.urls[i]; P.imgs[i] = im; }
+  return P.imgs[i];
+}
+function idxAt(t) {
+  const fr = P.clip.frames;
+  let i = Math.min(fr.length - 1, Math.max(0, Math.round(t * P.clip.fps)));
+  while (i > 0 && fr[i].t > t) i--;
+  while (i < fr.length - 1 && fr[i + 1].t <= t) i++;
+  return i;
+}
+function drawFrame(i) {
+  const clip = P.clip, f = clip.frames[i], im = getImg(i);
+  for (let k = 1; k <= 6; k++) getImg(i + k); // prednačítanie
+  if (!im || !im.complete || !im.naturalWidth) { if (im) im.onload = () => { if (P.clip && P.cur === i) drawFrame(i); }; return; }
+  const c = $('pCanvas'), g = c.getContext('2d'), W = c.width, H = c.height;
+  g.drawImage(im, 0, 0, W, H);
+  if (f.lm) {
+    const pt = {}; CLIP_PTS.forEach((id, k) => { pt[id] = f.lm[k]; });
+    const vis = (id) => pt[id] && pt[id][2] >= 0.3;
+    g.lineCap = 'round'; g.lineWidth = Math.max(3, W / 120); g.strokeStyle = 'rgba(255,122,61,.95)';
+    for (const [a, b] of CLIP_BONES) {
+      if (!vis(a) || !vis(b)) continue;
+      g.beginPath(); g.moveTo(pt[a][0] * W, pt[a][1] * H); g.lineTo(pt[b][0] * W, pt[b][1] * H); g.stroke();
+    }
+    g.fillStyle = '#fff';
+    for (const id of CLIP_PTS) {
+      if (!vis(id) || id === 0) continue;
+      g.beginPath(); g.arc(pt[id][0] * W, pt[id][1] * H, g.lineWidth * 1.15, 0, Math.PI * 2); g.fill();
+    }
+    // hlavný kĺb: krúžok + uhol
+    const jid = JOINT_PTS[clip.joint]?.[clip.side === 'L' ? 0 : 1];
+    if (jid != null && vis(jid)) {
+      const x = pt[jid][0] * W, y = pt[jid][1] * H, r = g.lineWidth * 4;
+      g.lineWidth = Math.max(3, W / 140); g.strokeStyle = '#fff';
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+      if (f.a != null) {
+        const txt = `${JOINT_SK[clip.joint] || ''} ${f.a}°`.trim();
+        g.font = `800 ${Math.round(W / 16)}px Barlow, system-ui, sans-serif`;
+        const tw = g.measureText(txt).width, ph = W / 12, px = Math.min(W - tw - ph * 0.8, x + r + 8), py = Math.max(ph, y - r - 8);
+        g.fillStyle = 'rgba(0,0,0,.72)';
+        g.beginPath(); g.roundRect ? g.roundRect(px - ph * 0.35, py - ph * 0.8, tw + ph * 0.7, ph, ph / 2) : g.rect(px - ph * 0.35, py - ph * 0.8, tw + ph * 0.7, ph); g.fill();
+        g.fillStyle = '#fff'; g.fillText(txt, px, py - ph * 0.08);
+      }
+    }
+  }
+  // počítadlo opakovaní
+  const reps = clip.reps || [], t = f.t;
+  const k = reps.findIndex(r => t >= r.s && t <= r.e);
+  const done = reps.filter(r => r.e < t).length;
+  const label = k >= 0 ? `Opakovanie ${k + 1} / ${reps.length}` : reps.length && done === reps.length ? `Hotovo · ${reps.length} opak.` : reps.length ? (done ? `Opakovanie ${done} / ${reps.length}` : 'Príprava') : '';
+  if (label) {
+    g.font = `800 ${Math.round(W / 15)}px Barlow, system-ui, sans-serif`;
+    const tw = g.measureText(label).width, ph = W / 10.5;
+    g.fillStyle = 'rgba(0,0,0,.65)';
+    g.beginPath(); g.roundRect ? g.roundRect(W / 30, W / 30, tw + ph * 0.8, ph, ph / 2) : g.rect(W / 30, W / 30, tw + ph * 0.8, ph); g.fill();
+    g.fillStyle = '#fff'; g.fillText(label, W / 30 + ph * 0.4, W / 30 + ph * 0.68);
+  }
+}
+function seekTo(t) {
+  P.t = Math.max(0, Math.min(P.clip.duration, t));
+  const i = idxAt(P.t);
+  P.cur = i; drawFrame(i);
+  $('pRange').value = Math.round(1000 * P.t / (P.clip.duration || 1));
+  $('pTime').textContent = fmtT(P.t);
+}
+function tick(now) {
+  if (!P.playing || !P.clip) return;
+  const dt = Math.min(0.1, (now - P.last) / 1000); P.last = now;
+  let t = P.t + dt * P.speed;
+  if (t >= P.clip.duration) { seekTo(P.clip.duration); pause(); return; }
+  P.t = t;
+  const i = idxAt(t);
+  if (i !== P.cur) { P.cur = i; drawFrame(i); }
+  $('pRange').value = Math.round(1000 * t / (P.clip.duration || 1));
+  $('pTime').textContent = fmtT(t);
+  P.raf = requestAnimationFrame(tick);
+}
+function play() {
+  if (!P.clip) return;
+  if (P.t >= P.clip.duration - 0.05) seekTo(0);
+  P.playing = true; P.last = performance.now();
+  $('pIcoPlay').toggleAttribute('hidden', true); $('pIcoPause').toggleAttribute('hidden', false); $('pPlay').setAttribute('aria-label', 'Pozastaviť');
+  P.raf = requestAnimationFrame(tick);
+}
+function pause() {
+  P.playing = false; cancelAnimationFrame(P.raf);
+  $('pIcoPlay').toggleAttribute('hidden', false); $('pIcoPause').toggleAttribute('hidden', true); $('pPlay').setAttribute('aria-label', 'Prehrať');
+}
+$('pPlay').onclick = () => (P.playing ? pause() : play());
+$('pRange').addEventListener('input', () => { if (!P.clip) return; pause(); seekTo(P.clip.duration * $('pRange').value / 1000); });
+$('pSpeed').onclick = () => { P.speed = P.speed === 1 ? 0.5 : P.speed === 0.5 ? 0.25 : 1; $('pSpeed').textContent = P.speed === 1 ? '1×' : P.speed === 0.5 ? '½×' : '¼×'; };
+$('btnPlayerClose').onclick = closePlayer;
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && P.clip) closePlayer(); });
+
 function renderResult(item) {
   const r = item.result || {};
   const ex = r.exercise || {};
@@ -306,6 +430,8 @@ function renderResult(item) {
   const today = todayOf(r);
   const frame = focusFrame(item, today);
   const after = today && today.gain && score != null ? Math.min(100, score + today.gain) : null;
+  const hasClip = !!(item.clip && item.clip.frames && item.clip.frames.length);
+  const errT = today && !today.good && frame ? Number(frame.t) : null;
 
   $('vResult').innerHTML = `
     <div class="rmeta">${esc(ex.name || item.exercise.name)}${reps ? ` · ${reps} ${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}` : ''}</div>
@@ -320,7 +446,10 @@ function renderResult(item) {
       ${after ? `<div class="g">Oprav to a máš ${after} bodov.</div>` : ''}
     </div>` : ''}
 
-    ${frame ? `<button class="seeframe" id="btnSee">
+    ${hasClip ? `<button class="seeframe" id="btnSee">
+      <span class="th">${frame ? `<img src="${frame.dataUrl}" alt="">` : ''}<svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>
+      <span style="flex:1"><b>Pozri si video analýzy</b><span>Kostra a body, ktoré appka sledovala${errT != null ? ` · chyba v ${fmtT(errT)}` : ''}</span></span>
+    </button>` : frame ? `<button class="seeframe" id="btnSee">
       <span class="th"><img src="${frame.dataUrl}" alt=""><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>
       <span style="flex:1"><b>${today && !today.good ? 'Pozri, kde sa to stalo' : 'Pozri si snímku'}</b><span>${esc(frame.label)} · ${fmtT(frame.t)}</span></span>
     </button>` : ''}
@@ -396,7 +525,7 @@ function renderResult(item) {
     <div class="stickybar"><button class="btn pri" id="btnAgain">${today && !today.good ? 'Skúsiť to opraviť' : 'Natočiť ďalšiu sériu'}</button></div>
   `;
 
-  if ($('btnSee')) $('btnSee').onclick = () => openViewer(frame);
+  if ($('btnSee')) $('btnSee').onclick = () => hasClip ? openPlayer(item.clip, errT) : openViewer(frame);
   $('vResult').querySelectorAll('.frames button').forEach(b => b.onclick = () => openViewer(item.keyframes[Number(b.dataset.k)]));
   $('btnFull').onclick = () => {
     const open = $('full').hidden;

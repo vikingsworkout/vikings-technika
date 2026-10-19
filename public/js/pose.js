@@ -6,6 +6,10 @@ const MP_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSIO
 const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task';
 
 export const MAX_SECONDS = 30;
+// záznam pre "video analýzy": zmenšené snímky + body tela (prehráva sa v appke s kostrou)
+export const CLIP_PTS = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+export const CLIP_BONES = [[7, 11], [8, 12], [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 29], [28, 30], [27, 31], [28, 32], [29, 31], [30, 32]];
+const CLIP_MAX = 180, CLIP_SIDE = 360;
 
 // indexy bodov MediaPipe
 const P = { nose: 0, lEar: 7, rEar: 8, lHeel: 29, rHeel: 30, lSh: 11, rSh: 12, lEl: 13, rEl: 14, lWr: 15, rWr: 16, lHip: 23, rHip: 24, lKn: 25, rKn: 26, lAn: 27, rAn: 28, lFt: 31, rFt: 32 };
@@ -204,6 +208,14 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   const step = Math.max(1 / 15, duration / 400); // hustejšie snímkovanie (max. 400 snímok)
   const frames = [];
   const base = lastTs + 1000;
+  // záznam pre prehrávač: max. CLIP_MAX snímok, dlhšia strana CLIP_SIDE px
+  const stride = Math.max(1, Math.ceil(Math.ceil(duration / step) / CLIP_MAX));
+  const cs = Math.min(1, CLIP_SIDE / Math.max(W, H));
+  const cc = document.createElement('canvas');
+  cc.width = Math.round(W * cs); cc.height = Math.round(H * cs);
+  const cg = cc.getContext('2d');
+  const clipFrames = [];
+  let clipOk = true;
 
   for (let t = 0; t < duration; t += step) {
     await seek(v, t);
@@ -216,6 +228,14 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     }
     const lm = res.landmarks && res.landmarks[0];
     frames.push({ t, lm: lm || null, m: lm ? frameMetrics(lm, W, H) : null });
+    if (clipOk && (frames.length - 1) % stride === 0) {
+      try {
+        cg.drawImage(v, 0, 0, cc.width, cc.height);
+        const img = await new Promise(r => cc.toBlob(r, 'image/jpeg', 0.62));
+        if (img) clipFrames.push({ t, fi: frames.length - 1, img,
+          lm: lm ? CLIP_PTS.map(i => [Math.round(lm[i].x * 1000) / 1000, Math.round(lm[i].y * 1000) / 1000, Math.round((lm[i].visibility ?? 1) * 100) / 100]) : null });
+      } catch { clipOk = false; } // záznam je len doplnok, analýzu nesmie zastaviť
+    }
     onProgress(0.05 + 0.85 * (t / duration), 'Analyzujem pohyb…');
   }
 
@@ -418,7 +438,12 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
 
   URL.revokeObjectURL(v.src);
   onProgress(1, 'Hotovo');
-  return { summary, keyframes, thumb };
+  const clip = clipFrames.length >= 5 ? {
+    w: cc.width, h: cc.height, fps: 1 / (step * stride), duration: r1(duration), side: sideKey, joint: sig,
+    frames: clipFrames.map(c => ({ t: Math.round(c.t * 100) / 100, img: c.img, lm: c.lm, a: r0(frames[c.fi].m?.[sideKey]?.[sig]) })),
+    reps: repData.map(r => ({ s: r.start_s, b: r.bottom_s, e: r.end_s })),
+  } : null;
+  return { summary, keyframes, thumb, clip };
 }
 
 function drawFrame(v, lm, maxSide, withSkeleton) {
