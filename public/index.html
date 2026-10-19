@@ -8,18 +8,33 @@
 <meta name="theme-color" content="#0D1117">
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex">
+<link rel="modulepreload" href="js/app.js">
+<link rel="modulepreload" href="js/vw.js">
+<link rel="modulepreload" href="js/vwui.js">
+<link rel="modulepreload" href="js/exercises.js">
+<link rel="modulepreload" href="js/pose.js">
+<link rel="modulepreload" href="js/db.js">
+<link rel="modulepreload" href="js/recorder.js">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-32.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
-// v appke Viking's Workout: náhľad cviku sa začne sťahovať hneď (ešte pred skriptami appky),
+// v appke Viking's Workout: vzhľad appky (aj svetlý režim) hneď od prvého vykreslenia – samostatná Technika
+// sa nesmie ani mihnúť, obsah sa ukáže až v správnej obrazovke (trieda vw-ready z app.js).
+// Náhľad cviku sa začne sťahovať hneď (ešte pred skriptami appky),
 // písma Barlow sa v appke nepoužívajú, mimo appky sa načítajú bez blokovania stránky
 (function () {
   var q = new URLSearchParams(location.search), h = document.head, l;
   if (q.get('vw') === '1') {
+    var de = document.documentElement;
+    de.classList.add('vw');
+    if (q.get('theme') === 'light') de.classList.add('vw-light');
+    var m = document.querySelector('meta[name="color-scheme"]');
+    if (m) m.setAttribute('content', q.get('theme') === 'light' ? 'light' : 'dark');
     l = document.createElement('link'); l.rel = 'preconnect'; l.href = 'https://videa.vikingsworkout.com'; h.appendChild(l);
+    l = document.createElement('link'); l.rel = 'preconnect'; l.href = 'https://cdn.jsdelivr.net'; l.crossOrigin = 'anonymous'; h.appendChild(l);
     var p = (q.get('img') || '').replace(/^https:\/\/videa\.vikingsworkout\.com\//, '');
     if (/^[A-Za-z0-9._~%\/-]{1,200}\.(jpg|jpeg|webp|png)(\?[A-Za-z0-9._~%=&-]{0,80})?$/i.test(p) && p.indexOf('..') < 0) {
       l = document.createElement('link'); l.rel = 'preload'; l.as = 'image'; l.href = 'https://videa.vikingsworkout.com/' + p;
@@ -318,6 +333,11 @@ html.vw.vw-light {
 }
 html.vw body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; background: var(--bg); }
 html.vw body::before { content: ''; position: fixed; inset: 0; z-index: -1; background-image: var(--page); pointer-events: none; }
+html.vw:not(.vw-ready) .wrap { visibility: hidden; }
+html.vw:not(.vw-ready) body::after { content: ''; position: fixed; left: 50%; top: 42%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--tx) 14%, transparent); border-top-color: var(--btn); opacity: 0; animation: vwin .2s ease .35s forwards, vwspin .8s linear infinite; }
+@keyframes vwin { to { opacity: 1; } }
+@keyframes vwspin { to { transform: rotate(360deg); } }
 html.vw .brand, html.vw #btnNew { display: none !important; }
 html.vw header { justify-content: flex-start; min-height: 42px; padding: 4px 0 14px; }
 html.vw .hright { display: none; }

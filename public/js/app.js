@@ -60,6 +60,7 @@ function show(view) {
   $('btnHome').hidden = VW ? false : view === 'vHome';
   if (VW) {
     document.body.dataset.view = view;
+    document.documentElement.classList.add('vw-ready'); // až teraz je na obrazovke správny obsah (pozri index.html)
     document.querySelector('header').classList.toggle('hide', view === 'vRec' || view === 'vWork');
     // Výber a Natoč: šípka späť (prvá obrazovka Techniku zatvorí), výsledok: krížik zatvorí Techniku
     const close = view === 'vResult' || view === 'vHome' || (view === 'vPick' && !appPick) || (view === 'vNew' && pick && pick.src === 'app');
