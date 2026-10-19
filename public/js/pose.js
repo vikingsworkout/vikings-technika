@@ -481,6 +481,12 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   const longEnough = segments.filter(sg => (sg.to - sg.from + 1) * step >= 1.5);
   const preferred = posture ? longEnough.filter(sg => sg.p === posture) : longEnough;
   for (const sg of preferred) for (const j of joints) consider(sg.from, sg.to, j, sg.p);
+  // poloha sa môže počas série striedať (pri zhyboch sa nohy v spodnej polohe skoro dotknú zeme → „stoj“),
+  // preto skúsime aj celý úsek od prvého po posledný výskyt očakávanej polohy
+  if (posture) {
+    const pp = segments.filter(sg => sg.p === posture);
+    if (pp.length >= 2) for (const j of joints) consider(pp[0].from, pp[pp.length - 1].to, j, posture);
+  }
   if (!best && posture) for (const sg of longEnough) for (const j of joints) consider(sg.from, sg.to, j, sg.p);
   if (!best) for (const j of joints) consider(0, frames.length - 1, j, null); // záloha: celé video
 
