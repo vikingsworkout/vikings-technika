@@ -6,38 +6,41 @@
 
 export const EXERCISES = [
   {
-    id: 'drep', keys: ['drep','squat'], name: 'Drep', en: 'Barbell / bodyweight squat', signal: 'knee', posture: 'V', minAmp: 35,
+    id: 'drep', group: 'k', hint: 'Zboku, mierne spredu', keys: ['drep','squat'], name: 'Drep', en: 'Barbell / bodyweight squat', signal: 'knee', posture: 'V', minAmp: 35,
     camera: 'Zboku, mierne spredu (asi 45°). Kamera vo výške bokov, 2–3 m od teba. V zábere celé telo od chodidiel po hlavu.',
   },
   {
-    id: 'mrtvy-tah', keys: ['mŕtv','mrtv','deadlift'], name: 'Mŕtvy ťah', en: 'Deadlift', signal: 'hip', posture: 'V', minAmp: 35,
+    id: 'mrtvy-tah', group: 'c', hint: 'Presne zboku, vo výške bokov', keys: ['mŕtv','mrtv','deadlift'], name: 'Mŕtvy ťah', en: 'Deadlift', signal: 'hip', posture: 'V', minAmp: 35,
     camera: 'Presne zboku. Kamera vo výške bokov, 2–3 m. V zábere celé telo aj činka.',
   },
   {
-    id: 'bench', keys: ['bench','tlak na lavičke'], name: 'Bench press', en: 'Bench press', signal: 'elbow', posture: null, minAmp: 30,
+    id: 'bench', group: 'c', hint: 'Zboku, vo výške lavičky', keys: ['bench','tlak na lavičke'], name: 'Bench press', en: 'Bench press', signal: 'elbow', posture: null, minAmp: 30,
     camera: 'Zboku, kamera vo výške lavičky, mierne smerom k hlave. V zábere ruky, ramená aj činka.',
   },
   {
-    id: 'klik', keys: ['klik','push-up','pushup'], name: 'Klik', en: 'Push-up', signal: 'elbow', posture: 'H', minAmp: 30,
+    id: 'klik', group: 'k', hint: 'Zboku, kamera nízko pri zemi', keys: ['klik','push-up','pushup'], name: 'Klik', en: 'Push-up', signal: 'elbow', posture: 'H', minAmp: 30,
     camera: 'Presne zboku, kamera nízko pri zemi (výška 20–40 cm), 2 m. V zábere celé telo od hlavy po päty.',
   },
   {
-    id: 'vypad', keys: ['výpad','vypad','lunge'], name: 'Výpad', en: 'Lunge', signal: 'knee', posture: 'V', minAmp: 30,
+    id: 'vypad', group: 'k', hint: 'Zboku, vo výške bokov', keys: ['výpad','vypad','lunge'], name: 'Výpad', en: 'Lunge', signal: 'knee', posture: 'V', minAmp: 30,
     camera: 'Zboku, kamera vo výške bokov, 2–3 m. V zábere obe nohy celé počas celého pohybu.',
   },
   {
-    id: 'tlak-nad-hlavu', keys: ['nad hlavu','overhead','military'], name: 'Tlak nad hlavu', en: 'Overhead press', signal: 'elbow', posture: 'V', minAmp: 40,
+    id: 'tlak-nad-hlavu', group: 'c', hint: 'Zboku, vo výške hrudníka', keys: ['nad hlavu','overhead','military'], name: 'Tlak nad hlavu', en: 'Overhead press', signal: 'elbow', posture: 'V', minAmp: 40,
     camera: 'Zboku, kamera vo výške hrudníka, 2–3 m. V zábere celé telo aj vystreté ruky nad hlavou.',
   },
   {
-    id: 'pritah-hrazda', keys: ['príťah','pritah','pull-up','pullup','chin-up','zhyb'], name: 'Príťah na hrazde', en: 'Pull-up', signal: 'elbow', posture: 'P', minAmp: 40,
+    id: 'pritah-hrazda', group: 'k', hint: 'Zboku alebo zozadu', keys: ['príťah','pritah','pull-up','pullup','chin-up','zhyb'], name: 'Príťah na hrazde', en: 'Pull-up', signal: 'elbow', posture: 'P', minAmp: 40,
     camera: 'Zboku alebo zozadu, kamera vo výške hrazdy alebo trochu nižšie, 2–3 m. V zábere hrazda aj celé telo.',
   },
   {
-    id: 'hip-thrust', keys: ['hip thrust','glute bridge','hip-thrust'], name: 'Hip thrust', en: 'Hip thrust', signal: 'hip', posture: null, minAmp: 25,
+    id: 'hip-thrust', group: 'c', hint: 'Zboku, kamera nízko', keys: ['hip thrust','glute bridge','hip-thrust'], name: 'Hip thrust', en: 'Hip thrust', signal: 'hip', posture: null, minAmp: 25,
     camera: 'Presne zboku, kamera nízko (výška lavičky), 2 m. V zábere hlava, boky aj chodidlá.',
   },
 ];
+
+// skupiny v zozname cvikov
+export const GROUPS = [{ id: 'k', name: 'Kalistenika' }, { id: 'c', name: 'S činkou' }];
 
 export const AUTO = { id: 'auto', name: 'Rozpoznať automaticky', signal: null,
   camera: 'Najčastejšie funguje najlepšie pohľad zboku. Kamera vo výške bokov, 2–3 m, celé telo v zábere, stabilne (statív alebo opretý mobil).' };

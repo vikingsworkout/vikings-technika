@@ -1,4 +1,4 @@
-import { EXERCISES, AUTO, findExercise, matchExercise } from './exercises.js';
+import { EXERCISES, AUTO, GROUPS, findExercise, matchExercise } from './exercises.js';
 import { analyzeVideo, preload, MAX_SECONDS, CLIP_PTS, CLIP_BONES } from './pose.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
@@ -95,13 +95,37 @@ async function renderHome() {
 }
 
 // ---------- nové video: výber cviku ----------
+// malé ikonky cvikov (postavičky)
+const EX_ICON = {
+  klik: '<circle cx="4.6" cy="10.4" r="1.7"/><path d="M6.4 11.2 20.5 14.6M8.6 11.7v5.8M2.5 18.5h19"/>',
+  'pritah-hrazda': '<path d="M3.5 3h17M9 3l1.5 4.6M15 3l-1.5 4.6"/><circle cx="12" cy="8.2" r="1.7"/><path d="M12 10v5.2M12 15.2l-1.6 5.3M12 15.2l1.6 5.3"/>',
+  drep: '<circle cx="8.6" cy="4.2" r="1.7"/><path d="M9.2 6.1 10.8 12l5 .4-.9 6.6M9.7 8.2h6M4 20.5h16.5"/>',
+  vypad: '<circle cx="12" cy="3.6" r="1.7"/><path d="M12 5.5v6M12 11.5l4.4 1.6v5.7M12 11.5l-3 4.3-4 2.8M3 20.5h18"/>',
+  'mrtvy-tah': '<circle cx="6.8" cy="6.6" r="1.7"/><path d="M8.5 7.6 15 10.2l-.4 9.3M9.6 8.4l.4 7.2M4 16h12.5"/><circle cx="4.4" cy="16" r="2.2"/><circle cx="16.1" cy="16" r="2.2"/>',
+  bench: '<circle cx="4.6" cy="12" r="1.6"/><path d="M6.4 12.6h8.2l3.4 1.2v5M9.4 12.6V6.8M5.5 6.8h8M3 15h16M5 15v4M17 15v4"/>',
+  'tlak-nad-hlavu': '<circle cx="12" cy="7.2" r="1.7"/><path d="M12 9v6M12 15l-1.8 5.5M12 15l1.8 5.5M12 10.2 9.2 3.5M12 10.2l2.8-6.7M5 3.2h14"/>',
+  'hip-thrust': '<circle cx="4.4" cy="8.4" r="1.6"/><path d="M6 9.6h8.6l3 4v5.4M2.5 11.5h5v8M2.5 20h19"/>',
+};
+const ICON_AI = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9zM5.5 15l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/></svg>';
+const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
+
 function renderNew() {
-  const all = [...EXERCISES, AUTO];
-  $('chips').innerHTML = all.map(e => {
-    const on = e.id === selected.id;
-    return `<button class="ex${e.id === 'auto' ? ' auto' : ''}" data-id="${e.id}" aria-pressed="${on}">${e.id === 'auto' ? 'Iný cvik / rozpoznať automaticky' : esc(e.name)}${on ? ICON_CHECK : ''}</button>`;
-  }).join('');
-  $('chips').querySelectorAll('.ex').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
+  const on = (id) => id === selected.id;
+  const row = (e) => `<button class="ex" data-id="${e.id}" aria-pressed="${on(e.id)}">
+      <span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${EX_ICON[e.id] || ''}</svg></span>
+      <span class="nm"><b>${esc(e.name)}</b>${e.hint ? `<span class="s">${esc(e.hint)}</span>` : ''}</span>
+      <span class="rd">${on(e.id) ? ICON_TICK : ''}</span></button>`;
+  $('chips').innerHTML = `
+    <button class="exauto" data-id="auto" aria-pressed="${on('auto')}">
+      <span class="ai">${ICON_AI}</span>
+      <span style="flex:1"><b>Rozpoznať automaticky</b><span class="s">AI zistí cvik sama z videa</span></span>
+      <span class="rd">${on('auto') ? ICON_TICK : ''}</span>
+    </button>
+    ${GROUPS.map(g => {
+      const list = EXERCISES.filter(e => e.group === g.id);
+      return list.length ? `<div class="exgroup">${esc(g.name)}</div><div class="excard">${list.map(row).join('')}</div>` : '';
+    }).join('')}`;
+  $('chips').querySelectorAll('[data-id]').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
   $('guideText').textContent = selected.camera;
 }
 
