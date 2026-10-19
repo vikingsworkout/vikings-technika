@@ -75,6 +75,16 @@ p { line-height: 1.5; margin: 0 0 12px; }
 .row { display: flex; gap: 10px; }
 .row > * { flex: 1; }
 .linkbtn { appearance: none; border: 0; background: none; padding: 12px 4px; color: var(--acc); font-weight: 700; font-size: 17px; cursor: pointer; text-align: left; }
+.fullbtn { appearance: none; width: 100%; display: flex; align-items: center; gap: 12px; margin: 12px 0 4px; padding: 14px 16px; border-radius: 18px;
+  border: 1.5px solid rgba(255,122,61,.45); background: rgba(255,122,61,.09); color: var(--tx); text-align: left; cursor: pointer; transition: transform .12s ease; }
+.fullbtn:active { transform: scale(.985); }
+.fullbtn .fi { flex: none; width: 42px; height: 42px; border-radius: 13px; background: rgba(255,122,61,.2); color: var(--acc); display: grid; place-items: center; }
+.fullbtn .fi svg { width: 22px; height: 22px; }
+.fullbtn .ft { flex: 1; min-width: 0; }
+.fullbtn b { display: block; font-size: 17px; font-weight: 800; }
+.fullbtn .ft span { display: block; font-size: 13.5px; color: var(--mu); margin-top: 2px; }
+.fullbtn .chev { flex: none; width: 24px; height: 24px; color: var(--acc); transition: transform .2s ease; }
+.fullbtn[aria-expanded="true"] .chev { transform: rotate(180deg); }
 
 /* domov: mriežka videí */
 /* domov: hlavná akcia */

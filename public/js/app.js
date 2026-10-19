@@ -493,7 +493,11 @@ function renderResult(item) {
       <span style="flex:1"><b>${today && !today.good ? 'Pozri, kde sa to stalo' : 'Pozri si snímku'}</b><span>${esc(frame.label)} · ${fmtT(frame.t)}</span></span>
     </button>` : ''}
 
-    <button class="linkbtn" id="btnFull" aria-expanded="false">Zobraziť celý rozbor</button>
+    <button class="fullbtn" id="btnFull" aria-expanded="false" aria-controls="full">
+      <span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></span>
+      <span class="ft"><b id="btnFullT">Zobraziť celý rozbor</b><span id="btnFullS">Cesta k 100 bodom, chyby, svaly a snímky</span></span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
 
     <div class="full" id="full" hidden>
       <div class="stats">
@@ -571,7 +575,8 @@ function renderResult(item) {
   $('btnFull').onclick = () => {
     const open = $('full').hidden;
     $('full').hidden = !open;
-    $('btnFull').textContent = open ? 'Skryť celý rozbor' : 'Zobraziť celý rozbor';
+    $('btnFullT').textContent = open ? 'Skryť celý rozbor' : 'Zobraziť celý rozbor';
+    $('btnFullS').textContent = open ? 'Zbaliť podrobnosti' : 'Cesta k 100 bodom, chyby, svaly a snímky';
     $('btnFull').setAttribute('aria-expanded', String(open));
   };
   $('btnAgain').onclick = () => {
