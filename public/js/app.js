@@ -21,7 +21,7 @@ function show(view) {
   if (view !== 'vRec') recorder.close();
   views.forEach(v => { $(v).hidden = v !== view; });
   $('btnHome').hidden = view === 'vHome';
-  $('btnNew').hidden = view !== 'vHome';
+  $('btnNew').hidden = true; // na domove je hlavné tlačidlo priamo v karte
   closeViewer();
   window.scrollTo(0, 0);
 }
@@ -63,28 +63,29 @@ const mmss = (s) => s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(
 
 async function renderHome() {
   const items = await db.list();
-  const box = $('hist');
-  if (!items.length) {
-    box.innerHTML = `<button class="vadd wide" data-ex="">${ICON_CAM}<b>Natoč prvé video</b>Appka spočíta opakovania a povie ti, čo zlepšiť.</button>`;
-  } else {
-    const last = items[0];
-    const lastEx = last.exercise?.id !== 'auto' ? last.exercise : (matchExercise(last.result?.exercise?.name) || null);
-    box.innerHTML = items.map((it, k) => {
-      const s = it.result?.score;
-      const name = it.result?.exercise?.name || it.exercise?.name || 'Cvik';
-      const today = k === 0 ? todayOf(it.result || {}) : null;
-      const dur = it.summary?.active_segment ? it.summary.active_segment.end_s - it.summary.active_segment.start_s : it.summary?.video?.analyzed_s;
-      return `<button class="vt" data-id="${esc(it.id)}">
-        <div class="ph">${it.thumb ? `<img src="${esc(it.thumb)}" alt="">` : ''}
-          <span class="sc" style="color:${scoreColor(s)}">${s ?? '–'}</span>
-          ${today && today.title && !today.good ? `<span class="today">Dnes: ${esc(today.title)}</span>` : ''}
-        </div>
-        <div class="meta"><b>${esc(name)}</b><span>${dayLabel(it.created)}${dur ? ' · ' + mmss(dur) : ''}</span></div>
-      </button>`;
-    }).join('') + `<button class="vadd" data-ex="${esc(lastEx?.id || '')}">${ICON_CAM}${lastEx ? `Natoč ${esc(lastEx.name.toLowerCase())} znova a porovnaj` : 'Natoč ďalšie video'}</button>`;
-  }
-  box.querySelectorAll('.vt').forEach(b => b.onclick = () => { location.hash = '#/r/' + b.dataset.id; });
-  box.querySelectorAll('.vadd').forEach(b => b.onclick = () => { if (b.dataset.ex) selectExercise(b.dataset.ex); location.hash = '#/nova'; });
+  const last = items[0];
+  // posledný výsledok + jedna vec na dnes priamo nad tlačidlom
+  const tip = last ? todayOf(last.result || {}) : null;
+  const lastName = last ? (last.result?.exercise?.name || last.exercise?.name || 'Cvik') : '';
+  $('lastTip').innerHTML = last && tip && !tip.good ? `
+    <button class="lasttip" id="btnLast" style="appearance:none;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer">
+      <span class="sc" style="color:${scoreColor(last.result?.score)}">${last.result?.score ?? '–'}</span>
+      <span><span class="k" style="display:block">POSLEDNE: ${esc(lastName.toUpperCase())}</span><span class="t" style="display:block">Dnes sa sústreď: ${esc(tip.title)}</span></span>
+    </button>` : '';
+  if ($('btnLast')) $('btnLast').onclick = () => { location.hash = '#/r/' + last.id; };
+  $('btnStart').onclick = () => { location.hash = '#/nova'; };
+
+  $('histWrap').hidden = !items.length;
+  $('histCount').textContent = items.length ? `${items.length} ${plural(items.length, 'video', 'videá', 'videí')}` : '';
+  $('hist').innerHTML = items.map(it => {
+    const s = it.result?.score;
+    const name = it.result?.exercise?.name || it.exercise?.name || 'Cvik';
+    return `<button class="vt" data-id="${esc(it.id)}">
+      <div class="ph">${it.thumb ? `<img src="${esc(it.thumb)}" alt="" loading="lazy">` : ''}<span class="sc" style="color:${scoreColor(s)}">${s ?? '–'}</span></div>
+      <div class="meta"><b>${esc(name)}</b><span>${dayLabel(it.created)}</span></div>
+    </button>`;
+  }).join('');
+  $('hist').querySelectorAll('.vt').forEach(b => b.onclick = () => { location.hash = '#/r/' + b.dataset.id; });
 }
 
 // ---------- nové video: výber cviku ----------

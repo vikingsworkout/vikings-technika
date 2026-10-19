@@ -77,21 +77,30 @@ p { line-height: 1.5; margin: 0 0 12px; }
 .linkbtn { appearance: none; border: 0; background: none; padding: 12px 4px; color: var(--acc); font-weight: 700; font-size: 17px; cursor: pointer; text-align: left; }
 
 /* domov: mriežka videí */
-.vgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.vt { appearance: none; border: 0; padding: 0; text-align: left; cursor: pointer; border-radius: 18px; overflow: hidden; background: var(--s1); display: flex; flex-direction: column; }
-.vt .ph { position: relative; height: 200px; background: linear-gradient(160deg, #2A3344, #151A23); }
+/* domov: hlavná akcia */
+.hero { background: linear-gradient(160deg, #1F2632, #141921); border: 1px solid var(--line); border-radius: 26px; padding: 22px; margin-bottom: 30px; }
+.hero h1 { margin: 0 0 8px; font-size: 32px; }
+.hero > p { margin: 0 0 18px; font-size: 17px; color: var(--mu); line-height: 1.4; }
+.hero .btn { margin-bottom: 4px; }
+.hero .btn.ghost { margin-bottom: -6px; }
+.lasttip { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 16px; background: #1E1612; border: 1px solid rgba(255,122,61,.25); margin-bottom: 18px; }
+.lasttip .sc { flex: none; font-family: var(--num); font-weight: 800; font-size: 30px; line-height: 1; min-width: 40px; }
+.lasttip .k { font-size: 12.5px; font-weight: 800; letter-spacing: .1em; color: var(--acc); margin-bottom: 3px; }
+.lasttip .t { font-size: 16px; font-weight: 700; line-height: 1.3; }
+
+/* domov: videá ako vedľajší pás */
+.hhead { display: flex; justify-content: space-between; align-items: baseline; margin: 0 4px 10px; }
+.hhead h2 { font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: var(--mu); }
+.hhead span { font-size: 14px; color: var(--dim); }
+.vstrip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 0 16px 8px; scroll-padding: 0 16px; scrollbar-width: none; }
+.vstrip::-webkit-scrollbar { display: none; }
+.vt { appearance: none; border: 0; padding: 0; text-align: left; cursor: pointer; border-radius: 16px; overflow: hidden; background: var(--s1); display: flex; flex-direction: column; flex: none; width: 128px; scroll-snap-align: start; }
+.vt .ph { position: relative; height: 150px; background: linear-gradient(160deg, #2A3344, #151A23); }
 .vt .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.vt .sc { position: absolute; left: 10px; top: 10px; padding: 3px 10px; border-radius: 99px; background: rgba(0,0,0,.65); font-family: var(--num); font-weight: 800; font-size: 19px; }
-.vt .today { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 8px; border-radius: 10px; background: rgba(0,0,0,.7); font-size: 12.5px; font-weight: 700; color: #FFD3BF; line-height: 1.25;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.vt .meta { padding: 10px 12px 12px; }
-.vt .meta b { display: block; font-size: 15px; }
-.vt .meta span { font-size: 13px; color: var(--mu); }
-.vadd { appearance: none; border: 2px dashed var(--line2); background: transparent; border-radius: 18px; min-height: 252px; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 14px; color: var(--mu); font-size: 14px; font-weight: 700; text-align: center; }
-.vadd svg { width: 26px; height: 26px; }
-.vadd.wide { grid-column: 1 / -1; min-height: 220px; font-size: 16px; }
-.vadd.wide b { color: var(--tx); font-size: 19px; }
+.vt .sc { position: absolute; left: 8px; top: 8px; padding: 2px 8px; border-radius: 99px; background: rgba(0,0,0,.7); font-family: var(--num); font-weight: 800; font-size: 16px; }
+.vt .meta { padding: 8px 10px 10px; }
+.vt .meta b { display: block; font-size: 13.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt .meta span { font-size: 12px; color: var(--mu); }
 
 /* nové video */
 .exlist { display: flex; flex-direction: column; margin: 0 4px 18px; }
@@ -233,8 +242,16 @@ details.card[open] > summary { margin-bottom: 12px; }
 
   <!-- DOMOV -->
   <section id="vHome">
-    <h1>Tvoje videá</h1>
-    <div class="vgrid" id="hist"></div>
+    <div class="hero">
+      <h1>Natoč cvik</h1>
+      <p>Appka spočíta opakovania a povie ti, čo zlepšiť.</p>
+      <div id="lastTip"></div>
+      <button class="btn pri" id="btnStart"><span class="dot"></span>Natočiť nový cvik</button>
+    </div>
+    <div id="histWrap" hidden>
+      <div class="hhead"><h2>Tvoje videá</h2><span id="histCount"></span></div>
+      <div class="vstrip" id="hist"></div>
+    </div>
   </section>
 
   <!-- NOVÉ VIDEO -->
