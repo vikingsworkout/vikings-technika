@@ -1,5 +1,5 @@
-import { EXERCISES, AUTO, GROUPS, findExercise, matchExercise } from './exercises.js';
-import { analyzeVideo, preload, MAX_SECONDS, CLIP_PTS, CLIP_BONES } from './pose.js';
+import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor } from './exercises.js';
+import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES } from './pose.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
 
@@ -95,38 +95,52 @@ async function renderHome() {
 }
 
 // ---------- nové video: výber cviku ----------
-// malé ikonky cvikov (postavičky)
-const EX_ICON = {
-  klik: '<circle cx="4.6" cy="10.4" r="1.7"/><path d="M6.4 11.2 20.5 14.6M8.6 11.7v5.8M2.5 18.5h19"/>',
-  'pritah-hrazda': '<path d="M3.5 3h17M9 3l1.5 4.6M15 3l-1.5 4.6"/><circle cx="12" cy="8.2" r="1.7"/><path d="M12 10v5.2M12 15.2l-1.6 5.3M12 15.2l1.6 5.3"/>',
-  drep: '<circle cx="8.6" cy="4.2" r="1.7"/><path d="M9.2 6.1 10.8 12l5 .4-.9 6.6M9.7 8.2h6M4 20.5h16.5"/>',
-  vypad: '<circle cx="12" cy="3.6" r="1.7"/><path d="M12 5.5v6M12 11.5l4.4 1.6v5.7M12 11.5l-3 4.3-4 2.8M3 20.5h18"/>',
-  'mrtvy-tah': '<circle cx="6.8" cy="6.6" r="1.7"/><path d="M8.5 7.6 15 10.2l-.4 9.3M9.6 8.4l.4 7.2M4 16h12.5"/><circle cx="4.4" cy="16" r="2.2"/><circle cx="16.1" cy="16" r="2.2"/>',
-  bench: '<circle cx="4.6" cy="12" r="1.6"/><path d="M6.4 12.6h8.2l3.4 1.2v5M9.4 12.6V6.8M5.5 6.8h8M3 15h16M5 15v4M17 15v4"/>',
-  'tlak-nad-hlavu': '<circle cx="12" cy="7.2" r="1.7"/><path d="M12 9v6M12 15l-1.8 5.5M12 15l1.8 5.5M12 10.2 9.2 3.5M12 10.2l2.8-6.7M5 3.2h14"/>',
-  'hip-thrust': '<circle cx="4.4" cy="8.4" r="1.6"/><path d="M6 9.6h8.6l3 4v5.4M2.5 11.5h5v8M2.5 20h19"/>',
+// ikonky cvikov: piktogramy 48×48 – [pomôcky (sivé), hlava [x, y, r], postava]
+const EX_PIC = {
+  klik: ['<path d="M4 40.5h40"/>', [9, 20.5, 4.2], 'M14 25 28 30.2 42 35.5M14.5 25.5V37'],
+  'pritah-hrazda': ['<path d="M5 6.5h38"/>', [24, 15, 4.2], 'M14 6.5l-1 11 6 5M34 6.5l1 11-6 5M19 22.5h10M24 22v11.5M24 33.5l-2.6 10.5M24 33.5l2.6 10.5'],
+  drep: ['<path d="M5 44h38"/>', [22.5, 8.5, 4.2], 'M20.5 15 13.5 27 27 28.5l-3 11.5h7M20.5 16.5 36 17.5'],
+  vypad: ['<path d="M5 44h38"/>', [24, 6.5, 4.2], 'M24 12.5v12M24 24.5l10 2.5V40.5h5M24 24.5 16.5 36l-8 4.5M24 15.5h9'],
+  'mrtvy-tah': ['<circle cx="25.5" cy="30" r="7.5"/><path d="M5 44h38"/>', [31, 10, 4.2], 'M14 22 26 14.5M26 15v15M14 22l7.5 9-3 9.5h7'],
+  bench: ['<circle cx="15" cy="9" r="5.5"/><path d="M6 31h28M10 31v10M30 31v10"/>', [7.5, 24.5, 4], 'M12.5 27h15l7.5-5.5 3.5 18.5M15 27V14.5'],
+  'tlak-nad-hlavu': ['<path d="M6 6.5h36M8.5 2.5v8M39.5 2.5v8"/>', [24, 16.5, 4.2], 'M15.5 6.5l3.5 16M32.5 6.5 29 22.5M19 22.5h10M24 22v11.5M24 33.5l-3.5 11M24 33.5l3.5 11'],
+  'hip-thrust': ['<circle cx="25" cy="14" r="5.5"/><path d="M4 25.5h10M9 25.5V42M4 42h40"/>', [7, 19, 3.8], 'M11.5 22.5 25 20.5l11.5.5V38h5'],
+  plank: ['<path d="M4 40.5h40"/>', [8.5, 23.5, 4], 'M13.5 27.5 27.5 32.5 42 36.5M13.5 27.5V37.5H6'],
+  stojka: ['<path d="M7 44.5h34"/>', [24, 32.5, 3.4], 'M13 41.5 18.5 27M35 41.5 29.5 27M18.5 27h11M24 27V14.5M24 14.5l-1.7-11M24 14.5l1.7-11'],
+  'l-sit': ['<path d="M6 37.5h36"/>', [16, 7.5, 4], 'M16 13.5V28M16 28h25M16 15l2 20'],
+  'front-lever': ['<path d="M12 7h16"/>', [8.5, 23, 4], 'M14 23H43M14 23l5-15.5'],
+  'back-lever': ['<path d="M16 7h18"/>', [8.5, 26, 4], 'M14 26H43M14 26l12.5-18.5'],
+  planche: ['<path d="M6 42.5h36"/>', [9, 25.5, 4], 'M14.5 26H43M14.5 26l6 13.5'],
+};
+const picSvg = (id) => {
+  const p = EX_PIC[id];
+  if (!p) return '';
+  return '<svg class="pic" viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + `<g class="eq" stroke="currentColor" stroke-width="3">${p[0]}</g>`
+    + `<g class="fig"><circle cx="${p[1][0]}" cy="${p[1][1]}" r="${p[1][2]}" fill="currentColor"/><path d="${p[2]}" stroke="currentColor" stroke-width="4.2"/></g></svg>`;
 };
 const ICON_AI = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9zM5.5 15l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/></svg>';
 const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
+// "Klik" → "klik", "L-sit" ostane
+const lowerName = (n) => /^\p{Lu}\p{Ll}/u.test(n) ? n.charAt(0).toLowerCase() + n.slice(1) : n;
 
 function renderNew() {
   const on = (id) => id === selected.id;
-  const row = (e) => `<button class="ex" data-id="${e.id}" aria-pressed="${on(e.id)}">
-      <span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${EX_ICON[e.id] || ''}</svg></span>
-      <span class="nm"><b>${esc(e.name)}</b>${e.hint ? `<span class="s">${esc(e.hint)}</span>` : ''}</span>
-      <span class="rd">${on(e.id) ? ICON_TICK : ''}</span></button>`;
+  const tick = `<span class="chk">${ICON_TICK}</span>`;
+  const tile = (e) => `<button class="tile" data-id="${e.id}" aria-pressed="${on(e.id)}">${on(e.id) ? tick : ''}${picSvg(e.id)}<span class="nm">${esc(e.name)}</span></button>`;
   $('chips').innerHTML = `
-    <button class="exauto" data-id="auto" aria-pressed="${on('auto')}">
-      <span class="ai">${ICON_AI}</span>
-      <span style="flex:1"><b>Rozpoznať automaticky</b><span class="s">AI zistí cvik sama z videa</span></span>
-      <span class="rd">${on('auto') ? ICON_TICK : ''}</span>
-    </button>
-    ${GROUPS.map(g => {
-      const list = EXERCISES.filter(e => e.group === g.id);
-      return list.length ? `<div class="exgroup">${esc(g.name)}</div><div class="excard">${list.map(row).join('')}</div>` : '';
-    }).join('')}`;
+    <div class="exgrid">
+      <button class="tile ai" data-id="auto" aria-pressed="${on('auto')}">${on('auto') ? tick : ''}<span class="aibox">${ICON_AI}</span><span class="nm">Rozpoznať automaticky</span></button>
+      ${EXERCISES.filter(e => !isHold(e)).map(tile).join('')}
+    </div>
+    <div class="exgroup">Výdrže</div>
+    <div class="exgrid">${EXERCISES.filter(isHold).map(tile).join('')}</div>`;
   $('chips').querySelectorAll('[data-id]').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
-  $('guideText').textContent = selected.camera;
+  $('guideText').innerHTML = selected.id === 'auto' ? esc(selected.camera) : `<b>${esc(selected.name)}:</b> ${esc(selected.camera)}`;
+  $('guideSub').textContent = isHold(selected)
+    ? `Jedna výdrž, najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`
+    : `Jedna séria, najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`;
+  $('btnRec').innerHTML = `<span class="dot"></span>${selected.id === 'auto' ? 'Nahrávať' : 'Nahrávať ' + esc(selected.acc || lowerName(selected.name))}`;
 }
 
 for (const id of ['inCam', 'inFile']) {
@@ -148,7 +162,8 @@ const recorder = new Recorder($('recVideo'), {
     $('btnRecStop').hidden = st !== 'recording';
     $('btnRecCancel').hidden = st !== 'countdown';
     $('btnFlip').hidden = st !== 'ready';
-    $('recHint').textContent = st === 'recording' ? `Cvič. Nahrávanie sa zastaví samo po ${MAX_SECONDS} s.`
+    $('recHint').textContent = st === 'recording'
+      ? (isHold(selected) ? `Drž polohu. Po výdrži stlač Zastaviť (najneskôr po ${maxSecondsFor(selected)} s).` : `Cvič. Nahrávanie sa zastaví samo po ${maxSecondsFor(selected)} s.`)
       : st === 'countdown' ? 'Zaujmi polohu…' : 'Polož mobil, zaujmi polohu. Po stlačení máš 5 sekúnd.';
   },
   onTick: (sec, max) => {
@@ -174,7 +189,7 @@ async function openRecorder() {
 $('btnFlip').onclick = () => recorder.flip().catch(() => {});
 $('btnRecStart').onclick = async () => {
   try {
-    const file = await recorder.start({ countdown: 5, maxSeconds: MAX_SECONDS });
+    const file = await recorder.start({ countdown: 5, maxSeconds: maxSecondsFor(selected) });
     recorder.close();
     startAnalysis(file);
   } catch (e) { if (e) console.error(e); }
@@ -195,7 +210,7 @@ function showError(msg, needCode = false) {
 
 async function startAnalysis(file) {
   pendingFile = file;
-  current = { id: String(Date.now()), created: Date.now(), exercise: { id: selected.id, name: selected.name, en: selected.en }, signal: selected.signal };
+  current = { id: String(Date.now()), created: Date.now(), exercise: { id: selected.id, name: selected.name, en: selected.en, type: selected.type || null }, signal: selected.signal };
   $('workErr').hidden = true; $('workTitle').textContent = 'Analyzujem…';
   const vid = $('workVideo');
   if (vid.src) URL.revokeObjectURL(vid.src);
@@ -211,9 +226,10 @@ async function startAnalysis(file) {
   }
   setProgress(0, 'Pripravujem…');
   try {
-    const { summary, keyframes, thumb, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, start: selected.start ?? null, onProgress: (p, t) => setProgress(p * 0.5, t) });
+    const { summary, keyframes, thumb, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, start: selected.start ?? null, type: selected.type ?? null, target: selected.target ?? null, holdJoint: selected.holdJoint ?? null, maxSeconds: maxSecondsFor(selected), onProgress: (p, t) => setProgress(p * 0.5, t) });
     Object.assign(current, { summary, keyframes, thumb, clip });
-    if (summary.video.duration_s > MAX_SECONDS) setProgress(0.5, `Video je dlhšie ako ${MAX_SECONDS} s, analyzujem prvých ${MAX_SECONDS} s.`);
+    const maxS = maxSecondsFor(selected);
+    if (summary.video.duration_s > maxS) setProgress(0.5, `Video je dlhšie ako ${maxS} s, analyzujem prvých ${maxS} s.`);
   } catch (e) {
     console.error(e);
     showError(e.message || 'Analýza videa zlyhala.');
@@ -314,8 +330,8 @@ $('viewer').addEventListener('click', (e) => { if (e.target === $('viewer')) clo
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('viewer').hidden) closeViewer(); });
 
 // ---------- prehrávač videa analýzy (snímky + kostra) ----------
-const JOINT_PTS = { knee: [25, 26], hip: [23, 24], elbow: [13, 14], shoulder: [11, 12] };
-const JOINT_SK = { knee: 'koleno', hip: 'bok', elbow: 'lakeť', shoulder: 'rameno' };
+const JOINT_PTS = { knee: [25, 26], hip: [23, 24], elbow: [13, 14], shoulder: [11, 12], body_line: [23, 24] };
+const JOINT_SK = { knee: 'koleno', hip: 'bok', elbow: 'lakeť', shoulder: 'rameno', body_line: 'línia' };
 const P = { clip: null, urls: [], imgs: [], t: 0, playing: false, speed: 1, raf: 0, last: 0, cur: -1 };
 
 function openPlayer(clip, jumpT) {
@@ -391,7 +407,9 @@ function drawFrame(i) {
   const reps = clip.reps || [], t = f.t;
   const k = reps.findIndex(r => t >= r.s && t <= r.e);
   const done = reps.filter(r => r.e < t).length;
-  const label = k >= 0 ? `Opakovanie ${k + 1} / ${reps.length}` : reps.length && done === reps.length ? `Hotovo · ${reps.length} opak.` : reps.length ? (done ? `Opakovanie ${done} / ${reps.length}` : 'Príprava') : '';
+  const hold = clip.hold;
+  const label = hold ? (t < hold.s ? 'Príprava' : t <= hold.e ? `Výdrž ${fmtT(t - hold.s)}` : `Výdrž ${fmtT(hold.e - hold.s)} · koniec`)
+    : k >= 0 ? `Opakovanie ${k + 1} / ${reps.length}` : reps.length && done === reps.length ? `Hotovo · ${reps.length} opak.` : reps.length ? (done ? `Opakovanie ${done} / ${reps.length}` : 'Príprava') : '';
   if (label) {
     g.font = `800 ${Math.round(W / 15)}px Barlow, system-ui, sans-serif`;
     const tw = g.measureText(label).width, ph = W / 10.5;
@@ -443,6 +461,10 @@ function renderResult(item) {
   const mismatch = item.exercise.id !== 'auto' && ex.matches_selected === false;
   const sm = item.summary || {};
   const reps = sm.reps_detected || 0;
+  const isH = sm.exercise_type === 'hold';
+  const holdS = isH ? Math.round(sm.hold?.duration_s || 0) : 0;
+  const holdKey = sm.hold?.joint || 'body_line';
+  const holdAngle = isH ? sm.hold_metrics?.[holdKey]?.median : null;
   const act = sm.active_segment;
   const dur = act ? Math.max(0, act.end_s - act.start_s) : sm.video?.analyzed_s;
   const view = (sm.camera_view_estimate || '').replace(' alebo zozadu', '').replace(' (asi 45°)', '');
@@ -458,7 +480,7 @@ function renderResult(item) {
   const errT = today && !today.good && frame ? Number(frame.t) : null;
 
   $('vResult').innerHTML = `
-    <div class="rmeta">${esc(ex.name || item.exercise.name)}${reps ? ` · ${reps} ${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}` : ''}</div>
+    <div class="rmeta">${esc(ex.name || item.exercise.name)}${isH ? ` · výdrž ${holdS} s` : reps ? ` · ${reps} ${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}` : ''}</div>
     ${mismatch ? `<div class="card err mismatch"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Ak to nesedí, zmeň cvik v celom rozbore dole.</div>` : ''}
     <div class="bigscore"><span class="n" style="color:${scoreColor(score)}">${score ?? '?'}</span><span class="of">/100</span></div>
     <p class="rverdict">${esc(r.verdict || '')}</p>
@@ -482,8 +504,10 @@ function renderResult(item) {
 
     <div class="full" id="full" hidden>
       <div class="stats">
-        <div class="stat"><b>${reps || '–'}</b><span>${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}</span></div>
-        <div class="stat"><b>${dur != null ? Math.round(dur) + ' s' : '–'}</b><span>dĺžka série</span></div>
+        ${isH ? `<div class="stat"><b>${holdS} s</b><span>výdrž</span></div>
+        <div class="stat"><b>${holdAngle != null ? holdAngle + '°' : '–'}</b><span>${holdKey === 'hip' ? 'uhol v bokoch' : 'línia tela'}</span></div>`
+        : `<div class="stat"><b>${reps || '–'}</b><span>${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}</span></div>
+        <div class="stat"><b>${dur != null ? Math.round(dur) + ' s' : '–'}</b><span>dĺžka série</span></div>`}
         <div class="stat"><b style="font-size:17px;line-height:29px">${esc(view || '–')}</b><span>pohľad kamery</span></div>
       </div>
       ${r.summary ? `<p class="sum">${esc(r.summary)}</p>` : ''}

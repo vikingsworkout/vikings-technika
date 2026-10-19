@@ -27,12 +27,14 @@ Postup:
    - 0,8–1,2 s = primerané: spomalenie nanajvýš ako voliteľný tip, nie ako chyba,
    - pod 0,8 s = rýchle: odporuč spomaliť (cieľ asi 2 s dole); pri mŕtvom ťahu a hip thruste stačí, že spúšťanie nie je pád.
    Rýchly, dynamický zdvih (up_s) je v poriadku a nie je chyba.
+   Výdrže (statické cviky – plank, stojka, L-sit, front lever, back lever, planche…): ak je summary.exercise_type = "hold", opakovania ani tempo nehodnoť. Posúď polohu počas výdrže podľa hold_metrics (línia tela, uhly kĺbov, náklon body_tilt_deg, pri stojke vertical_dev_deg a otvorenie ramien), stabilitu (stability), dĺžku výdrže (hold.duration_s) a zmenu polohy ku koncu (fatigue, napr. klesajúce boky). Dĺžku hodnoť primerane náročnosti cviku: pri planku je dobrých 30–60 s, pri stojke 15–30 s, pri L-site 10–20 s, pri front leveri, back leveri a planche sú výborné aj 3–10 s. Pri front leveri, back leveri a planche urči zo snímok variant (tuck, advanced tuck, straddle, full) a techniku hodnoť primerane variantu (pri tuck variante sú pokrčené kolená správne). Ak výdrž nebola nájdená (hold.found = false), hodnoť opatrne len zo snímok a v camera_limits napíš, ako natočiť lepšie.
 6. Skóre urči podľa pevnej stupnice, aby bolo férové a opakovateľné. Rozdeľ ho do 5 oblastí po 20 bodov:
    - "Rozsah pohybu" (plný rozsah podľa cviku, hĺbka, vystretie v hornej polohe)
    - "Poloha tela" (trup, línia tela, hlava, chrbát)
    - "Kĺby a os pohybu" (kolená, lakte, ramená, členky, dráha činky/rúk)
    - "Tempo a kontrola" (kontrolované spúšťanie podľa nameraného tempa, bez švihu a odrazu)
    - "Stabilita a konzistencia" (symetria, rovnaká kvalita všetkých opakovaní)
+   Pri výdržiach použi týchto 5 oblastí po 20 bodov: "Línia tela", "Kĺby a zamknutie", "Poloha a uhly", "Stabilita", "Dĺžka a únava".
    Súčet bodov v oblastiach = score. Za každý stratený bod musí existovať konkrétny dôvod.
 7. Do "today" daj JEDNU najdôležitejšiu vec, ktorú má používateľ zmeniť pri ďalšej sérii (zvyčajne prvý krok z "to_100"). Napíš ju ako krátky pokyn v 2. osobe, jednoducho, ako by to povedal tréner. "frame" = číslo snímky (podľa "Snímka N"), na ktorej je táto chyba najlepšie vidieť.
 8. Do "to_100" napíš presný plán, čo musí používateľ pri tomto cvičení zmeniť, aby dosiahol 100 bodov: každý krok = jedna konkrétna zmena a koľko bodov prinesie. Súčet "gain" = 100 − score. Zoraď od najväčšieho prínosu. Ak je score 100, nechaj pole prázdne.
@@ -74,7 +76,7 @@ export async function onRequestPost({ request, env }) {
 
     const content = [];
     const exText = exercise && exercise.id !== 'auto'
-      ? `Používateľ zadal cvik: ${exercise.name} (${exercise.en || ''}).`
+      ? `Používateľ zadal cvik: ${exercise.name} (${exercise.en || ''})${exercise.type === 'hold' ? ' – výdrž, statický cvik' : ''}.`
       : 'Používateľ cvik nezadal – rozpoznaj ho zo snímok a údajov.';
     content.push({ type: 'text', text: `${exText}\n\nNamerané údaje z pose detection (JSON):\n${JSON.stringify(summary)}\n\nNasledujú kľúčové snímky z videa (oranžová = rozpoznaná kostra):` });
     frames.forEach((f, idx) => {
