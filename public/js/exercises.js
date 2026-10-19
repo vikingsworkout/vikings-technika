@@ -47,6 +47,7 @@ export const EXERCISES = [
   },
 
   // ---------- výdrže (statické cviky) ----------
+  // Vo výbere nie sú – rozpozná ich automatický režim. Slúžia na spárovanie názvu od AI a na „Iný cvik?“ vo výsledku.
   {
     id: 'plank', type: 'hold', group: 'h', target: 'plank', holdJoint: 'body_line', maxSeconds: 60, hint: 'Zboku, kamera nízko pri zemi',
     keys: ['plank','planka','doska','výdrž v kliku','vydrz v kliku'], name: 'Plank', en: 'Plank hold (forearm or high plank)',
@@ -82,7 +83,8 @@ export const EXERCISES = [
 // skupiny v zozname cvikov
 export const GROUPS = [{ id: 'k', name: 'Kalistenika' }, { id: 'c', name: 'S činkou' }, { id: 'h', name: 'Výdrže' }];
 
-export const AUTO = { id: 'auto', name: 'Rozpoznať automaticky', signal: null,
+// automatické rozpoznanie zvládne aj výdrže (statické cviky), preto dlhšie nahrávanie
+export const AUTO = { id: 'auto', name: 'Rozpoznať automaticky', signal: null, maxSeconds: 60,
   camera: 'Najčastejšie funguje najlepšie pohľad zboku. Kamera vo výške bokov, 2–3 m, celé telo v zábere, stabilne (statív alebo opretý mobil).' };
 
 export const isHold = (e) => !!e && e.type === 'hold';

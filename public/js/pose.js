@@ -100,6 +100,7 @@ function frameMetrics(lm, W, H) {
     bodyTilt: Math.atan2(anM.y - shM.y, Math.abs(anM.x - shM.x) || 1e-6) * 180 / Math.PI, // línia ramená–členky: 0 = vodorovne, + = nohy nižšie
     invert: anM.y < shM.y - 0.5 * torso,              // nohy nad ramenami (stojka)
     handsBelow: wrM.y > shM.y,                        // ruky pod ramenami (opora o zem)
+    shY: shM.y, wrY: wrM.y,
     vertDev: Math.atan2(Math.abs(anM.x - wrM.x), wrM.y - anM.y) * 180 / Math.PI, // stojka: 0 = členky presne nad dlaňami
     shoulderTilt: (p[P.lSh].y - p[P.rSh].y) / torso * 100, // naklonenie ramien (pohľad spredu/zozadu)
     hipTilt: (p[P.lHip].y - p[P.rHip].y) / torso * 100,
@@ -469,6 +470,30 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     handstand: (m) => m.invert && m.handsBelow,
     lever: (m) => Math.abs(m.bodyTilt) < 45 && !m.invert && !m.handsBelow,
     lsit: (m) => m.trunk < 45 && m.legs > 45 && m.handsBelow,
+    hang: (m) => !m.handsBelow && !m.invert && Math.abs(m.bodyTilt) > 50,
+    squat: (m) => m.trunk < 50 && m.legs < 50 && (m[sideKey].knee ?? 180) < 140,
+  };
+  // poloha jednej snímky pri automatickom rozpoznaní výdrže
+  const holdKind = (m) => {
+    const horiz = Math.abs(m.bodyTilt) < 40;
+    if (m.invert && m.handsBelow) return 'handstand';
+    if (!m.handsBelow && !m.invert) return horiz ? 'lever' : 'hang';
+    if (m.handsBelow && m.trunk < 45 && m.legs > 45 && m.legs < 135) return 'lsit';
+    const supported = (m.wrY - m.shY) / m.torso > 0.2;        // ramená sú nad oporou (nie ľah na zemi)
+    if (m.handsBelow && horiz && supported) return (m.wrY - m.ankleY) / m.torso > 0.5 ? 'planche' : 'plank';
+    if (m.trunk < 50 && m.legs < 50) return (m[sideKey].knee ?? 180) < 140 ? 'squat' : 'stand';
+    return 'other';
+  };
+  const HOLD_KINDS = {
+    handstand: { joint: 'body_line', name: 'stojka na rukách' },
+    lever: { joint: 'body_line', name: 'vodorovný vis na hrazde (front lever alebo back lever)' },
+    hang: { joint: 'body_line', name: 'vis na hrazde' },
+    lsit: { joint: 'hip', name: 'L-sit (sed vo vzpore s nohami vodorovne)' },
+    planche: { joint: 'body_line', name: 'planche (vzpor s telom vo vzduchu)' },
+    plank: { joint: 'body_line', name: 'plank / vzpor s nohami na zemi' },
+    squat: { joint: 'knee', name: 'výdrž v podrepe (napr. sed pri stene)' },
+    stand: { joint: 'body_line', name: 'stoj (bez cviku)' },
+    other: { joint: 'body_line', name: 'iná poloha' },
   };
   const findHold = (targetFn) => {
     const ser = ['body_line', 'hip', 'elbow'].map(k => smooth(interpolate(frames.map(f => f.m ? f.m[sideKey][k] : null))));
@@ -492,14 +517,28 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     const ext = Math.round(0.35 / step);
     return { from: Math.max(0, bestRun.from - ext), to: Math.min(frames.length - 1, bestRun.to + ext) };
   };
-  let holdRun = null;
+  let holdRun = null, holdTarget = target, autoKind = null;
   if (type === 'hold') holdRun = (HOLD_TARGETS[target] && findHold(HOLD_TARGETS[target])) || findHold(null);
-  else if (!signal && !reps.length) { // automatické rozpoznanie bez opakovaní: aspoň 3 s pokoja = výdrž
+  else if (!signal) {
+    // automatické rozpoznanie: dlhší pokoj v polohe cviku (stojka, plank, lever, L-sit…) je výdrž
     const h = findHold(null);
-    if (h && (h.to - h.from) * step >= 3) holdRun = h;
+    if (h) {
+      const cnt = {};
+      for (let i = h.from; i <= h.to; i++) if (frames[i].m) { const k = holdKind(frames[i].m); cnt[k] = (cnt[k] || 0) + 1; }
+      const kind = Object.keys(cnt).reduce((a, b) => (cnt[b] > (cnt[a] || 0) ? b : a), 'other');
+      const holdDur = (h.to - h.from) * step;
+      const repTime = reps.reduce((a, r) => a + r.dur, 0);
+      const meaningful = !['stand', 'other'].includes(kind);
+      // bez opakovaní stačí 3 s pokoja; ak opakovania sú, výdrž musí v poznatej polohe jasne prevládať
+      if (holdDur >= 3 && (!reps.length || (meaningful && (holdDur > 2 * repTime || (reps.length <= 1 && holdDur >= 5))))) {
+        autoKind = kind;
+        holdTarget = { handstand: 'handstand', lever: 'lever', hang: 'hang', lsit: 'lsit', planche: 'planche', plank: 'plank', squat: 'squat' }[kind] || null;
+        holdRun = (holdTarget && HOLD_TARGETS[holdTarget] && findHold(HOLD_TARGETS[holdTarget])) || h;
+      }
+    }
   }
   const isHoldResult = type === 'hold' || !!holdRun;
-  const hJoint = holdJoint || 'body_line';
+  const hJoint = holdJoint || (autoKind && HOLD_KINDS[autoKind]?.joint) || 'body_line';
   if (isHoldResult) {
     const hm = {}, stability = {}, fatigue = {};
     let holdInfo = { found: false, note: 'Výdrž sa nepodarilo nájsť (telo sa nehýbalo menej ako 1 s alebo nebolo v polohe cviku).' };
@@ -512,7 +551,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
       hm.trunk_lean = st(vals(f => f.m.trunk));
       hm.legs_from_vertical = st(vals(f => f.m.legs));
       hm.body_tilt_deg = st(vals(f => f.m.bodyTilt));
-      if (target === 'handstand' || seg.filter(f => f.m.invert).length > seg.length / 2) hm.vertical_dev_deg = st(vals(f => f.m.vertDev));
+      if (holdTarget === 'handstand' || seg.filter(f => f.m.invert).length > seg.length / 2) hm.vertical_dev_deg = st(vals(f => f.m.vertDev));
       const hx = vals(f => f.m.hipX / f.m.torso), hy = vals(f => f.m.hipY / f.m.torso), bl = side('body_line');
       stability.hip_sway_pct = hx.length ? r0(100 * (pct(hx, 0.95) - pct(hx, 0.05))) : null;
       stability.hip_height_sway_pct = hy.length ? r0(100 * (pct(hy, 0.95) - pct(hy, 0.05))) : null;
@@ -524,7 +563,8 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
       fatigue.body_tilt_first_last = [r0(med(first, f => f.m.bodyTilt)), r0(med(last, f => f.m.bodyTilt))];
       const ha = med(first, f => f.m.hipY / f.m.torso), hb = med(last, f => f.m.hipY / f.m.torso);
       fatigue.hip_drop_pct = ha != null && hb != null ? r0(100 * (hb - ha)) : null;
-      holdInfo = { found: true, start_s: r1(frames[holdRun.from].t), end_s: r1(frames[holdRun.to].t), duration_s: r1(frames[holdRun.to].t - frames[holdRun.from].t), joint: hJoint, target: target || 'neznámy' };
+      holdInfo = { found: true, start_s: r1(frames[holdRun.from].t), end_s: r1(frames[holdRun.to].t), duration_s: r1(frames[holdRun.to].t - frames[holdRun.from].t), joint: hJoint,
+        target: holdTarget || 'neznámy', detected_position: autoKind ? HOLD_KINDS[autoKind].name : null };
       actFrom = Math.max(0, holdRun.from - pad); actTo = Math.min(frames.length - 1, holdRun.to + pad);
     }
     summary = {

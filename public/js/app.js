@@ -13,7 +13,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
 
-let selected = findExercise(ls.get('vt-ex')) || AUTO;
+const storedEx = findExercise(ls.get('vt-ex'));
+let selected = storedEx && !isHold(storedEx) ? storedEx : AUTO; // výdrže rozpozná automatický režim
 let current = null;        // práve spracovávaná analýza
 let pendingFile = null;    // video, ktoré sa analyzuje (pre "skúsiť znova")
 
@@ -47,7 +48,7 @@ $('btnNew').onclick = () => { location.hash = '#/nova'; };
 
 function selectExercise(id) {
   const e = findExercise(id);
-  if (e) { selected = e; ls.set('vt-ex', e.id); }
+  if (e) { selected = isHold(e) ? AUTO : e; ls.set('vt-ex', selected.id); } // výdrže → automatické rozpoznanie
 }
 
 // ---------- domov: mriežka videí ----------
@@ -105,12 +106,6 @@ const EX_PIC = {
   bench: ['<circle cx="15" cy="9" r="5.5"/><path d="M6 31h28M10 31v10M30 31v10"/>', [7.5, 24.5, 4], 'M12.5 27h15l7.5-5.5 3.5 18.5M15 27V14.5'],
   'tlak-nad-hlavu': ['<path d="M6 6.5h36M8.5 2.5v8M39.5 2.5v8"/>', [24, 16.5, 4.2], 'M15.5 6.5l3.5 16M32.5 6.5 29 22.5M19 22.5h10M24 22v11.5M24 33.5l-3.5 11M24 33.5l3.5 11'],
   'hip-thrust': ['<circle cx="25" cy="14" r="5.5"/><path d="M4 25.5h10M9 25.5V42M4 42h40"/>', [7, 19, 3.8], 'M11.5 22.5 25 20.5l11.5.5V38h5'],
-  plank: ['<path d="M4 40.5h40"/>', [8.5, 23.5, 4], 'M13.5 27.5 27.5 32.5 42 36.5M13.5 27.5V37.5H6'],
-  stojka: ['<path d="M7 44.5h34"/>', [24, 32.5, 3.4], 'M13 41.5 18.5 27M35 41.5 29.5 27M18.5 27h11M24 27V14.5M24 14.5l-1.7-11M24 14.5l1.7-11'],
-  'l-sit': ['<path d="M6 37.5h36"/>', [16, 7.5, 4], 'M16 13.5V28M16 28h25M16 15l2 20'],
-  'front-lever': ['<path d="M12 7h16"/>', [8.5, 23, 4], 'M14 23H43M14 23l5-15.5'],
-  'back-lever': ['<path d="M16 7h18"/>', [8.5, 26, 4], 'M14 26H43M14 26l12.5-18.5'],
-  planche: ['<path d="M6 42.5h36"/>', [9, 25.5, 4], 'M14.5 26H43M14.5 26l6 13.5'],
 };
 const picSvg = (id) => {
   const p = EX_PIC[id];
@@ -132,13 +127,11 @@ function renderNew() {
     <div class="exgrid">
       <button class="tile ai" data-id="auto" aria-pressed="${on('auto')}">${on('auto') ? tick : ''}<span class="aibox">${ICON_AI}</span><span class="nm">Rozpoznať automaticky</span></button>
       ${EXERCISES.filter(e => !isHold(e)).map(tile).join('')}
-    </div>
-    <div class="exgroup">Výdrže</div>
-    <div class="exgrid">${EXERCISES.filter(isHold).map(tile).join('')}</div>`;
+    </div>`;
   $('chips').querySelectorAll('[data-id]').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
   $('guideText').innerHTML = selected.id === 'auto' ? esc(selected.camera) : `<b>${esc(selected.name)}:</b> ${esc(selected.camera)}`;
-  $('guideSub').textContent = isHold(selected)
-    ? `Jedna výdrž, najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`
+  $('guideSub').textContent = selected.id === 'auto'
+    ? `Jedna séria alebo výdrž (plank, stojka, front lever…), najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`
     : `Jedna séria, najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`;
   $('btnRec').innerHTML = `<span class="dot"></span>${selected.id === 'auto' ? 'Nahrávať' : 'Nahrávať ' + esc(selected.acc || lowerName(selected.name))}`;
 }
@@ -163,7 +156,7 @@ const recorder = new Recorder($('recVideo'), {
     $('btnRecCancel').hidden = st !== 'countdown';
     $('btnFlip').hidden = st !== 'ready';
     $('recHint').textContent = st === 'recording'
-      ? (isHold(selected) ? `Drž polohu. Po výdrži stlač Zastaviť (najneskôr po ${maxSecondsFor(selected)} s).` : `Cvič. Nahrávanie sa zastaví samo po ${maxSecondsFor(selected)} s.`)
+      ? (selected.id === 'auto' ? `Cvič alebo drž polohu. Potom stlač Zastaviť (najneskôr po ${maxSecondsFor(selected)} s).` : `Cvič. Nahrávanie sa zastaví samo po ${maxSecondsFor(selected)} s.`)
       : st === 'countdown' ? 'Zaujmi polohu…' : 'Polož mobil, zaujmi polohu. Po stlačení máš 5 sekúnd.';
   },
   onTick: (sec, max) => {
