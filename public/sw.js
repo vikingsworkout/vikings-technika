@@ -1,9 +1,9 @@
 // Jednoduchý service worker: appka sa dá nainštalovať a vlastné súbory sa načítajú
 // aj pri slabom signáli. Vždy skúsi najprv sieť (aby sa zmeny prejavili hneď).
-const CACHE = 'vt-v21';
+const CACHE = 'vt-v22';
 // náhľady cvikov z appky (videa.vikingsworkout.com): z pamäte hneď, druhé otvorenie bez čakania
 const ICACHE = 'vt-nahlady-v1';
-const SHELL = ['./', 'index.html', 'js/app.js', 'js/pose.js', 'js/db.js', 'js/exercises.js', 'js/recorder.js', 'js/vw.js', 'js/vwui.js', 'logo.png', 'fonts/texturina-latin.woff2', 'fonts/texturina-latin-ext.woff2', 'manifest.webmanifest'];
+const SHELL = ['./', 'index.html', 'js/app.js', 'js/pose.js', 'js/pose-worker.js', 'js/db.js', 'js/exercises.js', 'js/recorder.js', 'js/vw.js', 'js/vwui.js', 'logo.png', 'fonts/texturina-latin.woff2', 'fonts/texturina-latin-ext.woff2', 'manifest.webmanifest'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE && x !== ICACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });
 const pendingImg = new Map();

@@ -424,14 +424,14 @@ on('btnRecBig', () => {
 
 // ---------- v appke: živá kostra, „vidím celé telo“ a počítadlo opakovaní počas nahrávania ----------
 // Je to len orientačný náhľad – presný počet opakovaní a rozbor príde z analýzy celého videa.
-const LIVE = { on: false, model: null, raf: 0, last: 0, lm: null, st: '', cand: '', since: 0, tr: {}, joint: null, hist: [], still0: null, best: 0 };
+const LIVE = { on: false, model: null, failed: false, busy: false, errs: 0, t0: 0, raf: 0, last: 0, lastSt: 0, lm: null, st: '', cand: '', since: 0, tr: {}, joint: null, hist: [], still0: null, best: 0 };
 const JT = { elbow: [[11, 13, 15], [12, 14, 16]], knee: [[23, 25, 27], [24, 26, 28]], hip: [[11, 23, 25], [12, 24, 26]] };
 const JPAIR = { elbow: [13, 14], knee: [25, 26], hip: [23, 24], shoulder: [11, 12], body_line: [23, 24] };
 const LIVE_BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
 function liveStart() {
   if (!VW || LIVE.on) return;
-  LIVE.on = true; LIVE.lm = null; LIVE.st = ''; LIVE.cand = '';
-  liveLandmarker().then(m => { LIVE.model = m; liveStatus(true); });
+  Object.assign(LIVE, { on: true, lm: null, st: '', cand: '', busy: false, errs: 0, failed: false, t0: performance.now() });
+  liveLandmarker().then(m => { LIVE.model = m; LIVE.failed = !m; if (LIVE.on) liveStatus(true); });
   LIVE.raf = requestAnimationFrame(liveTick);
 }
 function liveStop() {
@@ -443,14 +443,25 @@ function liveReset() { LIVE.tr = {}; LIVE.joint = null; LIVE.hist = []; LIVE.sti
 function liveTick(now) {
   if (!LIVE.on) return;
   LIVE.raf = requestAnimationFrame(liveTick);
-  if (!LIVE.model || now - LIVE.last < 80) return; // ~12 snímok za sekundu stačí
-  LIVE.last = now;
+  if (!LIVE.model) { if (now - LIVE.lastSt > 500) { LIVE.lastSt = now; liveStatus(false, now); } return; }
+  if (LIVE.busy || now - LIVE.last < 80) return; // ~12 snímok za sekundu stačí; ďalšia až po výsledku
+  LIVE.last = now; LIVE.busy = true;
   const v = $('recVideo');
-  const lm = detectLive(LIVE.model, v);
-  LIVE.lm = lm;
-  if (recState === 'recording') liveCount(lm, now, v);
-  liveDraw(lm, v);
-  liveStatus(false, now);
+  // výpočet beží mimo hlavného vlákna, tlačidlá reagujú aj počas neho
+  detectLive(LIVE.model, v).then((lm) => {
+    LIVE.busy = false;
+    if (!LIVE.on) return;
+    if (lm === undefined) { // chyba: po niekoľkých za sebou náhľad vypneme, nahrávať sa dá aj tak
+      if (++LIVE.errs >= 5) { LIVE.model = null; LIVE.failed = true; liveDraw(null, v); liveStatus(true); }
+      return;
+    }
+    LIVE.errs = 0;
+    const t = performance.now();
+    LIVE.lm = lm;
+    if (recState === 'recording') liveCount(lm, t, v);
+    liveDraw(lm, v);
+    liveStatus(false, t);
+  });
 }
 // celé telo v zábere: stačí jedna strana tela (pohľad zboku) – rameno, bok, koleno aj členok
 function bodyState(lm) {
@@ -461,7 +472,7 @@ function bodyState(lm) {
 }
 function liveStatus(force, now = performance.now()) {
   if (!VW || !$('recStatus')) return;
-  let st = !LIVE.model ? 'load' : bodyState(LIVE.lm);
+  let st = LIVE.failed ? 'off' : !LIVE.model ? (now - LIVE.t0 > 8000 ? 'slow' : 'load') : bodyState(LIVE.lm);
   if (recState === 'off') st = 'cam';
   // stav meníme až keď vydrží ~0,4 s, aby text neblikal
   if (!force) {
@@ -471,6 +482,7 @@ function liveStatus(force, now = performance.now()) {
   LIVE.st = st; LIVE.cand = st;
   const ok = st === 'ok';
   const txt = st === 'cam' ? 'Zapínam kameru…' : st === 'load' ? 'Pripravujem rozpoznávanie postavy…'
+    : st === 'slow' ? 'Môžeš nahrávať – kostra sa ešte pripravuje' : st === 'off' ? 'Môžeš nahrávať – kostru uvidíš v rozbore'
     : ok ? (recState === 'recording' ? 'Vidím celé telo – cvič ďalej' : recState === 'countdown' ? 'Vidím celé telo – zaujmi polohu' : 'Vidím celé telo – môžeš začať')
     : st === 'part' ? 'Nevidím celé telo – posuň mobil ďalej' : 'Nevidím ťa – postav sa do záberu';
   $('recStatus').className = 'rc-status' + (ok ? ' ok' : st === 'part' || st === 'none' ? ' warn' : '');

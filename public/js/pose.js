@@ -46,18 +46,94 @@ async function getLandmarker() {
   return landmarkerPromise;
 }
 
+// ---------- rozpoznávanie postavy: vo workeri (stránka nikdy nezamrzne), záloha na hlavnom vlákne ----------
+// engine.detect(video, ts) → Promise<33 bodov { x, y, z, visibility } | null>
+let engineP = null;
+export function getEngine() {
+  if (!engineP) {
+    engineP = workerEngine().catch((err) => { console.warn('Rozpoznávanie postavy vo workeri nejde, skúšam priamo:', err); return mainEngine(); });
+    engineP.catch(() => { engineP = null; });
+  }
+  return engineP;
+}
+function resetEngine(eng) {
+  try { eng && eng.close && eng.close(); } catch { /* nič */ }
+  engineP = null;
+}
+async function mainEngine() {
+  const lmk = await getLandmarker();
+  return {
+    kind: 'main',
+    async detect(video, ts) {
+      const res = lmk.detectForVideo(video, ts);
+      return (res.landmarks && res.landmarks[0]) || null;
+    },
+  };
+}
+async function workerEngine() {
+  if (typeof Worker === 'undefined' || typeof createImageBitmap === 'undefined') throw new Error('bez podpory workera');
+  const w = new Worker(new URL('./pose-worker.js', import.meta.url), { type: 'module' });
+  const pending = new Map();
+  let seq = 0, dead = null;
+  const failAll = (msg) => { dead = msg; for (const [, p] of pending) { clearTimeout(p.t); p.rej(new Error(msg)); } pending.clear(); };
+  await new Promise((res, rej) => {
+    const t = setTimeout(() => { rej(new Error('worker sa nepripravil včas')); }, 100_000);
+    w.onmessage = (e) => {
+      const m = e.data || {};
+      if (m.t === 'ready') { clearTimeout(t); res(m.delegate); }
+      else if (m.t === 'fail') { clearTimeout(t); rej(new Error(m.msg)); }
+    };
+    w.onerror = (e) => { clearTimeout(t); rej(new Error((e && e.message) || 'chyba workera')); };
+    w.postMessage({ t: 'init' });
+  }).catch((err) => { try { w.terminate(); } catch { /* nič */ } throw err; });
+  w.onmessage = (e) => {
+    const m = e.data || {};
+    const p = pending.get(m.id);
+    if (!p) return;
+    pending.delete(m.id); clearTimeout(p.t);
+    if (m.t === 'res') p.res(m.lm ? m.lm.map(q => ({ x: q[0], y: q[1], z: q[2], visibility: q[3] })) : null);
+    else p.rej(new Error(m.msg || 'chyba rozpoznávania'));
+  };
+  w.onerror = () => failAll('Rozpoznávanie postavy prestalo fungovať.');
+  // snímka z videa → zmenšený obrázok pre worker (stačí 640 px, model si ho aj tak zmenší)
+  const cv = document.createElement('canvas'), g = cv.getContext('2d');
+  return {
+    kind: 'worker',
+    close() { failAll('zatvorené'); try { w.terminate(); } catch { /* nič */ } },
+    async detect(video, ts) {
+      if (dead) throw new Error(dead);
+      const W = video.videoWidth, H = video.videoHeight;
+      if (!W || !H) return null;
+      const s = Math.min(1, 640 / Math.max(W, H)), cw = Math.round(W * s), ch = Math.round(H * s);
+      if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+      g.drawImage(video, 0, 0, cw, ch);
+      const bmp = await createImageBitmap(cv);
+      return new Promise((res, rej) => {
+        const id = ++seq;
+        const t = setTimeout(() => { pending.delete(id); rej(new Error('Rozpoznávanie postavy neodpovedá.')); }, 20_000);
+        pending.set(id, { res, rej, t });
+        w.postMessage({ t: 'detect', id, bmp, ts: Math.round(ts || performance.now()) }, [bmp]);
+      });
+    },
+  };
+}
+
 // spustí sťahovanie modelu na pozadí, aby bol pripravený, kým si používateľ vyberá video
-export function preload() { getLandmarker().catch(() => {}); }
+export function preload() { getEngine().catch(() => {}); }
 
 // ---------- živý náhľad pri nahrávaní (kostra, celé telo v zábere, počítadlo) ----------
-// Vráti model, keď je pripravený (null, ak sa nepodarilo načítať) – živý náhľad je len doplnok.
-export async function liveLandmarker() { try { return await getLandmarker(); } catch { return null; } }
-// Body tela z aktuálnej snímky živého videa (null = nikto v zábere / chyba).
-export function detectLive(landmarker, video) {
-  if (!landmarker || !video || video.readyState < 2 || !video.videoWidth) return null;
-  lastTs = Math.max(lastTs + 30, Math.round(performance.now())); // časy musia stále rásť (zdieľame model s analýzou)
-  try { const res = landmarker.detectForVideo(video, lastTs); return (res.landmarks && res.landmarks[0]) || null; }
-  catch { return null; }
+// Vráti rozpoznávanie, keď je pripravené (null, ak sa nepodarilo načítať) – živý náhľad je len doplnok.
+export async function liveLandmarker() { try { return await getEngine(); } catch { return null; } }
+// Body tela z aktuálnej snímky živého videa. Vráti undefined pri chybe, null keď nikto nie je v zábere.
+// čas snímok musí stále rásť (model zdieľa živý náhľad aj analýzu): živý náhľad ide v reálnom čase, posunutý za analýzu
+let liveOff = 0;
+export async function detectLive(engine, video) {
+  if (!engine || !video || video.readyState < 2 || !video.videoWidth) return null;
+  let ts = Math.round(performance.now() + liveOff);
+  if (ts <= lastTs) { liveOff += lastTs + 1 - ts; ts = lastTs + 1; }
+  lastTs = ts;
+  try { return await engine.detect(video, ts); }
+  catch { return undefined; }
 }
 // uhol ABC (normalizované súradnice, pomer strán videa) – pre živé počítadlo
 export function liveAngle(lm, a, b, c, W = 1, H = 1) {
@@ -269,7 +345,7 @@ function detectReps(values, { minAmp = 25, startType = null } = {}) {
 // ---------- hlavná funkcia ----------
 export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, onProgress = () => {}, onFrame = null } = {}) {
   onProgress(0, 'Načítavam model na rozpoznanie postavy…');
-  const [landmarker, v] = await Promise.all([getLandmarker(), loadVideo(file)]);
+  const [engine, v] = await Promise.all([getEngine(), loadVideo(file)]);
   try { await v.play(); v.pause(); } catch { /* iOS niekedy potrebuje play pred seekovaním */ }
 
   const W = v.videoWidth, H = v.videoHeight;
@@ -291,13 +367,14 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   for (let t = 0; t < duration; t += step) {
     await seek(v, t);
     lastTs = Math.max(lastTs + 1, base + Math.round(t * 1000));
-    let res;
-    try { res = landmarker.detectForVideo(v, lastTs); }
+    let lm;
+    try { lm = await engine.detect(v, lastTs); }
     catch (e) {
-      landmarkerPromise = null; // model resetneme, pri ďalšom pokuse sa vytvorí nový
+      // rozpoznávanie resetneme, pri ďalšom pokuse sa vytvorí nové
+      if (engine.kind === 'main') landmarkerPromise = null;
+      resetEngine(engine);
       throw new Error('Rozpoznávanie postavy zlyhalo. Skús to znova, prípadne obnov stránku.');
     }
-    const lm = res.landmarks && res.landmarks[0];
     frames.push({ t, lm: lm || null, m: lm ? frameMetrics(lm, W, H) : null });
     if (clipOk && (frames.length - 1) % stride === 0) {
       try {

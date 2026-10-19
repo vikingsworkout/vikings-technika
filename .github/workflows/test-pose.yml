@@ -1,0 +1,45 @@
+# Skúška rozpoznávania postavy naostro (Chromium aj WebKit, skutočný MediaPipe a video zhybov).
+# Spúšťa sa pri pushi do vetvy test-pose; výsledky (JSON + snímky obrazovky) idú do vetvy test-vysledky.
+name: test-pose
+on:
+  workflow_dispatch:
+  push:
+    branches: [test-pose]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Nástroje
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+          mkdir -p /tmp/t && cd /tmp/t && npm init -y > /dev/null && npm i -q playwright@1.48.2 > /dev/null
+          npx playwright install --with-deps chromium webkit > /dev/null
+      - name: Video zhybov
+        run: |
+          cd /tmp/t
+          curl -sSL -A Mozilla/5.0 "https://videa.vikingsworkout.com/exercises/h1-slucka3.mp4?v=1791493724977&l=1791964006762" -o h1.mp4
+          ffmpeg -v error -y -stream_loop 2 -i h1.mp4 -t 14 -vf "scale=-2:720" -c:v libvpx-vp9 -b:v 1500k -an video.webm
+          ffmpeg -v error -y -stream_loop 6 -i h1.mp4 -t 40 -vf "scale=640:360,fps=24" -pix_fmt yuv420p cam.y4m
+          ls -la
+      - name: Skúška
+        run: |
+          (cd public && python3 -m http.server 8080 > /dev/null 2>&1 &)
+          sleep 1
+          cp .github/test/pose-test.mjs /tmp/t/
+          cd /tmp/t && node pose-test.mjs || true
+      - name: Uloženie výsledkov
+        if: always()
+        run: |
+          cd /tmp/t
+          git init -q r && cd r
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          cp -r ../vysledky/. . 2>/dev/null || echo "bez výsledkov" > prazdne.txt
+          git add -A && git commit -qm "Výsledky skúšky rozpoznávania postavy"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:test-vysledky
