@@ -67,7 +67,7 @@ async function run(name, type, launchOpts, { camera = false, extra = '' } = {}) 
       await phase(pg, 'analyza suboru');
       await pg.setInputFiles('#inFile', 'video.webm');
     }
-    await pg.waitForFunction(() => /spočítané|zmeraný|zmeraná|nepodarilo|zlyhalo/i.test(document.body.innerText), null, { timeout: 240000 });
+    await pg.waitForFunction(() => window.__vtDebug || /nepodarilo|zlyhalo/i.test(document.body.innerText), null, { timeout: 240000 });
     await pg.waitForTimeout(500);
     r.analyzaS = (Date.now() - t0) / 1000;
     r.kroky = (await pg.innerText('#workSteps').catch(() => '')).replace(/\n/g, ' | ');

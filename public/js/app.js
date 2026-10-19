@@ -591,9 +591,9 @@ function showError(msg, needCode = false) {
 
 // ---------- v appke: obrazovka Analýza (kroky, náhľad s kostrou) ----------
 // stage: model → scan (prechádzanie videa) → frames (uhly a tempo) → ai (rozbor) → done
-const AN = { stage: 'model', p: 0, people: false, t: 0, dur: 0, reps: 0, hold: 0, isHold: false, down: null, ai: 0 };
+const AN = { stage: 'model', p: 0, people: false, measured: false, t: 0, dur: 0, reps: 0, hold: 0, isHold: false, down: null, ai: 0 };
 function workReset(stage = 'model') {
-  Object.assign(AN, { stage, p: 0, people: stage !== 'model', t: 0, dur: 0, reps: 0, hold: 0, isHold: pickHold(), down: null, ai: 0 });
+  Object.assign(AN, { stage, p: 0, people: stage !== 'model', measured: false, t: 0, dur: 0, reps: 0, hold: 0, isHold: pickHold(), down: null, ai: 0 });
   if (!VW) return;
   const nm = !isAutoPick() ? pick.name : (current?.exercise?.hint || '');
   $('workKick').innerHTML = `${IC.kick}<span>${esc(('TECHNIKA' + (nm ? ' · ' + nm : '')).toUpperCase())}</span>`;
@@ -618,12 +618,12 @@ function renderSteps() {
   const s1 = AN.people ? done('Telo nájdené', `${CLIP_PTS.length} bodov na tele v každej snímke`)
     : act('Hľadám telo', at === 0 ? 'Načítavam rozpoznávanie postavy' : 'Prechádzam video');
   const s2 = at < 1 ? todo(hold ? 'Meriam výdrž' : 'Počítam opakovania', hold ? 'ako dlho a ako stabilne' : 'každé opakovanie zvlášť')
-    : at === 1 ? act(hold ? 'Meriam výdrž' : selected.id === 'auto' ? 'Meriam pohyb' : 'Počítam opakovania', '', AN.p)
+    : at === 1 || !AN.measured ? act(hold ? 'Meriam výdrž' : selected.id === 'auto' ? 'Meriam pohyb' : 'Počítam opakovania', '', at === 1 ? AN.p : 1)
     : hold ? done('Výdrž zmeraná', AN.hold ? `výdrž ${AN.hold} s` : 'výdrž som nenašiel, rozbor to skúsi aj tak')
     : AN.reps ? done('Opakovania spočítané', `${AN.reps} ${plural(AN.reps, 'opakovanie', 'opakovania', 'opakovaní')} za ${Math.round(AN.dur)} sekúnd`)
     : done('Pohyb zmeraný', 'opakovania som nenašiel, rozbor to skúsi aj tak');
   const s3 = at < 2 ? todo(hold ? 'Meriam líniu tela' : 'Meriam uhly a tempo', hold ? 'línia tela a stabilita' : 'uhly kĺbov v každej snímke')
-    : at === 2 ? act(hold ? 'Meriam líniu tela' : 'Meriam uhly a tempo', 'kľúčové snímky')
+    : at === 2 || !AN.measured ? act(hold ? 'Meriam líniu tela' : 'Meriam uhly a tempo', 'kľúčové snímky')
     : done(hold ? 'Línia tela zmeraná' : 'Uhly a tempo zmerané', hold ? 'línia tela a stabilita' : AN.down != null ? `spúšťanie ${String(AN.down).replace('.', ',')} s, rozsah každého opakovania` : 'uhly kĺbov v každej snímke');
   const s4 = at < 3 ? todo('Rozbor a skóre', 'čo zlepšiť a ako na 100 bodov')
     : at === 3 ? act('Rozbor a skóre', '', AN.ai) : done('Rozbor a skóre', 'hotovo');
@@ -742,7 +742,7 @@ async function startAnalysis(file) {
 function workMeasured(sm, clip) {
   if (!VW || !sm) return;
   const act = sm.active_segment;
-  Object.assign(AN, { people: true, isHold: sm.exercise_type === 'hold', reps: sm.reps_detected || 0, hold: Math.round(sm.hold?.duration_s || 0),
+  Object.assign(AN, { people: true, measured: true, isHold: sm.exercise_type === 'hold', reps: sm.reps_detected || 0, hold: Math.round(sm.hold?.duration_s || 0),
     dur: act ? Math.max(0, act.end_s - act.start_s) : (sm.video?.analyzed_s || 0), down: sm.tempo?.avg_down_s ?? null });
   if (AN.isHold) $('workTitle').textContent = 'Analyzujem tvoju výdrž';
   AN.stage = 'ai'; renderSteps(); workPill();
