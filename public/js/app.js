@@ -70,7 +70,7 @@ async function renderHome() {
   $('lastTip').innerHTML = last && tip && !tip.good ? `
     <button class="lasttip" id="btnLast" style="appearance:none;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer">
       <span class="sc" style="color:${scoreColor(last.result?.score)}">${last.result?.score ?? '–'}</span>
-      <span><span class="k" style="display:block">POSLEDNE: ${esc(lastName.toUpperCase())}</span><span class="t" style="display:block">Dnes sa sústreď: ${esc(tip.title)}</span></span>
+      <span><span class="k" style="display:block">POSLEDNE: ${esc(lastName.toUpperCase())}</span><span class="t" style="display:block">Dnes sa sústreď: ${esc(tip.title)}</span></span><span class="ar" aria-hidden="true">›</span>
     </button>` : '';
   if ($('btnLast')) $('btnLast').onclick = () => { location.hash = '#/r/' + last.id; };
   $('btnStart').onclick = () => { location.hash = '#/nova'; };

@@ -81,7 +81,7 @@ p { line-height: 1.5; margin: 0 0 12px; }
 .hero { background: linear-gradient(160deg, #1F2632, #141921); border: 1px solid var(--line); border-radius: 26px; padding: 22px; margin-bottom: 30px; }
 .hero h1 { margin: 0 0 8px; font-size: 32px; }
 .hero > p { margin: 0 0 18px; font-size: 17px; color: var(--mu); line-height: 1.4; }
-.hero .btn { margin-bottom: 4px; }
+.hero .btn { margin-bottom: 0; }
 .hero .btn.ghost { margin-bottom: -6px; }
 .steps { list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .steps li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--tx2); line-height: 1.25; }
@@ -89,10 +89,11 @@ p { line-height: 1.5; margin: 0 0 12px; }
 .steps .si { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; color: var(--acc);
   background: linear-gradient(150deg, rgba(255,122,61,.22), rgba(255,122,61,.06)); box-shadow: inset 0 0 0 1px rgba(255,122,61,.28); }
 .steps svg { width: 30px; height: 30px; }
-.lasttip { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 16px; background: #1E1612; border: 1px solid rgba(255,122,61,.25); margin-bottom: 18px; }
-.lasttip .sc { flex: none; font-family: var(--num); font-weight: 800; font-size: 30px; line-height: 1; min-width: 40px; }
-.lasttip .k { font-size: 12.5px; font-weight: 800; letter-spacing: .1em; color: var(--acc); margin-bottom: 3px; }
-.lasttip .t { font-size: 16px; font-weight: 700; line-height: 1.3; }
+.lasttip { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid var(--line); margin-top: 12px; }
+.lasttip .sc { flex: none; font-family: var(--num); font-weight: 800; font-size: 22px; line-height: 1; min-width: 28px; }
+.lasttip .k { font-size: 11px; font-weight: 800; letter-spacing: .1em; color: var(--dim); margin-bottom: 2px; }
+.lasttip .t { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--tx2); }
+.lasttip .ar { flex: none; margin-left: auto; color: var(--dim); font-size: 18px; }
 
 /* domov: videá ako vedľajší pás */
 .hhead { display: flex; justify-content: space-between; align-items: baseline; margin: 0 4px 10px; }
@@ -265,8 +266,8 @@ details.card[open] > summary { margin-bottom: 12px; }
           <path d="M4 6a2.5 2.5 0 0 1 2.5-2.5h11A2.5 2.5 0 0 1 20 6v7.5a2.5 2.5 0 0 1-2.5 2.5h-6l-4.3 3.8V16h-.7A2.5 2.5 0 0 1 4 13.5z" fill="currentColor" fill-opacity=".16"/>
           <path d="M8.6 9.9l2.3 2.3 4.6-4.6"/></svg></span>Dostaneš rady</li>
       </ol>
-      <div id="lastTip"></div>
       <button class="btn pri" id="btnStart"><span class="dot"></span>Natočiť nový cvik</button>
+      <div id="lastTip"></div>
     </div>
     <div id="histWrap" hidden>
       <div class="hhead"><h2>Tvoje videá</h2><span id="histCount"></span></div>
