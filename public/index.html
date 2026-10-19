@@ -101,13 +101,18 @@ p { line-height: 1.5; margin: 0 0 12px; }
 .hhead span { font-size: 14px; color: var(--dim); }
 .vstrip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 0 16px 8px; scroll-padding: 0 16px; scrollbar-width: none; }
 .vstrip::-webkit-scrollbar { display: none; }
-.vt { appearance: none; border: 0; padding: 0; text-align: left; cursor: pointer; border-radius: 16px; overflow: hidden; background: var(--s1); display: flex; flex-direction: column; flex: none; width: 128px; scroll-snap-align: start; }
-.vt .ph { position: relative; height: 150px; background: linear-gradient(160deg, #2A3344, #151A23); }
+.vt { flex: none; width: 150px; scroll-snap-align: start; border-radius: 16px; overflow: hidden; background: var(--s1); display: flex; flex-direction: column; }
+.vt .open { appearance: none; border: 0; padding: 0; background: none; text-align: left; cursor: pointer; display: block; width: 100%; }
+.vt .ph { position: relative; height: 160px; background: linear-gradient(160deg, #2A3344, #151A23); }
 .vt .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .vt .sc { position: absolute; left: 8px; top: 8px; padding: 2px 8px; border-radius: 99px; background: rgba(0,0,0,.7); font-family: var(--num); font-weight: 800; font-size: 16px; }
-.vt .meta { padding: 8px 10px 10px; }
+.vt .meta { padding: 8px 10px 6px; }
 .vt .meta b { display: block; font-size: 13.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vt .meta span { font-size: 12px; color: var(--mu); }
+.vt .again { appearance: none; border: 0; margin: 4px 8px 8px; padding: 9px 6px; border-radius: 10px; background: color-mix(in srgb, var(--btn) 22%, var(--s2)); color: #FFD3BF;
+  font-size: 12.5px; font-weight: 800; line-height: 1.2; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.vt .again svg { width: 14px; height: 14px; flex: none; }
+.vt .again:active { transform: scale(.97); }
 
 /* nové video */
 .exlist { display: flex; flex-direction: column; margin: 0 4px 18px; }

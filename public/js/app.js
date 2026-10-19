@@ -80,12 +80,18 @@ async function renderHome() {
   $('hist').innerHTML = items.map(it => {
     const s = it.result?.score;
     const name = it.result?.exercise?.name || it.exercise?.name || 'Cvik';
-    return `<button class="vt" data-id="${esc(it.id)}">
-      <div class="ph">${it.thumb ? `<img src="${esc(it.thumb)}" alt="" loading="lazy">` : ''}<span class="sc" style="color:${scoreColor(s)}">${s ?? '–'}</span></div>
-      <div class="meta"><b>${esc(name)}</b><span>${dayLabel(it.created)}</span></div>
-    </button>`;
+    const exId = it.exercise?.id && it.exercise.id !== 'auto' ? it.exercise.id : (matchExercise(it.result?.exercise?.name)?.id || 'auto');
+    return `<div class="vt">
+      <button class="open" data-id="${esc(it.id)}" aria-label="Otvoriť rozbor: ${esc(name)}">
+        <div class="ph">${it.thumb ? `<img src="${esc(it.thumb)}" alt="" loading="lazy">` : ''}<span class="sc" style="color:${scoreColor(s)}">${s ?? '–'}</span></div>
+        <div class="meta"><b>${esc(name)}</b><span>${dayLabel(it.created)}</span></div>
+      </button>
+      <button class="again" data-ex="${esc(exId)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Skúsiť znova lepšie</button>
+    </div>`;
   }).join('');
-  $('hist').querySelectorAll('.vt').forEach(b => b.onclick = () => { location.hash = '#/r/' + b.dataset.id; });
+  $('hist').querySelectorAll('.vt .open').forEach(b => b.onclick = () => { location.hash = '#/r/' + b.dataset.id; });
+  // rovnaký cvik ako na videu, rovno na výber s predvoleným cvikom
+  $('hist').querySelectorAll('.vt .again').forEach(b => b.onclick = () => { selectExercise(b.dataset.ex); location.hash = '#/nova'; });
 }
 
 // ---------- nové video: výber cviku ----------
