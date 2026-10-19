@@ -1,6 +1,6 @@
 // Režim „v appke Viking's Workout“: Technika je otvorená v hlavnej appke (iframe).
 // Parametre: ?vw=1&ex=<názov cviku z appky>&from=detail|set|home&theme=dark|light&po=<origin appky>&r=<id rozboru>
-//   &img=<cesta k náhľadu cviku na videa.vikingsworkout.com>&box=<poloha postavy na náhľade>&day=<JSON dnešného tréningu z plánu>
+//   &img=<cesta k náhľadu cviku na videa.vikingsworkout.com>&box=<poloha postavy na náhľade>&boxp=<na plnom náhľade>&day=<JSON dnešného tréningu z plánu>
 const q = new URLSearchParams(location.search);
 
 export const VW = q.get('vw') === '1';
@@ -21,6 +21,7 @@ export function vwBoxOf(v) {
   return a.length === 4 && a.every(x => Number.isFinite(x) && x >= 0 && x <= 1) && a[2] - a[0] > 0.03 && a[3] - a[1] > 0.03 ? a : null;
 }
 export const vwBox = vwBoxOf(q.get('box'));
+export const vwBoxP = vwBoxOf(q.get('boxp')); // na plnom náhľade, keď stredný chýba
 
 // dnešný (alebo najbližší) tréning z plánu: { l: 'Deň 1 — Ťahy', d: 1 = dnes, x: [{ n, e, s, r, t, sc, p, b }] }
 function parseDay(raw) {
@@ -31,7 +32,7 @@ function parseDay(raw) {
     const x = (Array.isArray(o.x) ? o.x : []).slice(0, 14).map(e => ({
       n: String(e.n || '').replace(/\s+/g, ' ').trim().slice(0, 80), e: String(e.e || '').slice(0, 60),
       s: num(e.s, 20), r: num(e.r, 500), t: num(e.t, 3600), sc: e.sc == null ? null : Math.max(0, Math.min(100, num(e.sc, 100))),
-      img: vwImgUrl(e.p), box: vwBoxOf(e.b),
+      img: vwImgUrl(e.p), box: vwBoxOf(e.b), boxp: vwBoxOf(e.bp),
     })).filter(e => e.n);
     return x.length ? { l: String(o.l || '').slice(0, 60), d: !!o.d, x } : null;
   } catch { return null; }

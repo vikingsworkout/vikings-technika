@@ -2,7 +2,7 @@ import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor } f
 import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive, liveAngle } from './pose.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
-import { VW, vwFrom, vwExName, vwResultId, vwPost, vwImg, vwBox, vwDay, vwEmbedded, vwNoMap } from './vw.js';
+import { VW, vwFrom, vwExName, vwResultId, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap } from './vw.js';
 import { IC, frameSvg, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
 
 const $ = (id) => document.getElementById(id);
@@ -37,17 +37,17 @@ let pendingFile = null;    // video, ktoré sa analyzuje (pre "skúsiť znova")
 // ktorého sa meria (výdrže a cviky, ktoré nevieme merať presne, rozpozná automatický režim s názvom ako nápovedou),
 // `guide` je cvik, podľa ktorého ukážeme návod na natočenie a čo appka skontroluje.
 let vwHint = '';
-let pick = null;           // { src: 'app' | 'list' | 'auto', name, eid, img, box, guide, measure }
-function makePick(src, name, { id = null, eid = '', img = '', box = null } = {}) {
+let pick = null;           // { src: 'app' | 'list' | 'auto', name, eid, img, box, boxp, guide, measure }
+function makePick(src, name, { id = null, eid = '', img = '', box = null, boxp = null } = {}) {
   const e = id ? findExercise(id) : (name && !vwNoMap(name) ? matchExercise(name) : null);
   const guide = e && e.id !== 'auto' ? e : null;
-  return { src, name, eid, img, box: img ? box : null, guide, measure: guide && !isHold(guide) ? guide : AUTO };
+  return { src, name, eid, img, box: img ? box : null, boxp: img ? boxp : null, guide, measure: guide && !isHold(guide) ? guide : AUTO };
 }
 function applyPick(p) {
   pick = p; selected = p.measure;
   vwHint = selected.id === 'auto' && p.src !== 'auto' ? p.name : '';
 }
-const appPick = VW && vwExName ? makePick('app', vwExName, { img: vwImg, box: vwBox }) : null;
+const appPick = VW && vwExName ? makePick('app', vwExName, { img: vwImg, box: vwBox, boxp: vwBoxP }) : null;
 if (appPick) applyPick(appPick);
 const ICON_BACK = IC.back;
 const ICON_X = IC.x;
@@ -180,6 +180,22 @@ const picSvg = (id) => {
 };
 const ICON_AI = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9zM5.5 15l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/></svg>';
 const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
+// názov cviku v 4. páde do nadpisu „Natoč …“: Húsenica → húsenicu, Široká stojka → širokú stojku,
+// Medvedia chôdza → medvediu chôdzu; mení sa len úvod názvu po prvú predložku alebo zátvorku
+const PREP = /^(na|s|so|v|vo|do|z|zo|o|k|ku|pri|za|pod|nad|cez|bez|po|od|pred|medzi)$/i;
+function accName(n) {
+  const w = String(n || '').split(' ');
+  for (let i = 0; i < w.length; i++) {
+    const x = w[i];
+    if (PREP.test(x) || /[()0-9°]/.test(x)) break;
+    // prídavné mená (široká, medvedia) a za nimi podstatné meno; po podstatnom mene koniec (Poloha dieťaťa → polohu dieťaťa)
+    if (/á$/.test(x)) { w[i] = x.slice(0, -1) + 'ú'; continue; }
+    if (/[^csz]ia$/i.test(x)) { w[i] = x.slice(0, -2) + 'iu'; continue; }
+    if (/a$/i.test(x)) w[i] = x.slice(0, -1) + 'u';
+    break;
+  }
+  return w.join(' ');
+}
 // "Klik" → "klik", "L-sit" ostane
 const lowerName = (n) => /^\p{Lu}\p{Ll}/u.test(n) ? n.charAt(0).toLowerCase() + n.slice(1) : n;
 
@@ -208,7 +224,7 @@ const pickHold = () => !!(pick && pick.guide && isHold(pick.guide));
 function renderShoot() {
   const g = pick.guide, G = g || AUTO, max = maxSecondsFor(selected);
   const auto = isAutoPick();
-  $('newTitle').textContent = auto ? 'Natoč cvik' : 'Natoč ' + lowerName(pick.name);
+  $('newTitle').textContent = auto ? 'Natoč cvik' : 'Natoč ' + lowerName(accName(pick.name));
   $('newSub').textContent = auto ? 'Cvik aj výdrž spoznám automaticky' : `${pick.name} · ${pickHold() ? 'jedna výdrž' : g ? 'jedna séria' : 'séria alebo výdrž'}`;
   const pic = g && EX_PIC[g.id] ? picSvg(g.id).replace('class="pic"', 'class="sh-pic"') : `<span class="sh-pic ai">${ICON_AI}</span>`;
   $('shPrev').innerHTML = `<div class="sh-ph">${pic}</div>`
@@ -222,7 +238,7 @@ function renderShoot() {
     img.onload = ok;
     img.onerror = () => {
       // náhľad v strednej veľkosti chýba → plný náhľad, inak piktogram
-      if (/-mid\.jpg/i.test(img.src)) { img.src = img.src.replace(/-mid\.jpg/i, '.jpg'); return; }
+      if (/-mid\.jpg/i.test(img.src)) { pick.box = pick.boxp || null; img.src = img.src.replace(/-mid\.jpg/i, '.jpg'); return; } // plný náhľad má vlastnú polohu postavy
       img.remove(); pick.img = ''; pick.box = null; $('shPrev').classList.remove('loading'); layoutShot(); preloadSoon(300);
     };
     img.src = pick.img;
@@ -249,10 +265,10 @@ function layoutShot() {
   if (img && img.naturalWidth) {
     const W = img.naturalWidth, H = img.naturalHeight, b = pick.box;
     const cover = Math.max(CW / W, CH / H);
-    // postava zaberie väčšinu výšky karty (najviac 1,6× priblíženie, aby obrázok nebol rozmazaný)
-    const fit = b ? Math.min(0.74 * CH / ((b[3] - b[1]) * H), 0.84 * CW / ((b[2] - b[0]) * W)) : cover;
-    const s = Math.max(cover, Math.min(1.6 * cover, fit)), DW = W * s, DH = H * s;
-    const cx = b ? (b[0] + b[2]) / 2 : 0.5, cy = b ? (b[1] + b[3]) / 2 : 0.48;
+    // postava zaberie väčšinu karty, nad ňou ostane miesto na štítok (najviac 1,35× priblíženie, aby obrázok nebol rozmazaný)
+    const fit = b ? Math.min(0.66 * CH / ((b[3] - b[1]) * H), 0.8 * CW / ((b[2] - b[0]) * W)) : cover;
+    const s = Math.max(cover, Math.min(1.35 * cover, fit)), DW = W * s, DH = H * s;
+    const cx = b ? (b[0] + b[2]) / 2 : 0.5, cy = b ? (b[1] + b[3]) / 2 - 8 / DH : 0.48; // o kúsok nižšie kvôli štítku
     const ox = Math.min(0, Math.max(CW - DW, CW / 2 - cx * DW)), oy = Math.min(0, Math.max(CH - DH, CH / 2 - cy * DH));
     Object.assign(img.style, { left: ox + 'px', top: oy + 'px', width: DW + 'px', height: DH + 'px' });
     if (b) {
@@ -316,7 +332,7 @@ function renderPick() {
     }).join('')}</section>` : '';
   $('pkDay').querySelectorAll('.pk-row').forEach(b => b.onclick = () => {
     const x = d.x[Number(b.dataset.i)];
-    applyPick(makePick('list', x.n, { eid: x.e, img: x.img, box: x.box })); go('#/nova');
+    applyPick(makePick('list', x.n, { eid: x.e, img: x.img, box: x.box, boxp: x.boxp })); go('#/nova');
   });
   $('pkGrid').innerHTML = PICK_TILES.map((t, i) => `<button class="pk-tile" data-i="${i}"><b>${esc(t.n)}</b><span>${esc(t.c)}</span></button>`).join('');
   $('pkGrid').querySelectorAll('.pk-tile').forEach(b => b.onclick = () => {
