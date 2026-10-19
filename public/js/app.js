@@ -1,13 +1,26 @@
 import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor } from './exercises.js';
-import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES } from './pose.js';
+import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive, liveAngle } from './pose.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
-import { VW, vwFrom, vwExName, vwResultId, vwPost, vwPick } from './vw.js';
+import { VW, vwFrom, vwExName, vwResultId, vwPost, vwImg, vwDay, vwEmbedded, vwNoMap } from './vw.js';
+import { IC, FRAME_SVG, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
 
 const $ = (id) => document.getElementById(id);
+const on = (id, fn, ev = 'click') => { const el = $(id); if (el) el.addEventListener(ev, fn); };
+const hide = (id, h) => { const el = $(id); if (el) el.hidden = h; };
+// v appke Viking's Workout: obrazovky podľa návrhu „Technika vo Viking's Workout“
+if (VW) {
+  $('vNew').innerHTML = NEW_HTML;
+  $('vPick').innerHTML = PICK_HTML;
+  $('vRec').innerHTML = REC_HTML;
+  $('vWork').innerHTML = WORK_HTML;
+  $('player').innerHTML = PLAYER_HTML;
+  const hd = document.querySelector('header');
+  hd.insertBefore($('btnHome'), hd.firstChild);
+}
 // v appke Viking's Workout meníme obrazovky bez nových záznamov v histórii (Späť v appke zatvorí Techniku)
 const go = (h) => { if (VW) location.replace(h); else location.hash = h; };
-const views = ['vHome', 'vNew', 'vRec', 'vWork', 'vResult'];
+const views = ['vHome', 'vPick', 'vNew', 'vRec', 'vWork', 'vResult'];
 const ls = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* nič */ } },
@@ -20,30 +33,43 @@ const storedEx = findExercise(ls.get('vt-ex'));
 let selected = storedEx && !isHold(storedEx) ? storedEx : AUTO; // výdrže rozpozná automatický režim
 let current = null;        // práve spracovávaná analýza
 let pendingFile = null;    // video, ktoré sa analyzuje (pre "skúsiť znova")
-// v appke: cvik príde z detailu cviku alebo z tréningu; čo nevieme merať presne, rozpozná automatický režim s názvom ako nápovedou
+// v appke: čo sa natáča. Názov je z appky (detail cviku, tréning) alebo z výberu cviku; `measure` je cvik, podľa
+// ktorého sa meria (výdrže a cviky, ktoré nevieme merať presne, rozpozná automatický režim s názvom ako nápovedou),
+// `guide` je cvik, podľa ktorého ukážeme návod na natočenie a čo appka skontroluje.
 let vwHint = '';
-let vwGrid = false;        // v appke najprv len vybraný cvik, mriežka až po „Iný cvik“
-if (VW && vwExName) {
-  const m = vwPick(matchExercise);
-  selected = m && !isHold(m) ? m : AUTO;
-  vwHint = selected.id === 'auto' ? vwExName : '';
+let pick = null;           // { src: 'app' | 'list' | 'auto', name, eid, img, guide, measure }
+function makePick(src, name, { id = null, eid = '', img = '' } = {}) {
+  const e = id ? findExercise(id) : (name && !vwNoMap(name) ? matchExercise(name) : null);
+  const guide = e && e.id !== 'auto' ? e : null;
+  return { src, name, eid, img, guide, measure: guide && !isHold(guide) ? guide : AUTO };
 }
-const ICON_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
-const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function applyPick(p) {
+  pick = p; selected = p.measure;
+  vwHint = selected.id === 'auto' && p.src !== 'auto' ? p.name : '';
+}
+const appPick = VW && vwExName ? makePick('app', vwExName, { img: vwImg }) : null;
+if (appPick) applyPick(appPick);
+const ICON_BACK = IC.back;
+const ICON_X = IC.x;
+const KICK = (txt) => `<span class="kick">${IC.kick}<span>${esc(txt)}</span></span>`;
 
 function show(view) {
-  if (view !== 'vRec') recorder.close();
+  if (view !== 'vRec') { recorder.close(); liveStop(); }
+  if (view !== 'vWork') workLoopStop();
   views.forEach(v => { $(v).hidden = v !== view; });
   $('btnHome').hidden = VW ? false : view === 'vHome';
   if (VW) {
-    // na začiatku a na výsledku krížik zatvorí Techniku, pri nahrávaní a analýze šípka vráti späť
-    const mode = view === 'vNew' || view === 'vResult' || view === 'vHome' ? 'close' : 'back';
+    document.body.dataset.view = view;
+    document.querySelector('header').classList.toggle('hide', view === 'vRec' || view === 'vWork');
+    // Výber a Natoč: šípka späť (prvá obrazovka Techniku zatvorí), výsledok: krížik zatvorí Techniku
+    const close = view === 'vResult' || view === 'vHome' || (view === 'vPick' && !appPick) || (view === 'vNew' && pick && pick.src === 'app');
     const b = $('btnHome');
-    if (b.dataset.mode !== mode) {
-      b.dataset.mode = mode;
-      b.innerHTML = mode === 'close' ? ICON_X : ICON_BACK;
-      b.setAttribute('aria-label', mode === 'close' ? 'Zavrieť Techniku' : 'Späť');
-    }
+    b.dataset.mode = close ? 'close' : 'back';
+    const ico = view === 'vResult' || view === 'vHome' ? 'x' : 'back';
+    if (b.dataset.ico !== ico) { b.dataset.ico = ico; b.innerHTML = ico === 'x' ? ICON_X : ICON_BACK; }
+    b.setAttribute('aria-label', close ? 'Zavrieť Techniku' : 'Späť');
+    $('hRight').innerHTML = view === 'vNew' ? '<button class="hlink" id="btnOther">Iný cvik</button>' : KICK('TECHNIKA');
+    on('btnOther', () => go('#/vyber'));
   }
   $('btnNew').hidden = true; // na domove je hlavné tlačidlo priamo v karte
   closeViewer(); closePlayer();
@@ -53,19 +79,32 @@ function show(view) {
 // ---------- smerovanie ----------
 async function route() {
   const h = location.hash;
-  if (h === '#/nova') { renderNew(); show('vNew'); preload(); return; }
+  if (h === '#/vyber' && VW) { renderPick(); show('vPick'); preload(); return; }
+  if (h === '#/nova') {
+    if (VW && !pick) { go('#/vyber'); return; }
+    renderNew(); show('vNew'); preload(); return;
+  }
   if (h === '#/nahravanie') { show('vRec'); openRecorder(); return; }
   if (h.startsWith('#/r/')) {
     const item = (current && current.id === h.slice(4)) ? current : await db.get(h.slice(4));
     if (item && item.result) { current = item; renderResult(item); show('vResult'); return; }
   }
   if (h === '#/praca' && current) { show('vWork'); return; }
-  if (VW) { renderNew(); show('vNew'); preload(); return; } // v appke sa začína rovno natáčaním
+  if (VW) { // v appke sa začína natáčaním cviku z appky, inak výberom cviku
+    if (pick) { renderNew(); show('vNew'); } else { renderPick(); show('vPick'); }
+    preload(); return;
+  }
   renderHome(); show('vHome');
 }
 window.addEventListener('hashchange', route);
 $('btnHome').onclick = () => {
-  if (VW && $('btnHome').dataset.mode === 'close') { vwPost('close'); return; }
+  if (VW) {
+    if ($('btnHome').dataset.mode === 'close') { vwPost('close'); return; }
+    const h = location.hash;
+    if (h === '#/vyber') { if (appPick) applyPick(appPick); go('#/nova'); return; } // späť na cvik z appky
+    go(h === '#/nova' ? '#/vyber' : '#/nova');
+    return;
+  }
   // z výsledku a výberu cviku späť domov, z nahrávania späť na výber cviku
   go(location.hash === '#/nahravanie' ? '#/nova' : '#/');
 };
@@ -145,55 +184,108 @@ const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const lowerName = (n) => /^\p{Lu}\p{Ll}/u.test(n) ? n.charAt(0).toLowerCase() + n.slice(1) : n;
 
 function renderNew() {
+  if (VW) { renderShoot(); return; }
   const on = (id) => id === selected.id;
   const tick = `<span class="chk">${ICON_TICK}</span>`;
   const tile = (e) => `<button class="tile" data-id="${e.id}" aria-pressed="${on(e.id)}">${on(e.id) ? tick : ''}${picSvg(e.id)}<span class="nm">${esc(e.name)}</span></button>`;
-  // v appke s cvikom z detailu alebo z tréningu: len tento cvik, mriežka až po „Iný cvik“
-  const fixed = VW && vwExName && !vwGrid;
-  $('newTitle').textContent = fixed ? 'Natoč ' + lowerName(vwExName) : 'Čo natočíš?';
-  if (fixed) {
-    $('chips').innerHTML = `
-      <div class="vwsel">
-        <span class="vwsel-ic">${selected.id === 'auto' ? ICON_AI : (picSvg(selected.id) || ICON_AI)}</span>
-        <span class="vwsel-t"><b>${esc(vwExName)}</b><span>${selected.id === 'auto' ? 'Cvik aj výdrž spoznám automaticky' : 'Jedna séria, celé telo v zábere'}</span></span>
-        <button class="linkbtn" id="btnOther">Iný cvik</button>
-      </div>`;
-    $('btnOther').onclick = () => { vwGrid = true; renderNew(); };
-  } else {
-    $('chips').innerHTML = `
+  $('newTitle').textContent = 'Čo natočíš?';
+  $('chips').innerHTML = `
     <div class="exgrid">
       <button class="tile ai" data-id="auto" aria-pressed="${on('auto')}">${on('auto') ? tick : ''}<span class="aibox">${ICON_AI}</span><span class="nm">Rozpoznať automaticky</span></button>
       ${EXERCISES.filter(e => !isHold(e)).map(tile).join('')}
     </div>`;
-    $('chips').querySelectorAll('[data-id]').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
-  }
-  const shownName = fixed ? vwExName : selected.name; // v appke názov cviku z appky
-  $('guideText').innerHTML = selected.id === 'auto' ? (vwHint ? `<b>${esc(vwHint)}:</b> ${esc(selected.camera)}` : esc(selected.camera)) : `<b>${esc(shownName)}:</b> ${esc(selected.camera)}`;
+  $('chips').querySelectorAll('[data-id]').forEach(c => c.onclick = () => { selectExercise(c.dataset.id); renderNew(); });
+  $('guideText').innerHTML = selected.id === 'auto' ? esc(selected.camera) : `<b>${esc(selected.name)}:</b> ${esc(selected.camera)}`;
   $('guideSub').textContent = selected.id === 'auto'
     ? `Jedna séria alebo výdrž (plank, stojka, front lever…), najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`
     : `Jedna séria, najviac ${maxSecondsFor(selected)} sekúnd. Celé telo v zábere.`;
-  $('btnRec').innerHTML = `<span class="dot"></span>${selected.id === 'auto' || fixed ? 'Nahrávať' : 'Nahrávať ' + esc(selected.acc || lowerName(selected.name))}`;
+  $('btnRec').innerHTML = `<span class="dot"></span>${selected.id === 'auto' ? 'Nahrávať' : 'Nahrávať ' + esc(selected.acc || lowerName(selected.name))}`;
 }
 
-for (const id of ['inCam', 'inFile']) {
-  $(id).addEventListener('change', (e) => {
+// ---------- v appke: Natoč (návod pred nahrávaním) ----------
+const isAutoPick = () => !pick || pick.src === 'auto';
+const pickHold = () => !!(pick && pick.guide && isHold(pick.guide));
+function renderShoot() {
+  const g = pick.guide, G = g || AUTO, max = maxSecondsFor(selected);
+  const auto = isAutoPick();
+  $('newTitle').textContent = auto ? 'Natoč cvik' : 'Natoč ' + lowerName(pick.name);
+  $('newSub').textContent = auto ? 'Cvik aj výdrž spoznám automaticky' : `${pick.name} · ${pickHold() ? 'jedna výdrž' : g ? 'jedna séria' : 'séria alebo výdrž'}`;
+  const pic = g && EX_PIC[g.id] ? picSvg(g.id).replace('class="pic"', 'class="sh-pic"') : `<span class="sh-pic ai">${ICON_AI}</span>`;
+  $('shPrev').innerHTML = (pick.img ? `<img src="${esc(pick.img)}" alt="Ukážka cviku" referrerpolicy="no-referrer">` : pic)
+    + `<div class="sh-vig"></div>${FRAME_SVG}<span class="sh-ok">${IC.check}Celé telo v zábere</span>`;
+  const img = $('shPrev').querySelector('img');
+  if (img) img.onerror = () => { img.replaceWith(document.createRange().createContextualFragment(pic)); };
+  const row = (ic, html) => `<div class="sh-tip"><span class="sh-ic">${ic}</span><span>${html}</span></div>`;
+  $('shTips').innerHTML = row(IC.phone, `<b>${esc(G.hint)}</b>, ${esc(G.dist)}`)
+    + row(IC.tripod, '<b>Mobil opri stabilne</b> alebo daj na statív')
+    + row(IC.timer, pickHold() ? `<b>Jedna výdrž</b>, najviac ${max} sekúnd` : g ? `<b>Jedna séria</b>, najviac ${max} sekúnd` : `<b>Jedna séria alebo výdrž</b>, najviac ${max} sekúnd`);
+  $('shChecks').innerHTML = (G.checks || []).map(c => `<span>${esc(c)}</span>`).join('');
+  $('btnRec').innerHTML = '<span class="dot"></span>Nahrávať';
+}
+
+// ---------- v appke: Výber cviku ----------
+// ďalšie cviky: kalistenika a výdrže (výdrže a dipy rozpozná automatický režim s názvom ako nápovedou)
+const PICK_TILES = [
+  { n: 'Kliky', c: 'Hrudník', id: 'klik' }, { n: 'Zhyby', c: 'Chrbát', id: 'pritah-hrazda' }, { n: 'Dipy', c: 'Ruky' },
+  { n: 'Drepy', c: 'Nohy', id: 'drep' }, { n: 'Výpady', c: 'Nohy', id: 'vypad' }, { n: 'Mŕtvy ťah', c: 'Chrbát', id: 'mrtvy-tah' },
+  { n: 'Stojka', c: 'Výdrž', id: 'stojka' }, { n: 'L-sit', c: 'Výdrž', id: 'l-sit' }, { n: 'Plank', c: 'Výdrž', id: 'plank' },
+];
+function renderPick() {
+  $('pkAuto').onclick = () => { applyPick(makePick('auto', 'Rozpoznať automaticky', { id: 'auto' })); go('#/nova'); };
+  const d = vwDay;
+  $('pkDay').innerHTML = d ? `
+    <div class="pk-dayh"><span class="vw-cap">${d.d ? 'Z DNEŠNÉHO TRÉNINGU' : 'Z NAJBLIŽŠIEHO TRÉNINGU'}</span><span>${esc(d.l)}</span></div>
+    <section class="vw-card pk-list">${d.x.map((x, i) => {
+      const plan = x.t ? `${x.s ? x.s + ' × ' : ''}${x.t} s` : x.r ? `${x.s ? x.s + ' × ' : ''}${x.r} ${plural(x.r, 'opakovanie', 'opakovania', 'opakovaní')}` : '';
+      const meta = [plan, x.sc != null ? `naposledy ${x.sc} ${plural(x.sc, 'bod', 'body', 'bodov')}` : ''].filter(Boolean).join(' · ');
+      return `<button class="pk-row" data-i="${i}"><span class="pk-ini">${esc((x.n.match(/\p{L}/u) || ['C'])[0].toUpperCase())}</span>
+        <span class="pk-rt"><b>${esc(x.n)}</b>${meta ? `<span>${esc(meta)}</span>` : ''}</span>${IC.chev}</button>`;
+    }).join('')}</section>` : '';
+  $('pkDay').querySelectorAll('.pk-row').forEach(b => b.onclick = () => {
+    const x = d.x[Number(b.dataset.i)];
+    applyPick(makePick('list', x.n, { eid: x.e, img: x.img })); go('#/nova');
+  });
+  $('pkGrid').innerHTML = PICK_TILES.map((t, i) => `<button class="pk-tile" data-i="${i}"><b>${esc(t.n)}</b><span>${esc(t.c)}</span></button>`).join('');
+  $('pkGrid').querySelectorAll('.pk-tile').forEach(b => b.onclick = () => {
+    const t = PICK_TILES[Number(b.dataset.i)];
+    applyPick(makePick('list', t.n, { id: t.id || null })); go('#/nova');
+  });
+}
+
+for (const id of ['inCam', 'inFile', 'inFilePick']) {
+  on(id, (e) => {
     const f = e.target.files && e.target.files[0];
     e.target.value = '';
-    if (f) startAnalysis(f);
-  });
+    if (!f) return;
+    if (id === 'inFilePick') applyPick(makePick('auto', 'Rozpoznať automaticky', { id: 'auto' })); // z výberu: cvik rozpozná appka
+    startAnalysis(f);
+  }, 'change');
 }
 
 
 // ---------- nahrávanie s odpočtom ----------
+let recState = 'off';
 const recorder = new Recorder($('recVideo'), {
   onState: (st, n) => {
-    $('recCd').hidden = st !== 'countdown';
+    recState = st;
+    hide('recCd', st !== 'countdown');
     if (st === 'countdown') $('recCdNum').textContent = n;
-    $('recBadge').hidden = st !== 'recording';
-    $('btnRecStart').hidden = st !== 'ready';
-    $('btnRecStop').hidden = st !== 'recording';
-    $('btnRecCancel').hidden = st !== 'countdown';
-    $('btnFlip').hidden = st !== 'ready';
+    hide('recBadge', st !== 'recording');
+    hide('btnRecStart', st !== 'ready');
+    hide('btnRecStop', st !== 'recording');
+    hide('btnRecCancel', st !== 'countdown');
+    hide('btnFlip', st !== 'ready');
+    if (VW) {
+      const b = $('btnRecBig');
+      b.className = 'rc-btn' + (st === 'recording' ? ' stop' : st === 'countdown' ? ' cancel' : '');
+      b.setAttribute('aria-label', st === 'recording' ? 'Zastaviť a analyzovať' : st === 'countdown' ? 'Zrušiť odpočet' : 'Spustiť nahrávanie');
+      $('recHint').textContent = st === 'recording' ? 'Ťukni, keď dokončíš sériu'
+        : st === 'countdown' ? 'Zaujmi polohu · ťuknutím odpočet zrušíš' : 'Polož mobil a ťukni – máš 5 sekúnd na prípravu';
+      if (st === 'recording') { liveReset(); hide('recCount', false); $('recTime').textContent = '0:00'; }
+      else hide('recCount', true);
+      liveStatus(true);
+      return;
+    }
     $('recHint').textContent = st === 'recording'
       ? (selected.id === 'auto' ? `Cvič alebo drž polohu. Potom stlač Zastaviť (najneskôr po ${maxSecondsFor(selected)} s).` : `Cvič. Nahrávanie sa zastaví samo po ${maxSecondsFor(selected)} s.`)
       : st === 'countdown' ? 'Zaujmi polohu…' : 'Polož mobil, zaujmi polohu. Po stlačení máš 5 sekúnd.';
@@ -210,7 +302,11 @@ $('btnRec').onclick = () => {
 };
 
 async function openRecorder() {
-  try { await recorder.open(); preload(); }
+  if (VW) {
+    $('recName').textContent = isAutoPick() ? 'Rozpoznám automaticky' : pick.name;
+    hide('recCount', true); recState = 'off'; liveStatus(true);
+  }
+  try { await recorder.open(); preload(); liveStart(); }
   catch (e) {
     console.error(e);
     // bez povolenia kamery → systémová kamera mobilu
@@ -218,40 +314,296 @@ async function openRecorder() {
     setTimeout(() => $('inCam').click(), 50);
   }
 }
-$('btnFlip').onclick = () => recorder.flip().catch(() => {});
-$('btnRecStart').onclick = async () => {
+async function recStart() {
   try {
     const file = await recorder.start({ countdown: 5, maxSeconds: maxSecondsFor(selected) });
-    recorder.close();
+    recorder.close(); liveStop();
     startAnalysis(file);
   } catch (e) { if (e) console.error(e); }
-};
-$('btnRecStop').onclick = () => recorder.stop();
-$('btnRecCancel').onclick = () => recorder.cancel();
+}
+on('btnFlip', () => recorder.flip().catch(() => {}));
+on('btnRecStart', recStart);
+on('btnRecStop', () => recorder.stop());
+on('btnRecCancel', () => recorder.cancel());
+on('btnRecX', () => go('#/nova'));
+on('btnRecBig', () => {
+  if (recState === 'ready') recStart();
+  else if (recState === 'recording') recorder.stop();
+  else if (recState === 'countdown') recorder.cancel();
+});
+
+// ---------- v appke: živá kostra, „vidím celé telo“ a počítadlo opakovaní počas nahrávania ----------
+// Je to len orientačný náhľad – presný počet opakovaní a rozbor príde z analýzy celého videa.
+const LIVE = { on: false, model: null, raf: 0, last: 0, lm: null, st: '', cand: '', since: 0, tr: {}, joint: null, hist: [], still0: null, best: 0 };
+const JT = { elbow: [[11, 13, 15], [12, 14, 16]], knee: [[23, 25, 27], [24, 26, 28]], hip: [[11, 23, 25], [12, 24, 26]] };
+const JPAIR = { elbow: [13, 14], knee: [25, 26], hip: [23, 24], shoulder: [11, 12], body_line: [23, 24] };
+const LIVE_BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
+function liveStart() {
+  if (!VW || LIVE.on) return;
+  LIVE.on = true; LIVE.lm = null; LIVE.st = ''; LIVE.cand = '';
+  liveLandmarker().then(m => { LIVE.model = m; liveStatus(true); });
+  LIVE.raf = requestAnimationFrame(liveTick);
+}
+function liveStop() {
+  if (!LIVE.on) return;
+  LIVE.on = false; cancelAnimationFrame(LIVE.raf);
+  const c = $('recCanvas'); if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
+}
+function liveReset() { LIVE.tr = {}; LIVE.joint = null; LIVE.hist = []; LIVE.still0 = null; LIVE.best = 0; liveCountShow(); }
+function liveTick(now) {
+  if (!LIVE.on) return;
+  LIVE.raf = requestAnimationFrame(liveTick);
+  if (!LIVE.model || now - LIVE.last < 80) return; // ~12 snímok za sekundu stačí
+  LIVE.last = now;
+  const v = $('recVideo');
+  const lm = detectLive(LIVE.model, v);
+  LIVE.lm = lm;
+  if (recState === 'recording') liveCount(lm, now, v);
+  liveDraw(lm, v);
+  liveStatus(false, now);
+}
+// celé telo v zábere: stačí jedna strana tela (pohľad zboku) – rameno, bok, koleno aj členok
+function bodyState(lm) {
+  if (!lm) return 'none';
+  const inF = (q) => q && (q.visibility ?? 0) >= 0.5 && q.x > 0.01 && q.x < 0.99 && q.y > 0.01 && q.y < 0.99;
+  if ([11, 23, 25, 27].every(i => inF(lm[i])) || [12, 24, 26, 28].every(i => inF(lm[i]))) return 'ok';
+  return [0, 11, 12, 23, 24].some(i => (lm[i]?.visibility ?? 0) >= 0.5) ? 'part' : 'none';
+}
+function liveStatus(force, now = performance.now()) {
+  if (!VW || !$('recStatus')) return;
+  let st = !LIVE.model ? 'load' : bodyState(LIVE.lm);
+  if (recState === 'off') st = 'cam';
+  // stav meníme až keď vydrží ~0,4 s, aby text neblikal
+  if (!force) {
+    if (st !== LIVE.cand) { LIVE.cand = st; LIVE.since = now; }
+    if (st !== LIVE.st && now - LIVE.since < 400) return;
+  }
+  LIVE.st = st; LIVE.cand = st;
+  const ok = st === 'ok';
+  const txt = st === 'cam' ? 'Zapínam kameru…' : st === 'load' ? 'Pripravujem rozpoznávanie postavy…'
+    : ok ? (recState === 'recording' ? 'Vidím celé telo – cvič ďalej' : recState === 'countdown' ? 'Vidím celé telo – zaujmi polohu' : 'Vidím celé telo – môžeš začať')
+    : st === 'part' ? 'Nevidím celé telo – posuň mobil ďalej' : 'Nevidím ťa – postav sa do záberu';
+  $('recStatus').className = 'rc-status' + (ok ? ' ok' : st === 'part' || st === 'none' ? ' warn' : '');
+  $('recStatusT').textContent = txt;
+}
+function liveCount(lm, now, v) {
+  const W = v.videoWidth || 1, H = v.videoHeight || 1;
+  if (pickHold()) { liveHold(lm, now, W, H); liveCountShow(); return; }
+  const joints = selected.signal ? [selected.signal] : ['elbow', 'knee', 'hip'];
+  const delta = Math.max(20, 0.5 * (selected.minAmp || 30));
+  for (const j of joints) {
+    if (!lm || !JT[j]) continue;
+    const a = JT[j].map(t => liveAngle(lm, t[0], t[1], t[2], W, H)).filter(x => x != null);
+    if (!a.length) continue;
+    const x = a.reduce((s, y) => s + y, 0) / a.length;
+    const tr = LIVE.tr[j] || (LIVE.tr[j] = { ema: x, st: selected.start === 'bottom' ? 'down' : 'up', ext: x, n: 0, lo: x, hi: x });
+    tr.ema = tr.ema * 0.5 + x * 0.5;
+    tr.lo = Math.min(tr.lo, tr.ema); tr.hi = Math.max(tr.hi, tr.ema);
+    if (tr.st === 'up') { tr.ext = Math.max(tr.ext, tr.ema); if (tr.ext - tr.ema >= delta) { tr.st = 'down'; tr.ext = tr.ema; } }
+    else { tr.ext = Math.min(tr.ext, tr.ema); if (tr.ema - tr.ext >= delta) { tr.st = 'up'; tr.ext = tr.ema; tr.n++; } }
+  }
+  // pri automatickom režime počítame podľa kĺbu s najväčším pohybom
+  let best = null;
+  for (const j of joints) { const tr = LIVE.tr[j]; if (tr && tr.hi - tr.lo >= 35 && (!best || tr.hi - tr.lo > LIVE.tr[best].hi - LIVE.tr[best].lo)) best = j; }
+  LIVE.joint = best || selected.signal || null;
+  if (!selected.signal) liveHold(lm, now, W, H); // automaticky môže ísť aj o výdrž
+  liveCountShow();
+}
+// výdrž: telo sa takmer nehýbe (boky a ramená v rámci ~1 s)
+function liveHold(lm, now, W, H) {
+  if (!lm) { LIVE.still0 = null; return; }
+  const mid = (a, b) => ({ x: (lm[a].x + lm[b].x) / 2 * W, y: (lm[a].y + lm[b].y) / 2 * H });
+  const sh = mid(11, 12), hp = mid(23, 24), torso = Math.hypot(sh.x - hp.x, sh.y - hp.y) || 1;
+  LIVE.hist.push({ t: now, x: hp.x / torso, y: hp.y / torso, sx: sh.x / torso, sy: sh.y / torso });
+  while (LIVE.hist.length && now - LIVE.hist[0].t > 1000) LIVE.hist.shift();
+  const rng = (k) => { const a = LIVE.hist.map(h => h[k]); return Math.max(...a) - Math.min(...a); };
+  const still = LIVE.hist.length >= 5 && ['x', 'y', 'sx', 'sy'].every(k => rng(k) < 0.12);
+  if (still) { if (LIVE.still0 == null) LIVE.still0 = now - 1000; LIVE.best = Math.max(LIVE.best, (now - LIVE.still0) / 1000); }
+  else LIVE.still0 = null;
+}
+function liveCountShow() {
+  if (!VW || !$('recCountN')) return;
+  const reps = LIVE.joint && LIVE.tr[LIVE.joint] ? LIVE.tr[LIVE.joint].n : 0;
+  const holdS = Math.floor(LIVE.best);
+  const asHold = pickHold() || (!selected.signal && !reps && holdS >= 3);
+  $('recCountN').textContent = asHold ? holdS : reps;
+  $('recCountL').textContent = asHold ? 'S VÝDRŽE' : reps === 1 ? 'OPAKOVANIE' : reps >= 2 && reps <= 4 ? 'OPAKOVANIA' : 'OPAKOVANÍ';
+}
+// kostra cez živý obraz (video je roztiahnuté cez celú obrazovku – object-fit: cover)
+function liveDraw(lm, v) {
+  const c = $('recCanvas'); if (!c) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1), CW = c.clientWidth, CH = c.clientHeight;
+  if (c.width !== Math.round(CW * dpr) || c.height !== Math.round(CH * dpr)) { c.width = Math.round(CW * dpr); c.height = Math.round(CH * dpr); }
+  const g = c.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height);
+  if (!lm || !v.videoWidth) return;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const s = Math.max(CW / v.videoWidth, CH / v.videoHeight), dx = (CW - v.videoWidth * s) / 2, dy = (CH - v.videoHeight * s) / 2;
+  const mir = v.classList.contains('mirror');
+  const pts = {};
+  for (const i of [0, ...new Set(LIVE_BONES.flat())]) {
+    const q = lm[i]; if (!q) continue;
+    let x = dx + q.x * v.videoWidth * s; if (mir) x = CW - x;
+    pts[i] = [x, dy + q.y * v.videoHeight * s, q.visibility ?? 1];
+  }
+  drawSkeleton(g, pts, { r: 5.5, lw: 3, hi: LIVE.joint || selected.signal || null });
+}
+// spoločné kreslenie kostry: pts = { id: [x, y, viditeľnosť] } v pixeloch plátna
+function drawSkeleton(g, pts, { r = 5.5, lw = 3, hi = null } = {}) {
+  const ok = (i) => pts[i] && pts[i][2] >= 0.35;
+  g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = lw; g.strokeStyle = 'rgba(255,255,255,.9)';
+  g.beginPath();
+  for (const [a, b] of LIVE_BONES) { if (!ok(a) || !ok(b)) continue; g.moveTo(pts[a][0], pts[a][1]); g.lineTo(pts[b][0], pts[b][1]); }
+  let head = null;
+  if (ok(11) && ok(12) && ok(0)) {
+    const mx = (pts[11][0] + pts[12][0]) / 2, my = (pts[11][1] + pts[12][1]) / 2;
+    head = [mx + (pts[0][0] - mx) * 0.8, my + (pts[0][1] - my) * 0.8];
+    g.moveTo(mx, my); g.lineTo(head[0], head[1]);
+  }
+  g.stroke();
+  const big = hi && JPAIR[hi] ? JPAIR[hi] : [];
+  const dot = (x, y, rr, w) => { g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fillStyle = '#FF7A45'; g.fill(); g.lineWidth = w; g.strokeStyle = '#FFFFFF'; g.stroke(); };
+  if (head) dot(head[0], head[1], r * 1.1, Math.max(1.5, lw * 0.66));
+  for (const i of new Set(LIVE_BONES.flat())) {
+    if (!ok(i) || big.includes(i) || i === 31 || i === 32) continue;
+    dot(pts[i][0], pts[i][1], r, Math.max(1.5, lw * 0.66));
+  }
+  for (const i of big) {
+    if (!ok(i)) continue;
+    g.beginPath(); g.arc(pts[i][0], pts[i][1], r * 2.7, 0, Math.PI * 2); g.lineWidth = Math.max(1.5, lw * 0.66); g.strokeStyle = 'rgba(255,122,69,.6)'; g.stroke();
+    dot(pts[i][0], pts[i][1], r * 1.45, Math.max(2, lw * 0.85));
+  }
+}
 
 // ---------- spracovanie ----------
 function setProgress(p, text) {
-  $('bar').style.width = Math.round(p * 100) + '%';
-  if (text) $('workStatus').textContent = text;
+  if ($('bar')) $('bar').style.width = Math.round(p * 100) + '%';
+  if (text && !VW) $('workStatus').textContent = text;
 }
 function showError(msg, needCode = false) {
   $('workErr').hidden = false; $('workErrText').textContent = msg;
   $('codeBox').hidden = !needCode;
   if (needCode) $('codeInput').value = ls.get('vt-code') || '';
+  if (VW) { hide('workBand', true); hide('workBottom', true); $('workSteps').classList.add('stopped'); vwPost('error'); }
 }
+
+// ---------- v appke: obrazovka Analýza (kroky, náhľad s kostrou) ----------
+// stage: model → scan (prechádzanie videa) → frames (uhly a tempo) → ai (rozbor) → done
+const AN = { stage: 'model', p: 0, people: false, t: 0, dur: 0, reps: 0, hold: 0, isHold: false, down: null, ai: 0 };
+function workReset(stage = 'model') {
+  Object.assign(AN, { stage, p: 0, people: stage !== 'model', t: 0, dur: 0, reps: 0, hold: 0, isHold: pickHold(), down: null, ai: 0 });
+  if (!VW) return;
+  const nm = !isAutoPick() ? pick.name : (current?.exercise?.hint || '');
+  $('workKick').innerHTML = `${IC.kick}<span>${esc(('TECHNIKA' + (nm ? ' · ' + nm : '')).toUpperCase())}</span>`;
+  $('workTitle').textContent = pickHold() ? 'Analyzujem tvoju výdrž' : isAutoPick() ? 'Analyzujem tvoje video' : 'Analyzujem tvoju sériu';
+  $('workSub').textContent = 'Zvyčajne to trvá do minúty';
+  hide('workBand', false); hide('workPill', true); hide('workStatus', true); hide('workErr', true); $('workSteps').classList.remove('stopped');
+  hide('workBottom', false); hide('btnWorkBg', !vwEmbedded);
+  $('btnWorkBg').textContent = vwFrom === 'set' ? 'Pokračovať v tréningu' : 'Pokračovať v appke';
+  const c = $('workCanvas'); c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  renderSteps();
+}
+function renderSteps() {
+  if (!VW) return;
+  const order = ['model', 'scan', 'frames', 'ai', 'done'], at = order.indexOf(AN.stage);
+  const done = (title, sub) => `<div class="an-st"><span class="an-ok">${IC.check}</span><span class="an-tx"><b>${esc(title)}</b><span>${esc(sub)}</span></span></div>`;
+  const todo = (title, sub) => `<div class="an-st todo"><span class="an-wait"></span><span class="an-tx"><b>${esc(title)}</b><span>${esc(sub)}</span></span></div>`;
+  const spin = '<svg class="an-spin" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" stroke="currentColor" stroke-opacity=".14" stroke-width="3"/><path d="M14 3a11 11 0 0 1 11 11" fill="none" stroke="#FF7A45" stroke-width="3" stroke-linecap="round"/></svg>';
+  const act = (title, sub, p) => `<div class="an-st"><span style="color:var(--tx);display:grid">${spin}</span><span class="an-tx">${p != null
+    ? `<span class="an-row"><b>${esc(title)}</b><em>${Math.round(p * 100)} %</em></span><span class="an-bar"><span style="width:${Math.round(p * 100)}%"></span></span>`
+    : `<b>${esc(title)}</b><span>${esc(sub)}</span>`}</span></div>`;
+  const hold = AN.isHold;
+  const s1 = AN.people ? done('Telo nájdené', `${CLIP_PTS.length} bodov na tele v každej snímke`)
+    : act('Hľadám telo', at === 0 ? 'Načítavam rozpoznávanie postavy' : 'Prechádzam video');
+  const s2 = at < 1 ? todo(hold ? 'Meriam výdrž' : 'Počítam opakovania', hold ? 'ako dlho a ako stabilne' : 'každé opakovanie zvlášť')
+    : at === 1 ? act(hold ? 'Meriam výdrž' : selected.id === 'auto' ? 'Meriam pohyb' : 'Počítam opakovania', '', AN.p)
+    : hold ? done('Výdrž zmeraná', AN.hold ? `výdrž ${AN.hold} s` : 'výdrž som nenašiel, rozbor to skúsi aj tak')
+    : AN.reps ? done('Opakovania spočítané', `${AN.reps} ${plural(AN.reps, 'opakovanie', 'opakovania', 'opakovaní')} za ${Math.round(AN.dur)} sekúnd`)
+    : done('Pohyb zmeraný', 'opakovania som nenašiel, rozbor to skúsi aj tak');
+  const s3 = at < 2 ? todo(hold ? 'Meriam líniu tela' : 'Meriam uhly a tempo', hold ? 'línia tela a stabilita' : 'uhly kĺbov v každej snímke')
+    : at === 2 ? act(hold ? 'Meriam líniu tela' : 'Meriam uhly a tempo', 'kľúčové snímky')
+    : done(hold ? 'Línia tela zmeraná' : 'Uhly a tempo zmerané', hold ? 'línia tela a stabilita' : AN.down != null ? `spúšťanie ${String(AN.down).replace('.', ',')} s, rozsah každého opakovania` : 'uhly kĺbov v každej snímke');
+  const s4 = at < 3 ? todo('Rozbor a skóre', 'čo zlepšiť a ako na 100 bodov')
+    : at === 3 ? act('Rozbor a skóre', '', AN.ai) : done('Rozbor a skóre', 'hotovo');
+  $('workSteps').innerHTML = s1 + s2 + s3 + s4;
+}
+function workPill() {
+  if (!VW) return;
+  const el = $('workPill');
+  if (AN.stage === 'scan' && AN.dur) { el.textContent = `${fmtT(AN.t)} / ${fmtT(AN.dur)}`; el.hidden = false; return; }
+  if (['frames', 'ai', 'done'].includes(AN.stage)) {
+    el.textContent = AN.isHold ? `výdrž ${AN.hold} s` : `${fmtT(AN.dur)}${AN.reps ? ` · ${AN.reps} ${plural(AN.reps, 'opakovanie', 'opakovania', 'opakovaní')}` : ''}`;
+    el.hidden = false;
+  }
+}
+// snímka do náhľadu: obraz celý (contain) na stmavenom pozadí z tej istej snímky, cez neho kostra
+function drawPoseFrame(c, src, sw, sh, pts, opts = {}) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), CW = c.clientWidth || 1, CH = c.clientHeight || 1;
+  if (c.width !== Math.round(CW * dpr) || c.height !== Math.round(CH * dpr)) { c.width = Math.round(CW * dpr); c.height = Math.round(CH * dpr); }
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = opts.bg || '#111722'; g.fillRect(0, 0, CW, CH);
+  const cs = Math.max(CW / sw, CH / sh), fs = Math.min(CW / sw, CH / sh);
+  g.globalAlpha = 0.28; g.drawImage(src, (CW - sw * cs) / 2, (CH - sh * cs) / 2, sw * cs, sh * cs); g.globalAlpha = 1;
+  const w = sw * fs, h = sh * fs, x0 = (CW - w) / 2, y0 = (CH - h) / 2;
+  g.drawImage(src, x0, y0, w, h);
+  g.fillStyle = 'rgba(5,7,11,.18)'; g.fillRect(x0, y0, w, h);
+  if (!pts) return null;
+  const P = {};
+  for (const id in pts) P[id] = [x0 + pts[id][0] * w, y0 + pts[id][1] * h, pts[id][2]];
+  drawSkeleton(g, P, opts);
+  return { g, P, CW, CH };
+}
+const rawPts = (lm) => { if (!lm) return null; const o = {}; CLIP_PTS.forEach(i => { const q = lm[i]; if (q) o[i] = [q.x, q.y, q.visibility ?? 1]; }); return o; };
+const clipPts = (lm) => { if (!lm) return null; const o = {}; CLIP_PTS.forEach((id, k) => { o[id] = lm[k]; }); return o; };
+function workFrame(cc, lm, t, dur) {
+  if (!VW || $('vWork').hidden) return;
+  if (lm && !AN.people) { AN.people = true; renderSteps(); }
+  AN.t = t; AN.dur = dur;
+  drawPoseFrame($('workCanvas'), cc, cc.width, cc.height, rawPts(lm), { r: 3.4, lw: 2 });
+  workPill();
+}
+// po meraní: náhľad prehráva zmeraný záznam s kostrou dookola
+const WL = { timer: 0, urls: [], imgs: [], i: 0 };
+function workLoopStart(clip) {
+  workLoopStop();
+  if (!VW || !clip || !clip.frames || clip.frames.length < 2) return;
+  WL.urls = clip.frames.map(f => URL.createObjectURL(f.img)); WL.imgs = []; WL.i = 0;
+  const step = () => {
+    const f = clip.frames[WL.i];
+    const im = WL.imgs[WL.i] || (WL.imgs[WL.i] = Object.assign(new Image(), { src: WL.urls[WL.i] }));
+    const nx = (WL.i + 1) % clip.frames.length;
+    if (!WL.imgs[nx]) WL.imgs[nx] = Object.assign(new Image(), { src: WL.urls[nx] });
+    if (im.complete && im.naturalWidth) {
+      drawPoseFrame($('workCanvas'), im, clip.w, clip.h, clipPts(f.lm), { r: 3.4, lw: 2, hi: clip.joint });
+      WL.i = nx;
+    }
+  };
+  WL.timer = setInterval(step, Math.max(40, 1000 / (clip.fps || 8)));
+}
+function workLoopStop() {
+  clearInterval(WL.timer); WL.timer = 0;
+  WL.urls.forEach(u => URL.revokeObjectURL(u)); WL.urls = []; WL.imgs = [];
+}
+on('btnWorkBg', () => vwPost('bg'));
 
 async function startAnalysis(file) {
   pendingFile = file;
   current = { id: String(Date.now()), created: Date.now(), exercise: { id: selected.id, name: selected.name, en: selected.en, type: selected.type || null }, signal: selected.signal };
-  if (VW && vwExName && !vwGrid) {
-    current.vwName = vwExName; // v appke ukazujeme názov cviku z appky
+  if (VW && pick && !isAutoPick()) {
+    current.vwName = pick.name; // v appke ukazujeme názov cviku z appky alebo z výberu
+    if (pick.eid) current.vwEid = pick.eid;
     if (selected.id === 'auto' && vwHint) Object.assign(current.exercise, { name: vwHint, hint: vwHint });
   }
-  $('workErr').hidden = true; $('workTitle').textContent = 'Analyzujem…';
-  const vid = $('workVideo');
-  if (vid.src) URL.revokeObjectURL(vid.src);
-  vid.src = URL.createObjectURL(file); vid.hidden = false;
-  vid.play().catch(() => {});
+  $('workErr').hidden = true;
+  if (VW) workReset('model');
+  else {
+    $('workTitle').textContent = 'Analyzujem…';
+    const vid = $('workVideo');
+    if (vid.src) URL.revokeObjectURL(vid.src);
+    vid.src = URL.createObjectURL(file); vid.hidden = false;
+    vid.play().catch(() => {});
+  }
   go('#/praca'); show('vWork');
   setProgress(0, 'Overujem prístup…');
   // kód overíme hneď, nie až po minútovej analýze videa
@@ -262,10 +614,20 @@ async function startAnalysis(file) {
   }
   setProgress(0, 'Pripravujem…');
   try {
-    const { summary, keyframes, thumb, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, start: selected.start ?? null, type: selected.type ?? null, target: selected.target ?? null, holdJoint: selected.holdJoint ?? null, maxSeconds: maxSecondsFor(selected), onProgress: (p, t) => setProgress(p * 0.5, t) });
+    const onProgress = (p, t) => {
+      setProgress(p * 0.5, t);
+      if (!VW) return;
+      const st = /model/i.test(t || '') ? 'model' : p >= 0.91 ? 'frames' : p > 0 ? 'scan' : AN.stage;
+      if (st !== AN.stage || st === 'scan') { AN.stage = st; AN.p = Math.min(1, Math.max(0, (p - 0.05) / 0.85)); renderSteps(); }
+    };
+    const { summary, keyframes, thumb, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, start: selected.start ?? null, type: selected.type ?? null, target: selected.target ?? null, holdJoint: selected.holdJoint ?? null, maxSeconds: maxSecondsFor(selected), onProgress, onFrame: workFrame });
     Object.assign(current, { summary, keyframes, thumb, clip });
     const maxS = maxSecondsFor(selected);
-    if (summary.video.duration_s > maxS) setProgress(0.5, `Video je dlhšie ako ${maxS} s, analyzujem prvých ${maxS} s.`);
+    if (summary.video.duration_s > maxS) {
+      setProgress(0.5, `Video je dlhšie ako ${maxS} s, analyzujem prvých ${maxS} s.`);
+      if (VW) { $('workStatus').textContent = `Video je dlhšie ako ${maxS} s, analyzujem prvých ${maxS} s.`; hide('workStatus', false); }
+    }
+    workMeasured(summary, clip);
   } catch (e) {
     console.error(e);
     showError(e.message || 'Analýza videa zlyhala.');
@@ -273,6 +635,16 @@ async function startAnalysis(file) {
     return;
   }
   await runAi();
+}
+// výsledok merania do krokov a náhľadu
+function workMeasured(sm, clip) {
+  if (!VW || !sm) return;
+  const act = sm.active_segment;
+  Object.assign(AN, { people: true, isHold: sm.exercise_type === 'hold', reps: sm.reps_detected || 0, hold: Math.round(sm.hold?.duration_s || 0),
+    dur: act ? Math.max(0, act.end_s - act.start_s) : (sm.video?.analyzed_s || 0), down: sm.tempo?.avg_down_s ?? null });
+  if (AN.isHold) $('workTitle').textContent = 'Analyzujem tvoju výdrž';
+  AN.stage = 'ai'; renderSteps(); workPill();
+  workLoopStart(clip);
 }
 
 // true = server chce kód a ten uložený nesedí; pri výpadku siete pokračujeme (chyba príde neskôr)
@@ -288,9 +660,13 @@ async function accessDenied() {
 
 async function runAi() {
   $('workErr').hidden = true;
+  if (VW) { AN.stage = 'ai'; AN.ai = 0; hide('workBand', false); hide('workBottom', false); $('workSteps').classList.remove('stopped'); renderSteps(); }
   setProgress(0.55, 'AI hľadá správnu techniku a vyhodnocuje tvoj pohyb… (zvyčajne 20–60 s)');
   let fake = 0.55;
-  const tick = setInterval(() => { fake = Math.min(0.95, fake + 0.01); setProgress(fake); }, 700);
+  const tick = setInterval(() => {
+    fake = Math.min(0.95, fake + 0.01); setProgress(fake);
+    if (VW && AN.stage === 'ai') { AN.ai = Math.min(0.95, (fake - 0.55) / 0.4); renderSteps(); }
+  }, 700);
   const ctrl = new AbortController();
   const killer = setTimeout(() => ctrl.abort(), 150_000); // poistka, aby appka nevisela donekonečna
   try {
@@ -306,7 +682,7 @@ async function runAi() {
     current.result = data.result; current.sources = data.sources || [];
     await db.save(current);
     db.pruneClips(15);
-    if (VW) vwPost('result', { data: vwSummary(current) }); // hlavná appka si uloží skóre (domov, profil)
+    if (VW) { vwPost('result', { data: vwSummary(current) }); AN.stage = 'done'; renderSteps(); } // hlavná appka si uloží skóre (domov, profil)
     setProgress(1, 'Hotovo');
     go('#/r/' + current.id);
   } catch (e) {
@@ -332,7 +708,7 @@ function vwSummary(item) {
   const isH = sm.exercise_type === 'hold';
   const t = todayOf(r);
   return {
-    id: item.id, t: item.created,
+    id: item.id, t: item.created, eid: item.vwEid || '',
     name: item.vwName || r.exercise?.name || item.exercise?.name || 'Cvik',
     score: typeof r.score === 'number' ? Math.max(0, Math.min(100, Math.round(r.score))) : null,
     reps: isH ? 0 : (sm.reps_detected || 0),
@@ -408,9 +784,11 @@ const JOINT_PTS = { knee: [25, 26], hip: [23, 24], elbow: [13, 14], shoulder: [1
 const JOINT_SK = { knee: 'koleno', hip: 'bok', elbow: 'lakeť', shoulder: 'rameno', body_line: 'línia' };
 const P = { clip: null, urls: [], imgs: [], t: 0, playing: false, speed: 1, raf: 0, last: 0, cur: -1 };
 
-function openPlayer(clip, jumpT) {
+const SPEED_TXT = (s) => VW ? (s === 1 ? '1×' : s === 0.5 ? '0,5×' : '0,25×') : (s === 1 ? '1×' : s === 0.5 ? '½×' : '¼×');
+function openPlayer(clip, jumpT, tip) {
   closePlayer();
   Object.assign(P, { clip, urls: clip.frames.map(f => URL.createObjectURL(f.img)), imgs: [], t: 0, playing: false, speed: 1, cur: -1 });
+  if (VW) { openPlayerVW(clip, jumpT, tip); return; }
   const c = $('pCanvas');
   c.width = clip.w * 2; c.height = clip.h * 2;
   c.style.aspectRatio = `${clip.w} / ${clip.h}`;
@@ -418,7 +796,7 @@ function openPlayer(clip, jumpT) {
   if (jumpT != null && jumpT <= clip.duration) {
     $('pMark').hidden = false; $('pMark').style.left = `${(100 * jumpT / clip.duration).toFixed(2)}%`;
     $('pJump').hidden = false; $('pJump').textContent = `Skočiť na chybu (${fmtT(jumpT)})`;
-    $('pJump').onclick = () => { pause(); seekTo(Math.max(0, jumpT - 0.6)); P.speed = 0.5; $('pSpeed').textContent = '½×'; play(); };
+    $('pJump').onclick = () => { pause(); seekTo(Math.max(0, jumpT - 0.6)); P.speed = 0.5; $('pSpeed').textContent = SPEED_TXT(0.5); play(); };
   } else { $('pMark').hidden = true; $('pJump').hidden = true; }
   $('player').hidden = false;
   seekTo(0);
@@ -442,7 +820,86 @@ function idxAt(t) {
   while (i < fr.length - 1 && fr[i + 1].t <= t) i++;
   return i;
 }
+// ---------- v appke: Video analýzy podľa návrhu ----------
+const JTRI = { knee: [[23, 25, 27], [24, 26, 28]], hip: [[11, 23, 25], [12, 24, 26]], elbow: [[11, 13, 15], [12, 14, 16]], shoulder: [[13, 11, 23], [14, 12, 24]], body_line: [[11, 23, 27], [12, 24, 28]] };
+function openPlayerVW(clip, jumpT, tip) {
+  const reps = clip.reps || [];
+  // úsek s chybou: opakovanie, v ktorom je snímka s chybou (pri výdrži ±1 s okolo nej)
+  let prob = null, probRep = -1;
+  if (jumpT != null && jumpT <= clip.duration + 0.5) {
+    probRep = reps.findIndex(r => jumpT >= r.s - 0.25 && jumpT <= r.e + 0.25);
+    if (probRep < 0 && reps.length) probRep = reps.reduce((a, r, k) => (Math.abs(r.b - jumpT) < Math.abs(reps[a].b - jumpT) ? k : a), 0);
+    prob = probRep >= 0 ? { s: reps[probRep].s, e: reps[probRep].e } : { s: Math.max(0, jumpT - 1), e: Math.min(clip.duration, jumpT + 1) };
+  }
+  P.prob = prob; P.probRep = probRep; P.tip = tip && !tip.good && tip.title ? tip : null;
+  const D = clip.duration || 1, pc = (t) => `${(100 * Math.max(0, Math.min(D, t)) / D).toFixed(2)}%`;
+  hide('pProb', !prob);
+  if (prob) { $('pProb').style.left = pc(prob.s); $('pProb').style.width = `${(100 * (prob.e - prob.s) / D).toFixed(2)}%`; }
+  $('pRepLbl').textContent = probRep >= 0 ? `opak. ${probRep + 1}` : prob ? 'chyba' : '';
+  $('pReps').innerHTML = reps.map((r, k) => `<button data-k="${k}" style="left:${pc(r.b)}" class="${k === probRep ? 'bad' : ''}">${k + 1}</button>`).join('');
+  $('pReps').querySelectorAll('button').forEach(b => b.onclick = () => { seekTo(Math.max(0, reps[Number(b.dataset.k)].s - 0.15)); });
+  $('pTipT').textContent = P.tip ? P.tip.title : ''; $('pTipD').textContent = P.tip ? (P.tip.detail || '') : '';
+  hide('pPrev', false); hide('pNext', false);
+  $('pPrev').setAttribute('aria-label', reps.length ? 'Predchádzajúce opakovanie' : 'O sekundu späť');
+  $('pNext').setAttribute('aria-label', reps.length ? 'Ďalšie opakovanie' : 'O sekundu ďalej');
+  $('player').hidden = false;
+  P.speed = prob ? 0.5 : 1; $('pSpeed').textContent = SPEED_TXT(P.speed);
+  seekTo(prob ? Math.max(0, prob.s - 0.4) : 0);
+  play();
+}
+function vpUpdate(t) {
+  if (!VW || !P.clip) return;
+  const clip = P.clip, D = clip.duration || 1, reps = clip.reps || [], pc = `${(100 * t / D).toFixed(2)}%`;
+  $('pFill').style.width = pc; $('pThumb').style.left = pc;
+  $('pTime').textContent = `${fmtT(t)} / ${fmtT(D)}`;
+  const k = reps.findIndex(r => t >= r.s && t <= r.e), done = reps.filter(r => r.e < t).length, hold = clip.hold;
+  $('pSub').textContent = hold ? (t < hold.s ? 'Príprava' : t <= hold.e ? `Výdrž ${fmtT(t - hold.s)}` : `Výdrž ${fmtT(hold.e - hold.s)} · koniec`)
+    : k >= 0 ? `Opakovanie ${k + 1} z ${reps.length}` : reps.length && done === reps.length ? `Hotovo · ${reps.length} ${plural(reps.length, 'opakovanie', 'opakovania', 'opakovaní')}`
+    : reps.length ? (done ? `Opakovanie ${done} z ${reps.length}` : 'Príprava') : 'Celé video';
+  $('pReps').querySelectorAll('button').forEach((b, j) => b.classList.toggle('cur', j === k));
+  hide('pTip', !(P.tip && P.prob && t >= P.prob.s - 0.25 && t <= P.prob.e + 0.25));
+}
+function drawFrameVW(i) {
+  const clip = P.clip, f = clip.frames[i], im = getImg(i);
+  for (let k = 1; k <= 6; k++) getImg(i + k); // prednačítanie
+  if (!im || !im.complete || !im.naturalWidth) { if (im) im.onload = () => { if (P.clip && P.cur === i) drawFrameVW(i); }; return; }
+  const out = drawPoseFrame($('pCanvas'), im, clip.w, clip.h, clipPts(f.lm), { r: 5.5, lw: 3, hi: clip.joint, bg: '#0B101D' });
+  // uhol hlavného kĺbu: oblúk a štítok (napr. „Lakeť 87°“)
+  const tri = JTRI[clip.joint]?.[clip.side === 'L' ? 0 : 1];
+  if (!out || !tri || f.a == null) return;
+  const [A, B, C] = tri.map(id => out.P[id]);
+  if (![A, B, C].every(q => q && q[2] >= 0.35)) return;
+  const g = out.g, a1 = Math.atan2(A[1] - B[1], A[0] - B[0]);
+  let d = Math.atan2(C[1] - B[1], C[0] - B[0]) - a1;
+  while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+  g.beginPath(); g.arc(B[0], B[1], 20, a1, a1 + d, d < 0); g.lineWidth = 3.5; g.lineCap = 'round'; g.strokeStyle = '#FFB547'; g.stroke();
+  const name = JOINT_SK[clip.joint] || ''; const txt = `${name.charAt(0).toUpperCase() + name.slice(1)} ${f.a}°`;
+  g.font = '900 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+  const tw = g.measureText(txt).width, bw = tw + 18, bh = 26;
+  const left = B[0] < out.CW / 2;
+  let bx = left ? B[0] - 28 - bw : B[0] + 28, by = B[1] + 14;
+  bx = Math.max(8, Math.min(out.CW - bw - 8, bx)); by = Math.max(8, Math.min(out.CH - bh - 8, by));
+  g.beginPath(); g.roundRect ? g.roundRect(bx, by, bw, bh, 10) : g.rect(bx, by, bw, bh);
+  g.fillStyle = 'rgba(11,16,29,.78)'; g.fill(); g.lineWidth = 1; g.strokeStyle = 'rgba(255,181,71,.55)'; g.stroke();
+  g.fillStyle = '#FFB547'; g.textBaseline = 'middle'; g.fillText(txt, bx + 9, by + bh / 2 + 0.5); g.textBaseline = 'alphabetic';
+}
+function playerStep(dir) {
+  if (!P.clip) return;
+  const reps = P.clip.reps || [];
+  if (!reps.length) { seekTo(P.t + dir); return; }
+  const i = reps.findIndex(r => P.t >= r.s - 0.05 && P.t <= r.e);
+  let k;
+  if (dir > 0) k = reps.findIndex(r => r.s > P.t + 0.05);
+  else { const cur = i >= 0 ? i : reps.filter(r => r.e < P.t).length - 1; k = i >= 0 && P.t - reps[i].s > 0.4 ? i : cur - (i >= 0 ? 1 : 0); }
+  if (k == null || k < 0 || k >= reps.length) { if (dir < 0) seekTo(0); return; }
+  seekTo(Math.max(0, reps[k].s - 0.15));
+}
+on('pPrev', () => playerStep(-1));
+on('pNext', () => playerStep(1));
+window.addEventListener('resize', () => { if (VW && P.clip && P.cur >= 0) drawFrameVW(P.cur); });
+
 function drawFrame(i) {
+  if (VW) { drawFrameVW(i); return; }
   const clip = P.clip, f = clip.frames[i], im = getImg(i);
   for (let k = 1; k <= 6; k++) getImg(i + k); // prednačítanie
   if (!im || !im.complete || !im.naturalWidth) { if (im) im.onload = () => { if (P.clip && P.cur === i) drawFrame(i); }; return; }
@@ -498,6 +955,7 @@ function seekTo(t) {
   P.cur = i; drawFrame(i);
   $('pRange').value = Math.round(1000 * P.t / (P.clip.duration || 1));
   $('pTime').textContent = fmtT(P.t);
+  vpUpdate(P.t);
 }
 function tick(now) {
   if (!P.playing || !P.clip) return;
@@ -509,6 +967,7 @@ function tick(now) {
   if (i !== P.cur) { P.cur = i; drawFrame(i); }
   $('pRange').value = Math.round(1000 * t / (P.clip.duration || 1));
   $('pTime').textContent = fmtT(t);
+  vpUpdate(t);
   P.raf = requestAnimationFrame(tick);
 }
 function play() {
@@ -524,7 +983,7 @@ function pause() {
 }
 $('pPlay').onclick = () => (P.playing ? pause() : play());
 $('pRange').addEventListener('input', () => { if (!P.clip) return; pause(); seekTo(P.clip.duration * $('pRange').value / 1000); });
-$('pSpeed').onclick = () => { P.speed = P.speed === 1 ? 0.5 : P.speed === 0.5 ? 0.25 : 1; $('pSpeed').textContent = P.speed === 1 ? '1×' : P.speed === 0.5 ? '½×' : '¼×'; };
+$('pSpeed').onclick = () => { P.speed = P.speed === 1 ? 0.5 : P.speed === 0.5 ? 0.25 : 1; $('pSpeed').textContent = SPEED_TXT(P.speed); };
 $('btnPlayerClose').onclick = closePlayer;
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && P.clip) closePlayer(); });
 
@@ -659,7 +1118,7 @@ function renderResult(item) {
   `;
   if ($('btnVwMain')) $('btnVwMain').onclick = () => { if (vwUse) vwPost('use', { reps: vwUse.reps || 0, hold: vwUse.hold || 0 }); else vwPost('close'); };
 
-  if ($('btnSee')) $('btnSee').onclick = () => hasClip ? openPlayer(item.clip, errT) : openViewer(frame);
+  if ($('btnSee')) $('btnSee').onclick = () => hasClip ? openPlayer(item.clip, errT, today) : openViewer(frame);
   $('vResult').querySelectorAll('.frames button').forEach(b => b.onclick = () => openViewer(item.keyframes[Number(b.dataset.k)]));
   $('btnFull').onclick = () => {
     const open = $('full').hidden;
@@ -671,15 +1130,20 @@ function renderResult(item) {
   $('btnAgain').onclick = () => {
     const exId = item.exercise.id !== 'auto' ? item.exercise.id : (matchExercise(ex.name)?.id || 'auto');
     // v appke ostáva cvik z appky (napr. „Zhyby nadhmatom“), mimo appky sa vyberie zodpovedajúci cvik
-    if (!(VW && item.vwName && vwExName && item.vwName === vwExName && !vwGrid)) selectExercise(exId);
+    if (VW) { // v appke ostáva cvik z appky alebo z výberu (napr. „Zhyby nadhmatom“)
+      const nm = item.vwName || '';
+      if (!pick || (nm && pick.name !== nm)) applyPick(nm ? makePick('list', nm, { eid: item.vwEid || '' }) : makePick('list', ex.name || item.exercise.name, { id: exId === 'auto' ? null : exId }));
+      go('#/nova'); return;
+    }
+    selectExercise(exId);
     go('#/nova');
   };
   $('btnDel').onclick = async () => { await db.remove(item.id); go('#/'); };
   $('btnRe').onclick = () => {
     const e = findExercise($('reEx').value);
-    current = { ...item, id: String(Date.now()), created: Date.now(), exercise: { id: e.id, name: e.name, en: e.en }, result: null, vwName: undefined };
-    $('workTitle').textContent = 'Opakujem rozbor…';
-    $('workVideo').removeAttribute('src'); $('workVideo').hidden = true;
+    current = { ...item, id: String(Date.now()), created: Date.now(), exercise: { id: e.id, name: e.name, en: e.en }, result: null, vwName: undefined, vwEid: undefined };
+    if (VW) { applyPick(makePick('list', e.name, { id: e.id })); workReset('ai'); workMeasured(item.summary, item.clip); $('workSub').textContent = 'Opakujem rozbor pre ' + lowerName(e.name); }
+    else { $('workTitle').textContent = 'Opakujem rozbor…'; $('workVideo').removeAttribute('src'); $('workVideo').hidden = true; }
     go('#/praca'); show('vWork'); runAi();
   };
 }

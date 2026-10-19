@@ -49,6 +49,25 @@ async function getLandmarker() {
 // spustí sťahovanie modelu na pozadí, aby bol pripravený, kým si používateľ vyberá video
 export function preload() { getLandmarker().catch(() => {}); }
 
+// ---------- živý náhľad pri nahrávaní (kostra, celé telo v zábere, počítadlo) ----------
+// Vráti model, keď je pripravený (null, ak sa nepodarilo načítať) – živý náhľad je len doplnok.
+export async function liveLandmarker() { try { return await getLandmarker(); } catch { return null; } }
+// Body tela z aktuálnej snímky živého videa (null = nikto v zábere / chyba).
+export function detectLive(landmarker, video) {
+  if (!landmarker || !video || video.readyState < 2 || !video.videoWidth) return null;
+  lastTs = Math.max(lastTs + 30, Math.round(performance.now())); // časy musia stále rásť (zdieľame model s analýzou)
+  try { const res = landmarker.detectForVideo(video, lastTs); return (res.landmarks && res.landmarks[0]) || null; }
+  catch { return null; }
+}
+// uhol ABC (normalizované súradnice, pomer strán videa) – pre živé počítadlo
+export function liveAngle(lm, a, b, c, W = 1, H = 1) {
+  const p = [lm[a], lm[b], lm[c]];
+  if (p.some(q => !q || (q.visibility ?? 1) < 0.45)) return null;
+  const v1x = (p[0].x - p[1].x) * W, v1y = (p[0].y - p[1].y) * H, v2x = (p[2].x - p[1].x) * W, v2y = (p[2].y - p[1].y) * H;
+  const d = Math.hypot(v1x, v1y) * Math.hypot(v2x, v2y);
+  return d ? Math.acos(Math.max(-1, Math.min(1, (v1x * v2x + v1y * v2y) / d))) * 180 / Math.PI : null;
+}
+
 // ---------- geometria ----------
 function angle(a, b, c) { // uhol ABC v stupňoch (null, ak niektorý bod nie je spoľahlivo viditeľný)
   if ([a, b, c].some(q => (q.visibility ?? 1) < 0.35)) return null;
@@ -248,7 +267,7 @@ function detectReps(values, { minAmp = 25, startType = null } = {}) {
 }
 
 // ---------- hlavná funkcia ----------
-export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, onProgress = () => {} } = {}) {
+export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, onProgress = () => {}, onFrame = null } = {}) {
   onProgress(0, 'Načítavam model na rozpoznanie postavy…');
   const [landmarker, v] = await Promise.all([getLandmarker(), loadVideo(file)]);
   try { await v.play(); v.pause(); } catch { /* iOS niekedy potrebuje play pred seekovaním */ }
@@ -286,6 +305,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
         const img = await new Promise(r => cc.toBlob(r, 'image/jpeg', 0.62));
         if (img) clipFrames.push({ t, fi: frames.length - 1, img,
           lm: lm ? CLIP_PTS.map(i => [Math.round(lm[i].x * 1000) / 1000, Math.round(lm[i].y * 1000) / 1000, Math.round((lm[i].visibility ?? 1) * 100) / 100]) : null });
+        if (onFrame) { try { onFrame(cc, lm || null, t, duration); } catch { /* náhľad nesmie zastaviť analýzu */ } }
       } catch { clipOk = false; } // záznam je len doplnok, analýzu nesmie zastaviť
     }
     onProgress(0.05 + 0.85 * (t / duration), 'Analyzujem pohyb…');
