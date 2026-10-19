@@ -83,6 +83,10 @@ p { line-height: 1.5; margin: 0 0 12px; }
 .hero > p { margin: 0 0 18px; font-size: 17px; color: var(--mu); line-height: 1.4; }
 .hero .btn { margin-bottom: 4px; }
 .hero .btn.ghost { margin-bottom: -6px; }
+.steps { list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; counter-reset: st; }
+.steps li { counter-increment: st; position: relative; background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 16px; padding: 14px 6px 12px; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--tx2); line-height: 1.25; }
+.steps li::before { content: counter(st); position: absolute; top: 7px; left: 9px; font-family: var(--num); font-size: 13px; font-weight: 800; color: var(--dim); }
+.steps svg { display: block; width: 26px; height: 26px; margin: 0 auto 8px; color: var(--acc); }
 .lasttip { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 16px; background: #1E1612; border: 1px solid rgba(255,122,61,.25); margin-bottom: 18px; }
 .lasttip .sc { flex: none; font-family: var(--num); font-weight: 800; font-size: 30px; line-height: 1; min-width: 40px; }
 .lasttip .k { font-size: 12.5px; font-weight: 800; letter-spacing: .1em; color: var(--acc); margin-bottom: 3px; }
@@ -245,6 +249,11 @@ details.card[open] > summary { margin-bottom: 12px; }
     <div class="hero">
       <h1>Natoč cvik</h1>
       <p>Appka spočíta opakovania a povie ti, čo zlepšiť.</p>
+      <ol class="steps" aria-label="Ako to funguje">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Natoč cvik</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 7v6l-4 7M12 13l4 7M7 10l5-2 5 2"/></svg>Zmeriame pohyb</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Dostaneš rady</li>
+      </ol>
       <div id="lastTip"></div>
       <button class="btn pri" id="btnStart"><span class="dot"></span>Natočiť nový cvik</button>
     </div>
