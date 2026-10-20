@@ -16,6 +16,8 @@ const P = { nose: 0, lEar: 7, rEar: 8, lHeel: 29, rHeel: 30, lSh: 11, rSh: 12, l
 const BONES = [[7, 11], [8, 12], [29, 31], [30, 32], [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32], [27, 29], [28, 30]];
 
 let landmarkerPromise = null;
+let readyMs = 0; // za koľko ms bola živá kostra pripravená (na meranie)
+export const engineStats = () => ({ readyMs });
 // MediaPipe v režime VIDEO vyžaduje stále rastúce časy naprieč všetkými videami,
 // preto si pamätáme posledný použitý čas (inak druhé video v poradí spadne).
 let lastTs = 0;
@@ -47,7 +49,8 @@ async function getLandmarker() {
 }
 
 // ---------- rozpoznávanie postavy: vo workeri (stránka nikdy nezamrzne), záloha na hlavnom vlákne ----------
-// engine.detect(video, ts) → Promise<33 bodov { x, y, z, visibility } | null>
+// engine.detect(video, ts, q) → Promise<33 bodov { x, y, z, visibility } | null>
+// q = 'live' (ľahký model na živú kostru) alebo 'full' (presný model na rozbor videa)
 let engineP = null, workerBroken = /[?&]pose=main\b/.test(location.search); // ?pose=main = bez workera (záložný spôsob)
 export function getEngine() {
   if (!engineP) {
@@ -65,7 +68,7 @@ async function mainEngine() {
   const lmk = await getLandmarker();
   return {
     kind: 'main',
-    async detect(video, ts) {
+    async detect(video, ts) { // záložný spôsob: jeden presný model na všetko
       const res = lmk.detectForVideo(video, ts);
       return (res.landmarks && res.landmarks[0]) || null;
     },
@@ -77,18 +80,25 @@ async function workerEngine() {
   const pending = new Map();
   let seq = 0, dead = null;
   const failAll = (msg) => { dead = msg; for (const [, p] of pending) { clearTimeout(p.t); p.rej(new Error(msg)); } pending.clear(); };
+  // presný model na rozbor sa vo workeri pripravuje až po ľahkom (živá kostra naskočí skôr)
+  let fullDone = false, fullDelegate = '', fullWait = [];
+  const fullSettled = (d) => { fullDone = true; fullDelegate = d || ''; fullWait.forEach(f => f()); fullWait = []; };
+  const t0 = performance.now();
   const delegate = await new Promise((res, rej) => {
     const t = setTimeout(() => { rej(new Error('worker sa nepripravil včas')); }, 100_000);
     w.onmessage = (e) => {
       const m = e.data || {};
-      if (m.t === 'ready') { clearTimeout(t); res(m.delegate); }
+      if (m.t === 'ready') { clearTimeout(t); res(m.delegate); if (m.model === 'full') fullSettled(m.delegate); }
+      else if (m.t === 'full' || m.t === 'full-fail') fullSettled(m.t === 'full' ? m.delegate : '');
       else if (m.t === 'fail') { clearTimeout(t); rej(new Error(m.msg)); }
     };
     w.onerror = (e) => { clearTimeout(t); rej(new Error((e && e.message) || 'chyba workera')); };
     w.postMessage({ t: 'init' });
   }).catch((err) => { try { w.terminate(); } catch { /* nič */ } throw err; });
+  readyMs = Math.round(performance.now() - t0);
   w.onmessage = (e) => {
     const m = e.data || {};
+    if (m.t === 'full' || m.t === 'full-fail') { fullSettled(m.t === 'full' ? m.delegate : ''); return; }
     const p = pending.get(m.id);
     if (!p) return;
     pending.delete(m.id); clearTimeout(p.t);
@@ -100,8 +110,15 @@ async function workerEngine() {
   const cv = document.createElement('canvas'), g = cv.getContext('2d');
   return {
     kind: 'worker', delegate,
+    get fullDelegate() { return fullDelegate; },
     close() { failAll('zatvorené'); try { w.terminate(); } catch { /* nič */ } },
-    async detect(video, ts) {
+    // počká na presný model (rozbor); keď sa nedá pripraviť, worker použije ľahký
+    ensureFull(ms = 120_000) {
+      if (fullDone) return Promise.resolve();
+      w.postMessage({ t: 'full?' });
+      return new Promise((res) => { const t = setTimeout(res, ms); fullWait.push(() => { clearTimeout(t); res(); }); });
+    },
+    async detect(video, ts, q = 'full') {
       if (dead) throw new Error(dead);
       const W = video.videoWidth, H = video.videoHeight;
       if (!W || !H) return null;
@@ -113,7 +130,7 @@ async function workerEngine() {
         const id = ++seq;
         const t = setTimeout(() => { pending.delete(id); rej(new Error('Rozpoznávanie postavy neodpovedá.')); }, 20_000);
         pending.set(id, { res, rej, t });
-        w.postMessage({ t: 'detect', id, bmp, ts: Math.round(ts || performance.now()) }, [bmp]);
+        w.postMessage({ t: 'detect', id, bmp, ts: Math.round(ts || performance.now()), q }, [bmp]);
       });
     },
   };
@@ -133,7 +150,7 @@ export async function detectLive(engine, video) {
   let ts = Math.round(performance.now() + liveOff);
   if (ts <= lastTs) { liveOff += lastTs + 1 - ts; ts = lastTs + 1; }
   lastTs = ts;
-  try { return await engine.detect(video, ts); }
+  try { return await engine.detect(video, ts, 'live'); }
   catch { return undefined; }
 }
 // uhol ABC (normalizované súradnice, pomer strán videa) – pre živé počítadlo
@@ -347,6 +364,7 @@ function detectReps(values, { minAmp = 25, startType = null } = {}) {
 export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, onProgress = () => {}, onFrame = null } = {}) {
   onProgress(0, 'Načítavam model na rozpoznanie postavy…');
   let [engine, v] = await Promise.all([getEngine(), loadVideo(file)]);
+  if (engine.ensureFull) { onProgress(0.02, 'Pripravujem presné meranie postavy…'); await engine.ensureFull(); }
   try { await v.play(); v.pause(); } catch { /* iOS niekedy potrebuje play pred seekovaním */ }
 
   const W = v.videoWidth, H = v.videoHeight;
@@ -369,12 +387,12 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     await seek(v, t);
     lastTs = Math.max(lastTs + 1, base + Math.round(t * 1000));
     let lm;
-    try { lm = await engine.detect(v, lastTs); }
+    try { lm = await engine.detect(v, lastTs, 'full'); }
     catch (e) {
       let ok = false;
       if (engine.kind === 'worker') { // worker prestal fungovať → záložný spôsob a tú istú snímku znova
         workerBroken = true; resetEngine(engine);
-        try { engine = await getEngine(); lastTs += 1; lm = await engine.detect(v, lastTs); ok = true; } catch { /* nižšie */ }
+        try { engine = await getEngine(); if (engine.ensureFull) await engine.ensureFull(); lastTs += 1; lm = await engine.detect(v, lastTs, 'full'); ok = true; } catch { /* nižšie */ }
       }
       if (!ok) {
         // rozpoznávanie resetneme, pri ďalšom pokuse sa vytvorí nové
@@ -750,7 +768,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     reps: isHoldResult ? [] : repData.map(r => ({ s: r.start_s, b: r.bottom_s, e: r.end_s })),
     hold: isHoldResult && holdRun ? { s: r1(frames[holdRun.from].t), e: r1(frames[holdRun.to].t) } : null,
   } : null;
-  try { if (/[?&]debug=1\b/.test(location.search)) window.__vtDebug = { engine: engine.kind + (engine.delegate ? ' ' + engine.delegate : ''), summary, series: { elbowL: frames.map(f => f.m && f.m.L.elbow), elbowR: frames.map(f => f.m && f.m.R.elbow), post: rawPost } }; } catch { /* nič */ }
+  try { if (/[?&]debug=1\b/.test(location.search)) window.__vtDebug = { engine: engine.kind + (engine.delegate ? ' ' + engine.delegate : '') + (engine.fullDelegate ? ' / rozbor ' + engine.fullDelegate : ''), readyMs, summary, series: { elbowL: frames.map(f => f.m && f.m.L.elbow), elbowR: frames.map(f => f.m && f.m.R.elbow), post: rawPost } }; } catch { /* nič */ }
   return { summary, keyframes, thumb, clip };
 }
 
