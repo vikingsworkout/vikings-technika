@@ -910,7 +910,10 @@ function cleanResult(src) {
 function todayOf(r) {
   const steps = (Array.isArray(r.to_100) ? r.to_100 : []).filter(x => x && x.step).sort((a, b) => (Number(b.gain) || 0) - (Number(a.gain) || 0));
   const issues = (Array.isArray(r.issues) ? r.issues : []).slice().sort((a, b) => (sevOrder[a.severity] ?? 1) - (sevOrder[b.severity] ?? 1));
-  if (r.today && r.today.title) return { title: r.today.title, detail: r.today.detail || issues[0]?.fix || '', gain: Number(r.today.gain) || Number(steps[0]?.gain) || 0, frame: r.today.frame };
+  // bez chýb a bez krokov na 100 bodov je „vec na dnes“ len pochvala (žiadna chyba vo videu)
+  const clean = typeof r.score === 'number' && !steps.length && !issues.length;
+  if (r.today && r.today.title) return clean ? { good: true, title: r.today.title, detail: r.today.detail || '', gain: 0 }
+    : { title: r.today.title, detail: r.today.detail || issues[0]?.fix || '', gain: Number(r.today.gain) || Number(steps[0]?.gain) || 0, frame: r.today.frame };
   if (steps.length) return { title: steps[0].step, detail: issues[0]?.detail || '', gain: Number(steps[0].gain) || 0 };
   if (issues.length) return { title: issues[0].title, detail: issues[0].fix || issues[0].detail || '', gain: 0 };
   if (typeof r.score === 'number') return { good: true, title: 'Drž túto techniku', detail: (Array.isArray(r.good) && r.good[0]) || 'Nič podstatné na opravu.', gain: 0 };
@@ -1292,7 +1295,7 @@ function renderResult(item) {
 
       ${score != null && (breakdown.length || to100.length || crit.length) ? `
       <div class="card">
-        <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></div><h2>Cesta k 100 bodom</h2>${missing ? `<span class="cnt">chýba ${missing} b.</span>` : ''}</div>
+        <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></div><h2>${missing === 0 ? 'Plný počet – 100 bodov' : 'Cesta k 100 bodom'}</h2>${missing ? `<span class="cnt">chýba ${missing} b.</span>` : ''}</div>
         ${crit.length ? `<div class="c100h"><span>Kritériá na 100 bodov</span><span><b>${critOk}</b> z ${crit.length} splnených</span></div>
         <ul class="ck">${crit.map(c => `<li class="${c.met === false ? 'no' : c.met == null ? 'na' : ''}"><span>${esc(c.text)}${c.met == null ? '<small> · z tohto videa sa nedá posúdiť</small>' : ''}</span></li>`).join('')}</ul>` : ''}
         ${breakdown.length ? `<div class="bd"${crit.length ? ' style="margin-top:14px"' : ''}>${breakdown.map(b => {
