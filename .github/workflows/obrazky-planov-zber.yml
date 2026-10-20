@@ -1,0 +1,25 @@
+# Priebežné zozbieranie hotových návrhov obrázkov plánov z behu, ktorý ešte nedobehol (pomocná vetva).
+name: obrazky-planov-zber
+on:
+  push:
+    branches: [obrazky-planov-zber]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  zber:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: out-*
+          path: all
+          merge-multiple: true
+          run-id: 39379916556
+          github-token: ${{ github.token }}
+      - name: Uloženie
+        run: |
+          mkdir -p all && cd all && ls -la
+          git init -q && git config user.name "github-actions" && git config user.email "actions@github.com"
+          git add -A && git commit -qm "Návrhy obrázkov plánov (priebežne)" --allow-empty
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:obrazky-planov-vysledky
