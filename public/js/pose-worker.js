@@ -112,9 +112,17 @@ function startFull() {
   return fullP;
 }
 
+// MediaPipe potrebuje WebGL2 aj pri výpočte na procesore (prenos obrázka); bez neho vo workeri
+// (staršie iPhony, niektoré prehliadače) to ani neskúšame a stránka hneď použije záložný spôsob
+function workerGL() {
+  try { const gl = new OffscreenCanvas(1, 1).getContext('webgl2'); if (gl) { try { gl.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* nič */ } } return !!gl; }
+  catch { return false; }
+}
+
 self.onmessage = async (e) => {
   const m = e.data || {};
   if (m.t === 'init') {
+    if (!initP && !workerGL()) { self.postMessage({ t: 'fail', msg: 'vo workeri chýba WebGL2' }); return; }
     if (!initP) initP = withTimeout(initLive(), 90_000, 'Model sa nenačítal včas.');
     try {
       const delegate = await initP;

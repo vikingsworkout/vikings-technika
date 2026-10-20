@@ -19,7 +19,7 @@ function summarize(d) {
   if (!d) return null;
   const sm = d.summary || {};
   const mm = (a) => { const v = (a || []).filter((x) => x != null); return v.length ? [Math.round(Math.min(...v)), Math.round(Math.max(...v)), v.length] : null; };
-  return { engine: d.engine, readyMs: d.readyMs, reps: sm.reps_detected, joint: sm.rep_signal_joint, view: sm.camera_view_estimate, side: sm.measured_side,
+  return { engine: d.engine, readyMs: d.readyMs, timing: d.timing, reps: sm.reps_detected, joint: sm.rep_signal_joint, view: sm.camera_view_estimate, side: sm.measured_side,
     person_pct: sm.person_detected_pct, frames: sm.frames_analyzed, timeline: sm.posture_timeline, active: sm.active_segment && [sm.active_segment.start_s, sm.active_segment.end_s, sm.active_segment.body_posture],
     elbowL: mm(d.series && d.series.elbowL), elbowR: mm(d.series && d.series.elbowR),
     post: d.series && d.series.post ? d.series.post.join('') : '' };
@@ -77,7 +77,7 @@ async function run(name, type, launchOpts, { camera = false, extra = '', warm = 
       await phase(pg, 'analyza suboru');
       await pg.setInputFiles('#inFile', 'video.webm');
     }
-    await pg.waitForFunction(() => window.__vtDebug || /nepodarilo|zlyhalo/i.test(document.body.innerText), null, { timeout: 240000 });
+    await pg.waitForFunction(() => window.__vtDebug || !(document.getElementById('workErr') || { hidden: true }).hidden || /nepodarilo|zlyhalo/i.test(document.body.innerText), null, { timeout: 240000 });
     await pg.waitForTimeout(500);
     r.analyzaS = (Date.now() - t0) / 1000;
     r.kroky = (await pg.innerText('#workSteps').catch(() => '')).replace(/\n/g, ' | ');
