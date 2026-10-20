@@ -1,0 +1,329 @@
+{
+  "chromium-worker": {
+    "console": [
+      "error: Failed to load resource: the server responded with a status of 404 (File not found)",
+      "log: Graph successfully started running.",
+      "error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.",
+      "warning: W1020 15:12:22.480000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "warning: W1020 15:12:22.496000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "log: Graph successfully started running.",
+      "error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.",
+      "warning: W1020 15:12:23.079000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "warning: W1020 15:12:23.102000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "error: Failed to load resource: the server responded with a status of 501 (Unsupported method ('POST'))",
+      "warning: Rozbor – detail chyby: HTTP 501",
+      "error: Error: Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.\n    at runAi (http://127.0.0.1:8080/js/app.js:806:19)\n    at async startAnalysis (http://127.0.0.1:8080/js/app.js:757:3)"
+    ],
+    "analyzaS": 32.081,
+    "kroky": "Telo nájdené | 19 bodov na tele v každej snímke | Opakovania spočítané | 7 opakovaní za 13 sekúnd | Uhly a tempo zmerané | spúšťanie 0,6 s, rozsah každého opakovania | Rozbor a skóre | 0 %",
+    "chyba": "Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.",
+    "analyza": {
+      "engine": "worker CPU / rozbor CPU",
+      "readyMs": 905,
+      "timing": {
+        "scan_s": 28,
+        "seek_ms": 121,
+        "det_ms": 136
+      },
+      "reps": 7,
+      "joint": "elbow",
+      "view": "šikmo (asi 45°)",
+      "side": "pravá",
+      "person_pct": 100,
+      "frames": 211,
+      "timeline": [
+        {
+          "from_s": 0,
+          "to_s": 14,
+          "posture": "vzpriamená"
+        }
+      ],
+      "active": [
+        0.9,
+        14,
+        "vzpriamená (stoj)"
+      ],
+      "elbowL": [
+        39,
+        174,
+        211
+      ],
+      "elbowR": [
+        23,
+        178,
+        211
+      ],
+      "post": "PPPVVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPPPPPPVVVVPPPPPPPVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPPPPPPVVVVVPPPPPPVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPP"
+    },
+    "pauzy": [],
+    "worker": true
+  },
+  "chromium-zaloha": {
+    "console": [
+      "error: Failed to load resource: the server responded with a status of 404 (File not found)",
+      "warning: Rozpoznávanie postavy vo workeri nejde, skúšam priamo: Error: worker vypnutý\n    at getEngine (http://127.0.0.1:8080/js/pose.js:74:46)\n    at analyzeVideo (http://127.0.0.1:8080/js/pose.js:393:42)\n    at startAnalysis (http://127.0.0.1:8080/js/app.js:743:55)",
+      "log: Graph successfully started running.",
+      "warning: [GroupMarkerNotSet(crbug.com/242999)!:A0601C00F4360000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content.",
+      "error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.",
+      "warning: W1020 15:12:55.136000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "warning: W1020 15:12:55.180000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "warning: [.WebGL-0x1a64074edb00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "warning: [.WebGL-0x1a64074edb00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "warning: [.WebGL-0x1a64074edb00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "warning: [.WebGL-0x1a64074edb00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)",
+      "error: Failed to load resource: the server responded with a status of 501 (Unsupported method ('POST'))",
+      "warning: Rozbor – detail chyby: HTTP 501",
+      "error: Error: Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.\n    at runAi (http://127.0.0.1:8080/js/app.js:806:19)\n    at async startAnalysis (http://127.0.0.1:8080/js/app.js:757:3)"
+    ],
+    "analyzaS": 45.757,
+    "kroky": "Telo nájdené | 19 bodov na tele v každej snímke | Opakovania spočítané | 8 opakovaní za 14 sekúnd | Uhly a tempo zmerané | spúšťanie 0,6 s, rozsah každého opakovania | Rozbor a skóre | 0 %",
+    "chyba": "Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.",
+    "analyza": {
+      "engine": "main",
+      "readyMs": 0,
+      "timing": {
+        "scan_s": 43,
+        "seek_ms": 80,
+        "det_ms": 0
+      },
+      "reps": 8,
+      "joint": "elbow",
+      "view": "šikmo (asi 45°)",
+      "side": "pravá",
+      "person_pct": 100,
+      "frames": 211,
+      "timeline": [
+        {
+          "from_s": 0,
+          "to_s": 14,
+          "posture": "vzpriamená"
+        }
+      ],
+      "active": [
+        0,
+        14,
+        "vzpriamená (stoj)"
+      ],
+      "elbowL": [
+        39,
+        174,
+        211
+      ],
+      "elbowR": [
+        23,
+        179,
+        211
+      ],
+      "post": "PPPVVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPPPPPPVVVVVPPPPPPVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPPPPPPVVVVVPPPPPPVVVVVPPPPPPPPVVVVVVVVVVPPPPPPPVVVVVPPPP"
+    },
+    "pauzy": [
+      {
+        "t": 2064,
+        "ms": 409,
+        "faza": "analyza suboru",
+        "hash": "#/praca",
+        "stav": "Zapínam kameru…"
+      }
+    ],
+    "worker": false
+  },
+  "chromium-kamera": {
+    "console": [
+      "log: Graph successfully started running.",
+      "error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.",
+      "warning: W1020 15:13:41.367000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "warning: W1020 15:13:41.381000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "log: Graph successfully started running.",
+      "error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.",
+      "warning: W1020 15:13:42.217000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "warning: W1020 15:13:42.239000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "error: Failed to load resource: the server responded with a status of 404 (File not found)",
+      "error: Failed to load resource: the server responded with a status of 501 (Unsupported method ('POST'))",
+      "warning: Rozbor – detail chyby: HTTP 501",
+      "error: Error: Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.\n    at runAi (http://127.0.0.1:8080/js/app.js:806:19)\n    at async startAnalysis (http://127.0.0.1:8080/js/app.js:757:3)"
+    ],
+    "statusPocasNacitania": "Nevidím ťa – postav sa do záberu",
+    "krizikMs": 63,
+    "modelPripravenyS": 2.602,
+    "zivaKostraOdKlikuS": 1.713,
+    "pocitadlo": "6 OPAKOVANÍ",
+    "analyzaS": 37.979,
+    "kroky": "Telo nájdené | 19 bodov na tele v každej snímke | Opakovania spočítané | 7 opakovaní za 13 sekúnd | Uhly a tempo zmerané | spúšťanie 0,6 s, rozsah každého opakovania | Rozbor a skóre | 0 %",
+    "chyba": "Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.",
+    "analyza": {
+      "engine": "worker CPU / rozbor CPU",
+      "readyMs": 871,
+      "timing": {
+        "scan_s": 14.8,
+        "seek_ms": 66,
+        "det_ms": 89
+      },
+      "reps": 7,
+      "joint": "elbow",
+      "view": "šikmo (asi 45°)",
+      "side": "pravá",
+      "person_pct": 100,
+      "frames": 188,
+      "timeline": [
+        {
+          "from_s": 0,
+          "to_s": 1.2,
+          "posture": "visenie"
+        },
+        {
+          "from_s": 1.3,
+          "to_s": 4.1,
+          "posture": "vzpriamená"
+        },
+        {
+          "from_s": 4.2,
+          "to_s": 6.8,
+          "posture": "visenie"
+        },
+        {
+          "from_s": 6.9,
+          "to_s": 9.7,
+          "posture": "vzpriamená"
+        },
+        {
+          "from_s": 9.8,
+          "to_s": 12.5,
+          "posture": "visenie"
+        }
+      ],
+      "active": [
+        0,
+        12.5,
+        "visenie (napr. na hrazde)"
+      ],
+      "elbowL": [
+        3,
+        174,
+        188
+      ],
+      "elbowR": [
+        26,
+        177,
+        188
+      ],
+      "post": "VVVPPPPPPPPVVVVPPPPPPPPVVVVVVVVVVPPPPPPPPVVVVPPPPPPPPVVVVVPPPPPPVVVVVPPPPPPPPPVVVVVVVVVPPPPPPPPVVVVPPPPPPPPVVVVVVVVVVPPPPPPPPVVVVPPPPPPPPVVVVVPPPPPPVVVVVPPPPPPPPPVVVVVVVVVPPPPPPPPVVVVPPPPP"
+    },
+    "pauzy": [],
+    "worker": true
+  },
+  "chromium-kamera-druhykrat": {
+    "console": [
+      "log: Graph successfully started running.",
+      "error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.",
+      "warning: W1020 15:14:24.556000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "warning: W1020 15:14:24.571000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "log: Graph successfully started running.",
+      "error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.",
+      "warning: W1020 15:14:25.046000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "warning: W1020 15:14:25.066000 1880752 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.",
+      "error: Failed to load resource: the server responded with a status of 404 (File not found)",
+      "error: Failed to load resource: the server responded with a status of 501 (Unsupported method ('POST'))",
+      "warning: Rozbor – detail chyby: HTTP 501",
+      "error: Error: Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.\n    at runAi (http://127.0.0.1:8080/js/app.js:806:19)\n    at async startAnalysis (http://127.0.0.1:8080/js/app.js:757:3)"
+    ],
+    "cache": [
+      "vision_bundle.mjs",
+      "vision_wasm_internal.js",
+      "vision_wasm_internal.wasm",
+      "pose_landmarker_lite.task",
+      "pose_landmarker_full.task"
+    ],
+    "statusPocasNacitania": "Vidím celé telo – môžeš začať",
+    "krizikMs": 59,
+    "modelPripravenyS": 2.58,
+    "zivaKostraOdKlikuS": 1.713,
+    "pocitadlo": "6 OPAKOVANÍ",
+    "analyzaS": 38.004,
+    "kroky": "Telo nájdené | 19 bodov na tele v každej snímke | Opakovania spočítané | 7 opakovaní za 13 sekúnd | Uhly a tempo zmerané | spúšťanie 0,6 s, rozsah každého opakovania | Rozbor a skóre | 0 %",
+    "chyba": "Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.",
+    "analyza": {
+      "engine": "worker CPU / rozbor CPU",
+      "readyMs": 501,
+      "timing": {
+        "scan_s": 14.8,
+        "seek_ms": 66,
+        "det_ms": 88
+      },
+      "reps": 7,
+      "joint": "elbow",
+      "view": "šikmo (asi 45°)",
+      "side": "pravá",
+      "person_pct": 100,
+      "frames": 189,
+      "timeline": [
+        {
+          "from_s": 0,
+          "to_s": 1.2,
+          "posture": "visenie"
+        },
+        {
+          "from_s": 1.3,
+          "to_s": 4.1,
+          "posture": "vzpriamená"
+        },
+        {
+          "from_s": 4.2,
+          "to_s": 6.8,
+          "posture": "visenie"
+        },
+        {
+          "from_s": 6.9,
+          "to_s": 9.7,
+          "posture": "vzpriamená"
+        },
+        {
+          "from_s": 9.8,
+          "to_s": 12.5,
+          "posture": "visenie"
+        }
+      ],
+      "active": [
+        0,
+        12.5,
+        "visenie (napr. na hrazde)"
+      ],
+      "elbowL": [
+        25,
+        173,
+        189
+      ],
+      "elbowR": [
+        4,
+        178,
+        189
+      ],
+      "post": "VVVPPPPPPPPVVVVPPPPPPPPVVVVVVVVVVPPPPPPPPVVVVPPPPPPPPVVVVVPPPPPPVVVVVPPPPPPPPPVVVVVVVVVPPPPPPPPVVVVPPPPPPPPVVVVVVVVVVPPPPPPPPVVVVPPPPPPPPVVVVVPPPPPPVVVVVPPPPPPPPPVVVVVVVVVPPPPPPPPVVVVPPPPPP"
+    },
+    "pauzy": [],
+    "worker": true
+  },
+  "webkit": {
+    "console": [
+      "info: Successfully preconnected to https://cdn.jsdelivr.net/",
+      "info: Successfully preconnected to https://videa.vikingsworkout.com/",
+      "error: Failed to load resource: the server responded with a status of 404 (File not found)",
+      "warning: Rozpoznávanie postavy vo workeri nejde, skúšam priamo: Error: vo workeri chýba WebGL2",
+      "log: Graph successfully started running.",
+      "error: Error: Rozpoznávanie postavy sa zaseklo. Skús to znova – ak sa to opakuje, zatvor Techniku a otvor ju znova."
+    ],
+    "analyzaS": 3.163,
+    "kroky": "Hľadám telo | Načítavam rozpoznávanie postavy | Počítam opakovania | každé opakovanie zvlášť | Meriam uhly a tempo | uhly kĺbov v každej snímke | Rozbor a skóre | čo zlepšiť a ako na 100 bodov | ",
+    "chyba": "Rozpoznávanie postavy sa zaseklo. Skús to znova – ak sa to opakuje, zatvor Techniku a otvor ju znova.",
+    "analyza": null,
+    "pauzy": [
+      {
+        "t": 2589,
+        "ms": 195,
+        "faza": "analyza suboru",
+        "hash": "#/praca",
+        "stav": "Zapínam kameru…"
+      }
+    ],
+    "worker": false
+  }
+}
