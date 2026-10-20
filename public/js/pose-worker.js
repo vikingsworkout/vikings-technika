@@ -41,7 +41,7 @@ const withTimeout = (p, ms, msg) => {
 let lib = null, filesetP = null;
 const L = { live: null, full: null };          // pripravené modely
 const TS = { live: 0, full: 0 };               // čas snímok musí v každom modeli stále rásť
-let initP = null, fullP = null, fullDelegate = '';
+let initP = null, fullP = null, fullDelegate = '', fullFailed = false;
 
 async function fileset() {
   if (!filesetP) {
@@ -106,8 +106,8 @@ async function initFull() {
 function startFull() {
   if (!fullP) {
     fullP = withTimeout(initFull(), 120_000, 'Presný model sa nepripravil včas.');
-    fullP.then((d) => { fullDelegate = d; self.postMessage({ t: 'full', delegate: d }); },
-      (err) => { fullP = null; self.postMessage({ t: 'full-fail', msg: String(err && err.message || err) }); });
+    fullP.then((d) => { fullDelegate = d; fullFailed = false; self.postMessage({ t: 'full', delegate: d }); },
+      (err) => { fullP = null; fullFailed = true; self.postMessage({ t: 'full-fail', msg: String(err && err.message || err) }); });
   }
   return fullP;
 }
@@ -128,14 +128,15 @@ self.onmessage = async (e) => {
     }
     return;
   }
-  if (m.t === 'full?') { startFull().catch(() => {}); return; }
+  if (m.t === 'full?') { fullFailed = false; startFull().catch(() => {}); return; }
   if (m.t === 'detect') {
     const bmp = m.bmp;
     try {
       let q = m.q === 'live' ? 'live' : 'full';
       if (q === 'full' && !L.full) {
         // rozbor čaká na presný model; ak sa nedá pripraviť, použijeme ľahký (radšej rozbor ako chyba)
-        try { await startFull(); } catch { /* nižšie */ }
+        // a pri každej snímke ho znova neskúšame (napr. bez internetu by rozbor stál)
+        if (!fullFailed) { try { await startFull(); } catch { /* nižšie */ } }
         if (!L.full) q = 'live';
       }
       if (q === 'live' && !L.live) q = 'full';
