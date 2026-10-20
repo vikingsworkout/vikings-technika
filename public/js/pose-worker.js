@@ -76,10 +76,21 @@ async function initLive() {
   L.live = await create('live', 'CPU');
   return 'CPU';
 }
+// grafika bez skutočného GPU (softvérové vykresľovanie) počíta pomalšie ako procesor
+function softwareGL() {
+  try {
+    const gl = new OffscreenCanvas(1, 1).getContext('webgl2');
+    if (!gl) return true;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const r = String((ext && gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) || gl.getParameter(gl.RENDERER) || '');
+    try { gl.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* nič */ }
+    return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(r);
+  } catch { return false; }
+}
 // presný model na rozbor: mimo Safari skúsime grafiku, ale ak do 6 s nie je hotová, beží súbežne aj
 // procesor a vyhrá to, čo je skôr; pomalší model sa zatvorí
 async function initFull() {
-  if (WEBKIT) { L.full = await create('full', 'CPU'); return 'CPU'; }
+  if (WEBKIT || softwareGL()) { L.full = await create('full', 'CPU'); return 'CPU'; }
   const gpu = withTimeout(create('full', 'GPU'), 25_000, 'gpu timeout').then(m => ({ m, d: 'GPU' }));
   const cpuLater = new Promise((res, rej) => {
     const t = setTimeout(() => create('full', 'CPU').then(m => res({ m, d: 'CPU' }), rej), 6_000);

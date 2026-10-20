@@ -32,6 +32,16 @@ function withTimeout(promise, ms, message) {
     .finally(() => clearTimeout(t));
 }
 
+function softwareGL() {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    if (!gl) return true;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const r = String((ext && gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) || gl.getParameter(gl.RENDERER) || '');
+    try { gl.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* nič */ }
+    return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(r);
+  } catch { return false; }
+}
 async function getLandmarker() {
   if (!landmarkerPromise) {
     landmarkerPromise = withTimeout((async () => {
@@ -42,9 +52,13 @@ async function getLandmarker() {
         runningMode: 'VIDEO', numPoses: 1,
         minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
       });
-      // GPU na niektorých mobiloch zlyhá alebo zamrzne – vtedy prejdeme na CPU
-      try { return await withTimeout(PoseLandmarker.createFromOptions(fileset, opts('GPU')), 25_000, 'gpu'); }
-      catch { return await PoseLandmarker.createFromOptions(fileset, opts('CPU')); }
+      // GPU na niektorých mobiloch zlyhá alebo zamrzne – vtedy prejdeme na CPU;
+      // pri softvérovej grafike (bez skutočného GPU) rovno CPU, je rýchlejšie
+      if (!softwareGL()) {
+        try { return await withTimeout(PoseLandmarker.createFromOptions(fileset, opts('GPU')), 25_000, 'gpu'); }
+        catch { /* CPU */ }
+      }
+      return await PoseLandmarker.createFromOptions(fileset, opts('CPU'));
     })(), 90_000, 'Rozpoznávanie postavy sa nestihlo načítať (slabý internet?). Skús to znova, ideálne na Wi-Fi.');
     landmarkerPromise.catch(() => { landmarkerPromise = null; });
   }
@@ -121,20 +135,29 @@ async function workerEngine() {
       w.postMessage({ t: 'full?' });
       return new Promise((res) => { const t = setTimeout(res, ms); fullWait.push(() => { clearTimeout(t); res(); }); });
     },
-    async detect(video, ts, q = 'full') {
-      if (dead) throw new Error(dead);
+    // aktuálna snímka videa ako obrázok pre worker (null, keď video ešte nemá rozmery)
+    async grab(video) {
       const W = video.videoWidth, H = video.videoHeight;
       if (!W || !H) return null;
       const s = Math.min(1, 640 / Math.max(W, H)), cw = Math.round(W * s), ch = Math.round(H * s);
       if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
       g.drawImage(video, 0, 0, cw, ch);
-      const bmp = await createImageBitmap(cv);
+      return createImageBitmap(cv);
+    },
+    // výpočet bodov tela vo workeri; kým beží, hlavné vlákno môže pripravovať ďalšiu snímku
+    detectBmp(bmp, ts, q = 'full') {
+      if (dead) { try { bmp && bmp.close(); } catch { /* nič */ } return Promise.reject(new Error(dead)); }
+      if (!bmp) return Promise.resolve(null);
       return new Promise((res, rej) => {
         const id = ++seq;
         const t = setTimeout(() => { pending.delete(id); rej(new Error('Rozpoznávanie postavy neodpovedá.')); }, 20_000);
         pending.set(id, { res, rej, t });
         w.postMessage({ t: 'detect', id, bmp, ts: Math.round(ts || performance.now()), q }, [bmp]);
       });
+    },
+    async detect(video, ts, q = 'full') {
+      if (dead) throw new Error(dead);
+      return this.detectBmp(await this.grab(video), ts, q);
     },
   };
 }
@@ -380,47 +403,90 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   if (!W || !H || !isFinite(fullDuration)) throw userErr('Toto video sa nepodarilo prečítať. Skús ho nahrať znova alebo vyber iné.', false);
   const duration = Math.min(fullDuration, maxSeconds);
   const step = Math.max(1 / 15, duration / 400); // hustejšie snímkovanie (max. 400 snímok)
-  const frames = [];
   const base = lastTs + 1000;
+  const times = [];
+  for (let t = 0; t < duration; t += step) times.push(t);
+  const frames = new Array(times.length).fill(null);
   // záznam pre prehrávač: max. CLIP_MAX snímok, dlhšia strana CLIP_SIDE px
-  const stride = Math.max(1, Math.ceil(Math.ceil(duration / step) / CLIP_MAX));
+  const stride = Math.max(1, Math.ceil(times.length / CLIP_MAX));
   const cs = Math.min(1, CLIP_SIDE / Math.max(W, H));
   const cc = document.createElement('canvas');
   cc.width = Math.round(W * cs); cc.height = Math.round(H * cs);
-  const cg = cc.getContext('2d');
-  const clipFrames = [];
-  let clipOk = true;
+  const ccs = [cc, Object.assign(document.createElement('canvas'), { width: cc.width, height: cc.height })]; // striedajú sa (snímka čaká na výsledok)
+  let clipFrames = [], clipOk = true, nClip = 0;
+  const blobs = [];
+  const tm = { seek: 0, det: 0, n: 0, t0: performance.now() };
 
-  for (let t = 0; t < duration; t += step) {
-    await seek(v, t);
-    lastTs = Math.max(lastTs + 1, base + Math.round(t * 1000));
-    let lm;
-    try { lm = await engine.detect(v, lastTs, 'full'); }
-    catch (e) {
-      let ok = false;
-      if (engine.kind === 'worker') { // worker prestal fungovať → záložný spôsob a tú istú snímku znova
-        workerBroken = true; resetEngine(engine);
-        try { engine = await getEngine(); if (engine.ensureFull) await engine.ensureFull(); lastTs += 1; lm = await engine.detect(v, lastTs, 'full'); ok = true; } catch { /* nižšie */ }
-      }
-      if (!ok) {
-        // rozpoznávanie resetneme, pri ďalšom pokuse sa vytvorí nové
-        if (engine.kind === 'main') landmarkerPromise = null;
-        resetEngine(engine);
-        throw userErr('Rozpoznávanie postavy sa zaseklo. Skús to znova – ak sa to opakuje, zatvor Techniku a otvor ju znova.');
-      }
-    }
-    frames.push({ t, lm: lm || null, m: lm ? frameMetrics(lm, W, H) : null });
-    if (clipOk && (frames.length - 1) % stride === 0) {
-      try {
-        cg.drawImage(v, 0, 0, cc.width, cc.height);
-        const img = await new Promise(r => cc.toBlob(r, 'image/jpeg', 0.62));
-        if (img) clipFrames.push({ t, fi: frames.length - 1, img,
-          lm: lm ? CLIP_PTS.map(i => [Math.round(lm[i].x * 1000) / 1000, Math.round(lm[i].y * 1000) / 1000, Math.round((lm[i].visibility ?? 1) * 100) / 100]) : null });
-        if (onFrame) { try { onFrame(cc, lm || null, t, duration); } catch { /* náhľad nesmie zastaviť analýzu */ } }
-      } catch { clipOk = false; } // záznam je len doplnok, analýzu nesmie zastaviť
+  // obrázok snímky do záznamu hneď; body tela doplní výsledok
+  const grabClip = (k) => {
+    if (!clipOk || k % stride !== 0) return null;
+    try {
+      const canvas = ccs[nClip++ % 2];
+      canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
+      const rec = { t: times[k], fi: k, img: null, lm: null };
+      clipFrames.push(rec);
+      blobs.push(new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.62)).then((b) => { rec.img = b || null; }, () => { rec.img = null; }));
+      return { canvas, rec };
+    } catch { clipOk = false; return null; } // záznam je len doplnok, analýzu nesmie zastaviť
+  };
+  const record = (k, lm, cj) => {
+    const t = times[k];
+    frames[k] = { t, lm: lm || null, m: lm ? frameMetrics(lm, W, H) : null };
+    if (cj) {
+      cj.rec.lm = lm ? CLIP_PTS.map(i => [Math.round(lm[i].x * 1000) / 1000, Math.round(lm[i].y * 1000) / 1000, Math.round((lm[i].visibility ?? 1) * 100) / 100]) : null;
+      if (onFrame) { try { onFrame(cj.canvas, lm || null, t, duration); } catch { /* náhľad nesmie zastaviť analýzu */ } }
     }
     onProgress(0.05 + 0.85 * (t / duration), 'Analyzujem pohyb…');
+  };
+  const settle = async (job) => {
+    let lm;
+    try { lm = await job.p; } catch (e) { throw Object.assign(e || new Error('chyba'), { at: job.k }); }
+    tm.det += performance.now() - job.t0; tm.n++;
+    record(job.k, lm, job.cj);
+  };
+  // prechod videom od snímky k0; vo workeri sa ďalšia snímka hľadá súbežne s výpočtom predchádzajúcej
+  const runFrom = async (k0) => {
+    const pipe = engine.kind === 'worker' && typeof engine.grab === 'function';
+    let pend = null;
+    for (let k = k0; k < times.length; k++) {
+      try {
+        const s0 = performance.now();
+        await seek(v, times[k]);
+        tm.seek += performance.now() - s0;
+        lastTs = Math.max(lastTs + 1, base + Math.round(times[k] * 1000));
+        const cj = grabClip(k);
+        const p = pipe ? engine.detectBmp(await engine.grab(v), lastTs, 'full') : engine.detect(v, lastTs, 'full');
+        const job = { k, p, cj, t0: performance.now() };
+        p.catch(() => {}); // chybu spracuje settle
+        if (pend) await settle(pend);
+        pend = job;
+        if (!pipe) { await settle(pend); pend = null; }
+      } catch (e) {
+        throw Object.assign(e || new Error('chyba'), { at: e && e.at != null ? e.at : pend ? pend.k : k });
+      }
+    }
+    if (pend) await settle(pend);
+  };
+
+  try { await runFrom(0); }
+  catch (e) {
+    const at = e && e.at != null ? e.at : 0;
+    let ok = false;
+    if (engine.kind === 'worker') { // worker prestal fungovať → záložný spôsob od snímky, kde to zlyhalo
+      workerBroken = true; resetEngine(engine);
+      clipFrames = clipFrames.filter(c => c.fi < at);
+      try { engine = await getEngine(); if (engine.ensureFull) await engine.ensureFull(); lastTs += 1; await runFrom(at); ok = true; } catch { /* nižšie */ }
+    }
+    if (!ok) {
+      // rozpoznávanie resetneme, pri ďalšom pokuse sa vytvorí nové
+      if (engine.kind === 'main') landmarkerPromise = null;
+      resetEngine(engine);
+      throw userErr('Rozpoznávanie postavy sa zaseklo. Skús to znova – ak sa to opakuje, zatvor Techniku a otvor ju znova.');
+    }
   }
+  await Promise.all(blobs);
+  clipFrames = clipFrames.filter(c => c.img);
+  const timing = { scan_s: Math.round((performance.now() - tm.t0) / 100) / 10, seek_ms: Math.round(tm.seek / Math.max(1, times.length)), det_ms: Math.round(tm.det / Math.max(1, tm.n)) };
 
   const ok = frames.filter(f => f.m);
   if (ok.length < Math.max(5, frames.length * 0.3)) {
@@ -776,7 +842,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     reps: isHoldResult ? [] : repData.map(r => ({ s: r.start_s, b: r.bottom_s, e: r.end_s })),
     hold: isHoldResult && holdRun ? { s: r1(frames[holdRun.from].t), e: r1(frames[holdRun.to].t) } : null,
   } : null;
-  try { if (/[?&]debug=1\b/.test(location.search)) window.__vtDebug = { engine: engine.kind + (engine.delegate ? ' ' + engine.delegate : '') + (engine.fullDelegate ? ' / rozbor ' + engine.fullDelegate : ''), readyMs, summary, series: { elbowL: frames.map(f => f.m && f.m.L.elbow), elbowR: frames.map(f => f.m && f.m.R.elbow), post: rawPost } }; } catch { /* nič */ }
+  try { if (/[?&]debug=1\b/.test(location.search)) window.__vtDebug = { engine: engine.kind + (engine.delegate ? ' ' + engine.delegate : '') + (engine.fullDelegate ? ' / rozbor ' + engine.fullDelegate : ''), readyMs, timing, summary, series: { elbowL: frames.map(f => f.m && f.m.L.elbow), elbowR: frames.map(f => f.m && f.m.R.elbow), post: rawPost } }; } catch { /* nič */ }
   return { summary, keyframes, thumb, clip };
 }
 

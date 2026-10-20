@@ -847,7 +847,7 @@ function vwSummary(item) {
 // skóre ako krúžok v štýle hlavnej appky
 function vwScoreHead(score, r, sm, reps, isH, holdS, dur) {
   const C = 2 * Math.PI * 54, pct = score != null ? score / 100 : 0;
-  const lab = score == null ? 'Rozbor' : score >= 90 ? 'Výborná technika' : score >= 80 ? 'Dobrá technika' : score >= 65 ? 'Solídny základ' : score >= 50 ? 'Je čo zlepšovať' : 'Treba popracovať';
+  const lab = score == null ? 'Nedá sa ohodnotiť' : score >= 90 ? 'Výborná technika' : score >= 80 ? 'Dobrá technika' : score >= 65 ? 'Solídny základ' : score >= 50 ? 'Je čo zlepšovať' : 'Treba popracovať';
   const down = sm.tempo?.avg_down_s;
   const tl = (v, k) => `<div class="tl"><b>${v}</b><span>${k}</span></div>`;
   const tiles = isH
@@ -858,9 +858,9 @@ function vwScoreHead(score, r, sm, reps, isH, holdS, dur) {
       <div class="ring"><svg viewBox="0 0 124 124" role="img" aria-label="Skóre ${score ?? '?'} zo 100">
         <defs><linearGradient id="vwg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A5C"/><stop offset=".55" stop-color="#FF5A1F"/><stop offset="1" stop-color="#E8450F"/></linearGradient></defs>
         <circle cx="62" cy="62" r="54" fill="none" stroke="currentColor" stroke-opacity=".1" stroke-width="10"/>
-        <circle cx="62" cy="62" r="54" fill="none" stroke="url(#vwg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(C * pct).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 62 62)"/>
+        ${score != null ? `<circle cx="62" cy="62" r="54" fill="none" stroke="url(#vwg)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(C * pct).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 62 62)"/>` : ''}
       </svg><div class="num"><b>${score ?? '?'}</b><span>zo 100</span></div></div>
-      <div style="min-width:0"><div class="k">TVOJE SKÓRE</div><div class="lab">${lab}</div>${r.verdict ? `<p class="vd">${esc(r.verdict)}</p>` : ''}</div>
+      <div style="min-width:0"><div class="k">TVOJE SKÓRE</div><div class="lab">${lab}</div>${r.verdict ? `<p class="vd">${esc(r.verdict)}</p>` : ''}${score == null && r.camera_limits ? `<p class="vd tip"><b>Ako natočiť:</b> ${esc(r.camera_limits)}</p>` : ''}</div>
     </div>
     <div class="tiles">${tiles}</div>
   </div>`;
@@ -1224,7 +1224,9 @@ function renderResult(item) {
   const r = cleanResult(item.result);
   const ex = r.exercise || {};
   const score = typeof r.score === 'number' ? Math.max(0, Math.min(100, Math.round(r.score))) : null;
-  const mismatch = item.exercise.id !== 'auto' && ex.matches_selected === false;
+  // upozornenie na iný cvik len keď ho AI naozaj rozpoznala a ohodnotila (pri nepoužiteľnom videe nie)
+  const mismatch = item.exercise.id !== 'auto' && ex.matches_selected === false && score != null;
+  const chosenName = (VW && item.vwName) || item.exercise.name;
   const sm = item.summary || {};
   const reps = sm.reps_detected || 0;
   const isH = sm.exercise_type === 'hold';
@@ -1253,7 +1255,7 @@ function renderResult(item) {
 
   $('vResult').innerHTML = `
     <div class="rmeta">${esc((VW && item.vwName) || ex.name || item.exercise.name)}${isH ? ` · výdrž ${holdS} s` : reps ? ` · ${reps} ${plural(reps, 'opakovanie', 'opakovania', 'opakovaní')}` : ''}</div>
-    ${mismatch ? `<div class="card err mismatch"><b>Pozor:</b> AI si myslí, že na videu je iný cvik, než si vybral (${esc(item.exercise.name)}). Ak to nesedí, zmeň cvik v celom rozbore dole.</div>` : ''}
+    ${mismatch ? `<div class="card err mismatch"><b>Pozor:</b> ${ex.name && ex.name !== chosenName ? `Podľa AI je na videu skôr ${esc(ex.name)}, nie ${esc(chosenName)}.` : `AI si myslí, že na videu je iný cvik, než si vybral (${esc(chosenName)}).`} Ak to nesedí, vyber správny cvik v celom rozbore dole.</div>` : ''}
     ${VW ? vwScoreHead(score, r, sm, reps, isH, holdS, dur) : `<div class="bigscore"><span class="n" style="color:${scoreColor(score)}">${score ?? '?'}</span><span class="of">/100</span></div>
     <p class="rverdict">${esc(r.verdict || '')}</p>`}
 
@@ -1350,8 +1352,8 @@ function renderResult(item) {
 
     ${VW ? `<div class="stickybar vwbar">
       <button class="btn pri" id="btnVwMain">${vwUse ? `${ICON_CHECK}${esc(vwUse.label)}` : 'Hotovo'}</button>
-      <button class="btn sec" id="btnAgain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Skúsiť znova lepšie</button>
-    </div>` : `<div class="stickybar"><button class="btn pri" id="btnAgain">${today && !today.good ? 'Skúsiť to opraviť' : 'Natočiť ďalšiu sériu'}</button></div>`}
+      <button class="btn sec" id="btnAgain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>${score == null ? 'Natočiť znova' : 'Skúsiť znova lepšie'}</button>
+    </div>` : `<div class="stickybar"><button class="btn pri" id="btnAgain">${score == null ? 'Natočiť znova' : today && !today.good ? 'Skúsiť to opraviť' : 'Natočiť ďalšiu sériu'}</button></div>`}
   `;
   if ($('btnVwMain')) $('btnVwMain').onclick = () => { if (vwUse) vwPost('use', { reps: vwUse.reps || 0, hold: vwUse.hold || 0 }); else vwPost('close'); };
 
