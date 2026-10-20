@@ -167,10 +167,10 @@ const EX_PIC = {
   'pritah-hrazda': ['<path d="M5 6.5h38"/>', [24, 15, 4.2], 'M14 6.5l-1 11 6 5M34 6.5l1 11-6 5M19 22.5h10M24 22v11.5M24 33.5l-2.6 10.5M24 33.5l2.6 10.5'],
   drep: ['<path d="M5 44h38"/>', [22.5, 8.5, 4.2], 'M20.5 15 13.5 27 27 28.5l-3 11.5h7M20.5 16.5 36 17.5'],
   vypad: ['<path d="M5 44h38"/>', [24, 6.5, 4.2], 'M24 12.5v12M24 24.5l10 2.5V40.5h5M24 24.5 16.5 36l-8 4.5M24 15.5h9'],
-  'mrtvy-tah': ['<circle cx="25.5" cy="30" r="7.5"/><path d="M5 44h38"/>', [31, 10, 4.2], 'M14 22 26 14.5M26 15v15M14 22l7.5 9-3 9.5h7'],
   bench: ['<circle cx="15" cy="9" r="5.5"/><path d="M6 31h28M10 31v10M30 31v10"/>', [7.5, 24.5, 4], 'M12.5 27h15l7.5-5.5 3.5 18.5M15 27V14.5'],
   'tlak-nad-hlavu': ['<path d="M6 6.5h36M8.5 2.5v8M39.5 2.5v8"/>', [24, 16.5, 4.2], 'M15.5 6.5l3.5 16M32.5 6.5 29 22.5M19 22.5h10M24 22v11.5M24 33.5l-3.5 11M24 33.5l3.5 11'],
   'hip-thrust': ['<circle cx="25" cy="14" r="5.5"/><path d="M4 25.5h10M9 25.5V42M4 42h40"/>', [7, 19, 3.8], 'M11.5 22.5 25 20.5l11.5.5V38h5'],
+  most: ['<path d="M3 42h42"/>', [7.5, 37.5, 3.8], 'M12.5 39 26 29l10.5-3 2.5 14.5h4.5M13.5 40.5h8'],
 };
 const picSvg = (id) => {
   const p = EX_PIC[id];
@@ -259,7 +259,7 @@ function renderShoot() {
 
 // výrez obrázka a rámik „Celé telo v zábere“: podľa polohy postavy na náhľade (zistenej vopred na GitHube),
 // bez nej podľa piktogramu alebo tvaru cviku (kliky, plank… naležato, ostatné nastojato)
-const WIDE = new Set(['klik', 'plank', 'planche', 'hip-thrust', 'bench', 'front-lever', 'back-lever', 'l-sit']);
+const WIDE = new Set(['klik', 'plank', 'planche', 'hip-thrust', 'most', 'bench', 'front-lever', 'back-lever', 'l-sit']);
 function layoutShot() {
   const box = $('shPrev');
   if (!VW || !box || !pick || $('vNew').hidden) return;
@@ -318,10 +318,10 @@ function preloadSoon(ms = 2500) {
 }
 
 // ---------- v appke: Výber cviku ----------
-// ďalšie cviky: kalistenika a výdrže (výdrže a dipy rozpozná automatický režim s názvom ako nápovedou)
+// ďalšie cviky: len s vlastnou váhou – kalistenika a výdrže (výdrže a dipy rozpozná automatický režim s názvom ako nápovedou)
 const PICK_TILES = [
   { n: 'Kliky', c: 'Hrudník', id: 'klik' }, { n: 'Zhyby', c: 'Chrbát', id: 'pritah-hrazda' }, { n: 'Dipy', c: 'Ruky' },
-  { n: 'Drepy', c: 'Nohy', id: 'drep' }, { n: 'Výpady', c: 'Nohy', id: 'vypad' }, { n: 'Mŕtvy ťah', c: 'Chrbát', id: 'mrtvy-tah' },
+  { n: 'Drepy', c: 'Nohy', id: 'drep' }, { n: 'Výpady', c: 'Nohy', id: 'vypad' }, { n: 'Mostík', c: 'Zadok', id: 'most' },
   { n: 'Stojka', c: 'Výdrž', id: 'stojka' }, { n: 'L-sit', c: 'Výdrž', id: 'l-sit' }, { n: 'Plank', c: 'Výdrž', id: 'plank' },
 ];
 function renderPick() {

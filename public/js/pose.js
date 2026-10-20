@@ -349,8 +349,8 @@ function zigzag(s, delta) {
 }
 
 // Opakovanie = horná poloha → krajná poloha (dolina hlavného uhla) → horná poloha.
-// startType: 'top' (kliky, drepy, príťahy – séria začína hore), 'bottom' (mŕtvy ťah, tlak nad hlavu,
-// hip thrust – začína dole, prvý výstup je opakovanie), null = odhadnúť z priebehu.
+// startType: 'top' (kliky, drepy, príťahy – séria začína hore), 'bottom' (mostík, hip thrust, tlak nad hlavu
+// – začína dole, prvý výstup je opakovanie), null = odhadnúť z priebehu.
 // Časy: start = koniec hornej polohy, reach = príchod dole, leave = odchod zdola, end = príchod hore.
 function detectReps(values, { minAmp = 25, startType = null } = {}) {
   const s = smooth(interpolate(values));

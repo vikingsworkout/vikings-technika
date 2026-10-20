@@ -5,7 +5,7 @@
 //   signal  = ktorý uhol kĺbu sa pri cviku najviac mení (opakovanie = jeho minimum)
 //   posture = očakávaná poloha tela počas série (V stoj, H vodorovne, P visenie, null = hocijaká)
 //   minAmp  = minimálny rozsah hlavného uhla v stupňoch, aby sa pohyb rátal ako opakovanie
-//   start   = kde séria začína: 'top' (hore, napr. kliky) alebo 'bottom' (dole, napr. mŕtvy ťah)
+//   start   = kde séria začína: 'top' (hore, napr. kliky) alebo 'bottom' (dole, napr. mostík)
 // Výdrže (type: 'hold'):
 //   target    = poloha, ktorú appka hľadá (plank, handstand, lsit, lever, planche)
 //   holdJoint = hlavný sledovaný uhol (body_line = rameno–bok–členok, hip = rameno–bok–koleno)
@@ -32,8 +32,8 @@ export const EXERCISES = [
     camera: 'Zboku, kamera vo výške bokov, 2–3 m. V zábere obe nohy celé počas celého pohybu.',
   },
   {
-    id: 'mrtvy-tah', top: ['Chrbát rovný celý čas', 'Pohyb ide z bokov – zadok dozadu', 'Činka ide tesne pri nohách', 'Hore stojíš vystretý, bez záklonu', 'Spúšťaš pod kontrolou'], dist: '2–3 m od teba', checks: ['Rovný chrbát', 'Pohyb z bokov', 'Dráha činky', 'Kolená', 'Tempo'], start: 'bottom', group: 'c', hint: 'Presne zboku, vo výške bokov', keys: ['mŕtv','mrtv','deadlift'], name: 'Mŕtvy ťah', en: 'Deadlift', signal: 'hip', posture: 'V', minAmp: 35,
-    camera: 'Presne zboku. Kamera vo výške bokov, 2–3 m. V zábere celé telo aj činka.',
+    id: 'most', top: ['Hore vystreté boky, telo rovné od ramien po kolená', 'Kolená nad chodidlami, nerozchádzajú sa', 'Chrbát neprehnutý, tlačíš cez päty', 'Hore krátka výdrž, dole pod kontrolou'], dist: '2 m od teba', checks: ['Vystretie bokov', 'Kolená', 'Chrbát', 'Tempo'], start: 'bottom', group: 'k', hint: 'Zboku, kamera nízko pri zemi', keys: ['mostík','mostik','glute bridge','zdvíhanie panvy','zdvihanie panvy'], name: 'Mostík', en: 'Glute bridge', signal: 'hip', posture: null, minAmp: 20,
+    camera: 'Presne zboku, kamera nízko pri zemi, 2 m. V zábere hlava, boky aj chodidlá.',
   },
   {
     id: 'bench', top: ['Činka ide až k hrudníku, hore vystreté ruky', 'Lakte šikmo pri tele, nie do strán', 'Činka ide rovnomerne, bez kývania', 'Lopatky stiahnuté, zadok na lavičke', 'Spúšťaš pod kontrolou'], dist: '1,5–2 m od lavičky', checks: ['Rozsah pohybu', 'Lakte', 'Dráha činky', 'Tempo'], start: 'top', group: 'c', hint: 'Zboku, vo výške lavičky', keys: ['bench','tlak na lavičke'], name: 'Bench press', en: 'Bench press', signal: 'elbow', posture: null, minAmp: 30,
@@ -44,7 +44,7 @@ export const EXERCISES = [
     camera: 'Zboku, kamera vo výške hrudníka, 2–3 m. V zábere celé telo aj vystreté ruky nad hlavou.',
   },
   {
-    id: 'hip-thrust', top: ['Hore vystreté boky, telo rovné od ramien po kolená', 'Kolená nad chodidlami', 'Chrbát neprehnutý, brada mierne k hrudníku', 'Hore krátka výdrž, dole pod kontrolou'], dist: '2 m od lavičky', checks: ['Vystretie bokov', 'Kolená', 'Chrbát a hlava', 'Tempo'], start: 'bottom', group: 'c', hint: 'Zboku, kamera nízko', keys: ['hip thrust','glute bridge','hip-thrust'], name: 'Hip thrust', en: 'Hip thrust', signal: 'hip', posture: null, minAmp: 25,
+    id: 'hip-thrust', top: ['Hore vystreté boky, telo rovné od ramien po kolená', 'Kolená nad chodidlami', 'Chrbát neprehnutý, brada mierne k hrudníku', 'Hore krátka výdrž, dole pod kontrolou'], dist: '2 m od lavičky', checks: ['Vystretie bokov', 'Kolená', 'Chrbát a hlava', 'Tempo'], start: 'bottom', group: 'c', hint: 'Zboku, kamera nízko', keys: ['hip thrust','hip-thrust'], name: 'Hip thrust', en: 'Hip thrust', signal: 'hip', posture: null, minAmp: 25,
     camera: 'Presne zboku, kamera nízko (výška lavičky), 2 m. V zábere hlava, boky aj chodidlá.',
   },
 
