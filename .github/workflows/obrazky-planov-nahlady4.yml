@@ -1,10 +1,10 @@
-# Návrhy novej scény pre Cestovný okruh bez náradia (c22) – len tmavé náhľady, každá úloha hneď po dokončení
-# uloží výsledok do vetvy obrazky-planov-nahlady3-vysledky, aby sa dalo vyberať priebežne.
-name: obrazky-planov-nahlady3
+# Cestovný okruh (c22): kliky v hotelovej izbe s postavou podobnou trénerovi – nové obrázky aj úpravy náhľadov C3/C4.
+# Každá úloha hneď po dokončení uloží výsledok do vetvy obrazky-planov-nahlady4-vysledky.
+name: obrazky-planov-nahlady4
 on:
   workflow_dispatch:
   push:
-    branches: [obrazky-planov-nahlady3]
+    branches: [obrazky-planov-nahlady4]
 permissions:
   contents: write
 jobs:
@@ -14,8 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scene: [t1, t2, t3, t4, t5, t6]
-        seed: ['5', '6']
+        item: ['txt 5', 'txt 6', 'txt 7', 'txt 8', 'img t2-5 0.6', 'img t2-5 0.72', 'img t2-6 0.6', 'img t2-6 0.72']
     steps:
       - uses: actions/checkout@v4
       - name: Miesto a výkon
@@ -33,16 +32,16 @@ jobs:
       - name: Náhľad
         run: |
           pip install -q numpy pillow
-          python3 .github/gen/nahlad.py z ${{ matrix.scene }} ${{ matrix.seed }}
+          python3 .github/gen/podoba.py ${{ matrix.item }}
       - name: Uloženie
         run: |
           mkdir /tmp/r && cd /tmp/r && git init -q
           git config user.name "github-actions" && git config user.email "actions@github.com"
           git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
           for i in $(seq 1 15); do
-            if git fetch -q origin obrazky-planov-nahlady3-vysledky 2>/dev/null; then git checkout -q -f -B w FETCH_HEAD; else git checkout -q --orphan w 2>/dev/null || true; fi
+            if git fetch -q origin obrazky-planov-nahlady4-vysledky 2>/dev/null; then git checkout -q -f -B w FETCH_HEAD; else git checkout -q --orphan w 2>/dev/null || true; fi
             cp "$GITHUB_WORKSPACE"/out/*.jpg "$GITHUB_WORKSPACE"/out/*.png "$GITHUB_WORKSPACE"/out/*.json .
-            git add -A && git commit -qm "Náhľad ${{ matrix.scene }}-${{ matrix.seed }}" || true
-            git push -q origin w:obrazky-planov-nahlady3-vysledky && break
+            git add -A && git commit -qm "Návrh ${{ matrix.item }}" || true
+            git push -q origin w:obrazky-planov-nahlady4-vysledky && break
             sleep $((5 + RANDOM % 25))
           done
