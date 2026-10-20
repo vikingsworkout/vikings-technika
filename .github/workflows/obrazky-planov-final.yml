@@ -1,21 +1,20 @@
-# Ďalšie náhľady scén s náradím (paralety, kruhy, bradlá, domáci kútik), len tmavá verzia, každá úloha hneď po dokončení uloží výsledok
-# do vetvy obrazky-planov-nahlady-vysledky, aby sa dalo vyberať priebežne.
-name: obrazky-planov-nahlady2
+# Hotové scény z vybraných náhľadov: svetlá verzia a AI zväčšenie na 928×1152.
+# Výsledok ide do vetvy obrazky-planov-final-vysledky.
+name: obrazky-planov-final
 on:
   workflow_dispatch:
   push:
-    branches: [obrazky-planov-nahlady2]
+    branches: [obrazky-planov-final]
 permissions:
   contents: write
 jobs:
-  nahlad:
+  final:
     runs-on: ubuntu-latest
     timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
-        scene: [n1, n2, n3, n4, n5]
-        seed: ['5', '6']
+        item: ['p12e 5', 'c3e 5']
     steps:
       - uses: actions/checkout@v4
       - name: Miesto a výkon
@@ -30,19 +29,19 @@ jobs:
           cmake --build build -j"$(nproc)" --target sd-cli > /dev/null
       - name: Modely
         run: python3 .github/gen/models.py z
-      - name: Náhľad
+      - name: Hotová scéna
         run: |
           pip install -q numpy pillow
-          python3 .github/gen/nahlad.py z ${{ matrix.scene }} ${{ matrix.seed }}
+          python3 .github/gen/final.py ${{ matrix.item }}
       - name: Uloženie
         run: |
           mkdir /tmp/r && cd /tmp/r && git init -q
           git config user.name "github-actions" && git config user.email "actions@github.com"
           git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
           for i in $(seq 1 15); do
-            if git fetch -q origin obrazky-planov-nahlady-vysledky 2>/dev/null; then git checkout -q -f -B w FETCH_HEAD; else git checkout -q --orphan w 2>/dev/null || true; fi
-            cp "$GITHUB_WORKSPACE"/out/*.jpg "$GITHUB_WORKSPACE"/out/*.json .
-            git add -A && git commit -qm "Náhľad ${{ matrix.scene }}-${{ matrix.seed }}" || true
-            git push -q origin w:obrazky-planov-nahlady-vysledky && break
+            if git fetch -q origin obrazky-planov-final-vysledky 2>/dev/null; then git checkout -q -f -B w FETCH_HEAD; else git checkout -q --orphan w 2>/dev/null || true; fi
+            cp "$GITHUB_WORKSPACE"/out/*.jpg "$GITHUB_WORKSPACE"/out/*.json "$GITHUB_WORKSPACE"/out/*-l.png .
+            git add -A && git commit -qm "Hotová scéna ${{ matrix.item }}" || true
+            git push -q origin w:obrazky-planov-final-vysledky && break
             sleep $((5 + RANDOM % 25))
           done
