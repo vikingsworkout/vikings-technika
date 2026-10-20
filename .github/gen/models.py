@@ -48,5 +48,10 @@ else:
     clip = get(*pick(['comfyanonymous/flux_text_encoders', 'second-state/FLUX.1-schnell-GGUF'], [r'(^|/)clip_l\.safetensors$']))
     t5 = get(*pick(['second-state/FLUX.1-schnell-GGUF', 'leejet/FLUX.1-schnell-gguf'], [r't5xxl.*q8_0\.gguf$', r't5xxl.*q6_k\.gguf$', r't5xxl.*q5.*\.gguf$'])) 
     args = ['--diffusion-model', dm, '--vae', vae, '--clip_l', clip, '--t5xxl', t5, '--cfg-scale', '1.0', '--sampling-method', 'euler', '--steps', '4']
+# AI zväčšovanie obrázkov (4×) – na ostré hrany a textúry v rozlíšení appky
+up = 'models/4xNomos2_hq_mosr.pth'
+if not os.path.exists(up):
+    subprocess.run(['curl', '-sSL', '--fail', '--retry', '5', '-o', up,
+                    'https://github.com/Phhofm/models/releases/download/4xNomos2_hq_mosr/4xNomos2_hq_mosr.pth'], check=True)
 json.dump(args, open('models/args.json', 'w'))
 print(args)

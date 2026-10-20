@@ -11,13 +11,13 @@ permissions:
 jobs:
   gen:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:
-        model: [z, f]
-        scene: [p12, c3]
-        seed: ['11', '22', '33']
+        model: [z]
+        scene: [p12a, p12b, c3a, c3b]
+        seed: ['1', '2', '3']
     steps:
       - uses: actions/checkout@v4
       - name: Miesto a výkon
