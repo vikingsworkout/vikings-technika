@@ -250,6 +250,10 @@ function renderShoot() {
     + row(IC.tripod, '<b>Mobil opri stabilne</b> alebo daj na statív')
     + row(IC.timer, pickHold() ? `<b>Jedna výdrž</b>, najviac ${max} sekúnd` : g ? `<b>Jedna séria</b>, najviac ${max} sekúnd` : `<b>Jedna séria alebo výdrž</b>, najviac ${max} sekúnd`);
   $('shChecks').innerHTML = (G.checks || []).map(c => `<span>${esc(c)}</span>`).join('');
+  // čo treba na 100 bodov (pri známych cvikoch; pri automatickom rozpoznaní ich určí AI)
+  const top = !auto && g && Array.isArray(g.top) ? g.top : [];
+  hide('sh100', !top.length);
+  $('sh100l').innerHTML = top.map(c => `<li>${esc(c)}</li>`).join('');
   $('btnRec').innerHTML = '<span class="dot"></span>Nahrávať';
 }
 
@@ -583,11 +587,25 @@ function setProgress(p, text) {
   if ($('bar')) $('bar').style.width = Math.round(p * 100) + '%';
   if (text && !VW) $('workStatus').textContent = text;
 }
-function showError(msg, needCode = false) {
+// again = má zmysel skúsiť to isté video znova (inak ponúkneme nahrať iné)
+function showError(msg, needCode = false, again = true) {
   $('workErr').hidden = false; $('workErrText').textContent = msg;
   $('codeBox').hidden = !needCode;
   if (needCode) $('codeInput').value = ls.get('vt-code') || '';
-  if (VW) { hide('workBand', true); hide('workBottom', true); $('workSteps').classList.add('stopped'); vwPost('error'); }
+  $('btnRetry').hidden = !again && !needCode;
+  $('btnRetry').textContent = needCode ? 'Pokračovať' : 'Skúsiť znova';
+  $('btnBack').textContent = again || needCode ? 'Späť' : 'Nahrať iné video';
+  if (VW) {
+    hide('workBand', true); hide('workBottom', true); $('workSteps').classList.add('stopped'); vwPost('error');
+    $('workTitle').textContent = needCode ? 'Chýba prístupový kód' : 'Rozbor sa nepodaril';
+    $('workSub').textContent = needCode ? 'Zadaj ho a rozbor pokračuje' : !again ? 'Skús nahrať nové video'
+      : current && current.summary ? 'Meranie z videa zostalo, stačí skúsiť znova' : 'Skús to ešte raz';
+  }
+}
+// nadpis obrazovky Analýza (aj po opakovanom pokuse po chybe)
+function workHead() {
+  $('workTitle').textContent = AN.isHold ? 'Analyzujem tvoju výdrž' : isAutoPick() ? 'Analyzujem tvoje video' : 'Analyzujem tvoju sériu';
+  $('workSub').textContent = 'Zvyčajne to trvá do minúty';
 }
 
 // ---------- v appke: obrazovka Analýza (kroky, náhľad s kostrou) ----------
@@ -598,8 +616,7 @@ function workReset(stage = 'model') {
   if (!VW) return;
   const nm = !isAutoPick() ? pick.name : (current?.exercise?.hint || '');
   $('workKick').innerHTML = `${IC.kick}<span>${esc(('TECHNIKA' + (nm ? ' · ' + nm : '')).toUpperCase())}</span>`;
-  $('workTitle').textContent = pickHold() ? 'Analyzujem tvoju výdrž' : isAutoPick() ? 'Analyzujem tvoje video' : 'Analyzujem tvoju sériu';
-  $('workSub').textContent = 'Zvyčajne to trvá do minúty';
+  workHead();
   hide('workBand', false); hide('workPill', true); hide('workStatus', true); hide('workErr', true); $('workSteps').classList.remove('stopped');
   hide('workBottom', false); hide('btnWorkBg', !vwEmbedded);
   $('btnWorkBg').textContent = vwFrom === 'set' ? 'Pokračovať v tréningu' : 'Pokračovať v appke';
@@ -733,7 +750,7 @@ async function startAnalysis(file) {
     workMeasured(summary, clip);
   } catch (e) {
     console.error(e);
-    showError(e.message || 'Analýza videa zlyhala.');
+    showError(e && e.user ? e.message : 'Video sa nepodarilo spracovať. Skús to znova, prípadne s iným videom.', false, !(e && e.again === false));
     current = null;
     return;
   }
@@ -761,10 +778,15 @@ async function accessDenied() {
   } catch { return false; }
 }
 
+// kritériá na 100 bodov pre AI: zo zvoleného cviku, v appke aj z cviku spárovaného s názvom z appky
+function criteriaFor(cur) {
+  const e = cur.exercise && cur.exercise.id !== 'auto' ? findExercise(cur.exercise.id) : (VW && pick && pick.guide) || null;
+  return e && Array.isArray(e.top) ? e.top : [];
+}
 async function runAi() {
   $('workErr').hidden = true;
-  if (VW) { AN.stage = 'ai'; AN.ai = 0; hide('workBand', false); hide('workBottom', false); $('workSteps').classList.remove('stopped'); renderSteps(); }
-  setProgress(0.55, 'AI hľadá správnu techniku a vyhodnocuje tvoj pohyb… (zvyčajne 20–60 s)');
+  if (VW) { AN.stage = 'ai'; AN.ai = 0; workHead(); hide('workBand', false); hide('workBottom', false); $('workSteps').classList.remove('stopped'); renderSteps(); }
+  setProgress(0.55, 'AI porovnáva tvoj pohyb so správnou technikou… (zvyčajne do minúty)');
   let fake = 0.55;
   const tick = setInterval(() => {
     fake = Math.min(0.95, fake + 0.01); setProgress(fake);
@@ -776,11 +798,12 @@ async function runAi() {
     const res = await fetch('/api/analyze', {
       method: 'POST', signal: ctrl.signal,
       headers: { 'content-type': 'application/json', 'x-access-code': ls.get('vt-code') || '' },
-      body: JSON.stringify({ exercise: current.exercise, summary: current.summary, keyframes: current.keyframes }),
+      body: JSON.stringify({ exercise: current.exercise, summary: current.summary, keyframes: current.keyframes, criteria: criteriaFor(current) }),
     });
-    const data = await res.json().catch(() => ({ error: `Server vrátil chybu (HTTP ${res.status}).` }));
+    const data = await res.json().catch(() => ({ error: 'Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.', detail: `HTTP ${res.status}` }));
     if (!res.ok) {
-      const err = new Error(data.error || `HTTP ${res.status}`); err.code = data.code; throw err;
+      if (data.detail) console.warn('Rozbor – detail chyby:', data.detail);
+      const err = new Error(data.error || 'Rozbor sa nepodaril. Skús to znova.'); err.code = data.code; err.user = true; throw err;
     }
     current.result = data.result; current.sources = data.sources || [];
     await db.save(current);
@@ -791,8 +814,9 @@ async function runAi() {
   } catch (e) {
     console.error(e);
     const msg = e.code === 'auth' ? 'Táto appka je chránená prístupovým kódom.'
-      : e.name === 'AbortError' ? 'Server neodpovedal včas. Skontroluj internet a skús to znova (video netreba nahrávať znova).'
-      : (e.message || 'Spojenie so serverom zlyhalo.');
+      : e.name === 'AbortError' ? 'Server neodpovedal včas. Skontroluj internet a skús to znova – video netreba nahrávať znova.'
+      : e.user ? e.message
+      : 'Nepodarilo sa spojiť so serverom. Skontroluj internet a skús to znova – video netreba nahrávať znova.';
     showError(msg, e.code === 'auth');
   } finally { clearInterval(tick); clearTimeout(killer); }
 }
@@ -872,6 +896,7 @@ function cleanResult(src) {
   if (r.today && typeof r.today === 'object') { r.today.title = stripTech(r.today.title); r.today.detail = stripTech(r.today.detail); }
   r.good = arr(r.good); r.watch_out = arr(r.watch_out); r.cues = arr(r.cues);
   if (Array.isArray(r.to_100)) r.to_100.forEach(x => { if (x && typeof x.step === 'string') x.step = stripTech(x.step); });
+  if (Array.isArray(r.criteria_100)) r.criteria_100.forEach(x => { if (x && typeof x.text === 'string') x.text = stripTech(x.text); });
   if (Array.isArray(r.score_breakdown)) r.score_breakdown.forEach(b => { if (b && typeof b.note === 'string') b.note = dropTechSentences(b.note); });
   if (Array.isArray(r.issues)) r.issues.forEach(i => {
     if (!i || typeof i !== 'object') return;
@@ -1214,6 +1239,8 @@ function renderResult(item) {
   const breakdown = Array.isArray(r.score_breakdown) ? r.score_breakdown : [];
   const to100 = (Array.isArray(r.to_100) ? r.to_100 : []).filter(x => x && x.step).sort((a, b) => (Number(b.gain) || 0) - (Number(a.gain) || 0));
   const missing = score != null ? 100 - score : null;
+  const crit = (Array.isArray(r.criteria_100) ? r.criteria_100 : []).filter(c => c && typeof c.text === 'string' && c.text);
+  const critOk = crit.filter(c => c.met === true).length;
   const today = todayOf(r);
   const frame = focusFrame(item, today);
   const after = today && today.gain && score != null ? Math.min(100, score + today.gain) : null;
@@ -1261,10 +1288,12 @@ function renderResult(item) {
       </div>
       ${r.summary ? `<p class="sum">${esc(r.summary)}</p>` : ''}
 
-      ${score != null && (breakdown.length || to100.length) ? `
+      ${score != null && (breakdown.length || to100.length || crit.length) ? `
       <div class="card">
         <div class="sec"><div class="ic acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></div><h2>Cesta k 100 bodom</h2>${missing ? `<span class="cnt">chýba ${missing} b.</span>` : ''}</div>
-        ${breakdown.length ? `<div class="bd">${breakdown.map(b => {
+        ${crit.length ? `<div class="c100h"><span>Kritériá na 100 bodov</span><span><b>${critOk}</b> z ${crit.length} splnených</span></div>
+        <ul class="ck">${crit.map(c => `<li class="${c.met === false ? 'no' : c.met == null ? 'na' : ''}"><span>${esc(c.text)}${c.met == null ? '<small> · z tohto videa sa nedá posúdiť</small>' : ''}</span></li>`).join('')}</ul>` : ''}
+        ${breakdown.length ? `<div class="bd"${crit.length ? ' style="margin-top:14px"' : ''}>${breakdown.map(b => {
           const max = Number(b.max) || 20, pts = Math.max(0, Math.min(max, Number(b.points) || 0));
           return `<div><div class="bdt"><span>${esc(b.area)}</span><b>${pts}/${max}</b></div>
             <div class="bdbar"><div style="width:${Math.round(100 * pts / max)}%;background:${scoreColor(100 * pts / max)}"></div></div>

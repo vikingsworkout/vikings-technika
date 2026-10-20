@@ -38,6 +38,7 @@ export const NEW_HTML = `
   <section class="vw-card sh-tips" id="shTips"></section>
   <div class="vw-cap" id="shCapChecks">ČO SKONTROLUJEM</div>
   <div class="sh-chips" id="shChecks"></div>
+  <details class="sh-100" id="sh100" hidden><summary><span class="sh-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></span><span class="s1t"><b>Čo treba na 100 bodov</b><span>Podľa toho rozbor hodnotí</span></span></summary><ul id="sh100l"></ul></details>
   <div class="vw-bottom">
     <button class="btn pri sh-rec" id="btnRec"><span class="dot"></span>Nahrávať</button>
     <label class="btn ghost" for="inFile">Vybrať video z galérie</label>

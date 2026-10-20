@@ -22,6 +22,9 @@ export const engineStats = () => ({ readyMs });
 // preto si pamätáme posledný použitý čas (inak druhé video v poradí spadne).
 let lastTs = 0;
 
+// chyba so zrozumiteľnou vetou pre používateľa (again = má zmysel skúsiť to isté video znova)
+const userErr = (msg, again = true) => Object.assign(new Error(msg), { user: true, again });
+
 // Promise s časovým limitom – nič nesmie visieť donekonečna.
 function withTimeout(promise, ms, message) {
   let t;
@@ -42,7 +45,7 @@ async function getLandmarker() {
       // GPU na niektorých mobiloch zlyhá alebo zamrzne – vtedy prejdeme na CPU
       try { return await withTimeout(PoseLandmarker.createFromOptions(fileset, opts('GPU')), 25_000, 'gpu'); }
       catch { return await PoseLandmarker.createFromOptions(fileset, opts('CPU')); }
-    })(), 90_000, 'Model na rozpoznanie postavy sa nepodarilo načítať (slabý internet?). Skús to znova na Wi-Fi.');
+    })(), 90_000, 'Rozpoznávanie postavy sa nestihlo načítať (slabý internet?). Skús to znova, ideálne na Wi-Fi.');
     landmarkerPromise.catch(() => { landmarkerPromise = null; });
   }
   return landmarkerPromise;
@@ -250,7 +253,7 @@ function loadVideoInner(file) {
     };
     v.onloadedmetadata = ready;
     v.onloadeddata = ready;
-    v.onerror = () => reject(new Error('Video sa nepodarilo načítať. Skús iný formát (MP4/MOV).'));
+    v.onerror = () => reject(userErr('Toto video sa nepodarilo otvoriť. Skús iné video (MP4 alebo MOV) alebo ho nahraj priamo tu.', false));
     v.load();
   });
 }
@@ -363,13 +366,18 @@ function detectReps(values, { minAmp = 25, startType = null } = {}) {
 // ---------- hlavná funkcia ----------
 export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, onProgress = () => {}, onFrame = null } = {}) {
   onProgress(0, 'Načítavam model na rozpoznanie postavy…');
-  let [engine, v] = await Promise.all([getEngine(), loadVideo(file)]);
-  if (engine.ensureFull) { onProgress(0.02, 'Pripravujem presné meranie postavy…'); await engine.ensureFull(); }
+  let engine, v;
+  try { [engine, v] = await Promise.all([getEngine(), loadVideo(file)]); }
+  catch (e) {
+    if (e && e.user) throw e;
+    throw userErr(/internet|Wi-Fi/.test(e && e.message || '') ? e.message : 'Rozpoznávanie postavy sa nepodarilo spustiť. Skontroluj internet a skús to znova.');
+  }
+  if (engine.ensureFull) { onProgress(0.02, 'Pripravujem model na presné meranie postavy…'); await engine.ensureFull(); }
   try { await v.play(); v.pause(); } catch { /* iOS niekedy potrebuje play pred seekovaním */ }
 
   const W = v.videoWidth, H = v.videoHeight;
   const fullDuration = v.duration;
-  if (!W || !H || !isFinite(fullDuration)) throw new Error('Video sa nepodarilo prečítať.');
+  if (!W || !H || !isFinite(fullDuration)) throw userErr('Toto video sa nepodarilo prečítať. Skús ho nahrať znova alebo vyber iné.', false);
   const duration = Math.min(fullDuration, maxSeconds);
   const step = Math.max(1 / 15, duration / 400); // hustejšie snímkovanie (max. 400 snímok)
   const frames = [];
@@ -398,7 +406,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
         // rozpoznávanie resetneme, pri ďalšom pokuse sa vytvorí nové
         if (engine.kind === 'main') landmarkerPromise = null;
         resetEngine(engine);
-        throw new Error('Rozpoznávanie postavy zlyhalo. Skús to znova, prípadne obnov stránku.');
+        throw userErr('Rozpoznávanie postavy sa zaseklo. Skús to znova – ak sa to opakuje, zatvor Techniku a otvor ju znova.');
       }
     }
     frames.push({ t, lm: lm || null, m: lm ? frameMetrics(lm, W, H) : null });
@@ -416,7 +424,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
 
   const ok = frames.filter(f => f.m);
   if (ok.length < Math.max(5, frames.length * 0.3)) {
-    throw new Error('Na videu sa nepodarilo spoľahlivo rozpoznať postavu. Skús natočiť celé telo v zábere, s dobrým svetlom a pozadím.');
+    throw userErr('Na videu sa nepodarilo spoľahlivo rozpoznať postavu. Natoč sa tak, aby bolo celé telo v zábere, pri dobrom svetle a na pokojnom pozadí.', false);
   }
 
   // dominantná (lepšie viditeľná) strana

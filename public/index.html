@@ -269,6 +269,11 @@ ul.ck li { display: flex; gap: 10px; padding: 7px 0; line-height: 1.4; font-size
 ul.ck li::before { content: '✓'; flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); margin-top: 1px; }
 ul.ck.w li::before { content: '!'; background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 ul.ck.c li::before { content: '→'; background: var(--s2); color: var(--acc); }
+ul.ck li.no::before { content: '✗'; background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+ul.ck li.na::before { content: '?'; background: var(--s2); color: var(--mu); }
+ul.ck li small { color: var(--mu); font-size: 13px; }
+.c100h { display: flex; justify-content: space-between; align-items: baseline; margin: 2px 0 2px; font-size: 13px; font-weight: 800; color: var(--mu); }
+.c100h b { color: var(--tx); }
 .tag { display: inline-flex; align-items: center; padding: 7px 12px; border-radius: 99px; background: var(--s2); font-size: 14px; font-weight: 600; }
 .tag.p { background: color-mix(in srgb, var(--acc) 22%, var(--s2)); }
 .muscles { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -486,6 +491,18 @@ html.vw.vw-light .pk-ai-ch { color: var(--acc); }
 .sh-tip b { color: var(--tx); }
 #shCapChecks { margin-top: 16px; }
 .sh-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sh-100 { margin: 16px 0 0; border-radius: 20px; background: var(--s1); border: 1px solid var(--line); box-shadow: var(--card-sh); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.sh-100[hidden] { display: none; }
+.sh-100 summary { display: flex; align-items: center; gap: 12px; padding: 11px 14px; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+.sh-100 summary::-webkit-details-marker { display: none; }
+.sh-100 summary::after { content: ''; flex: none; margin: 0 4px 0 auto; width: 8px; height: 8px; border-right: 2px solid var(--acc); border-bottom: 2px solid var(--acc); transform: translateY(-2px) rotate(45deg); transition: transform .2s ease; }
+.sh-100[open] summary::after { transform: translateY(2px) rotate(-135deg); }
+.sh-100 .s1t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sh-100 .s1t b { font-size: 14.5px; color: var(--tx); }
+.sh-100 .s1t span { font-size: 12.5px; color: var(--mu); }
+.sh-100 ul { margin: 0; padding: 2px 14px 12px 60px; list-style: none; }
+.sh-100 li { position: relative; padding: 4px 0; font-size: 14px; line-height: 1.4; color: var(--tx2); }
+.sh-100 li::before { content: ''; position: absolute; left: -16px; top: 11px; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); }
 .sh-chips span { padding: 5px 10px; border-radius: 99px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); font-size: 12px; font-weight: 700; color: var(--tx2); }
 html.vw.vw-light .sh-chips span { background: #FFFFFF; border-color: var(--line2); }
 .sh-rec { height: 58px; padding: 0 18px !important; }

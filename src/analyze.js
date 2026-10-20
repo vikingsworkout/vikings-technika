@@ -17,7 +17,7 @@ Dostaneš údaje z analýzy videa jedného človeka pri cvičení: uhly kĺbov n
 
 Postup:
 1. Urči, aký cvik je na videu (ak ho používateľ zadal, over, či sedí so snímkami).
-2. Pomocou web search dohľadaj spoľahlivé zdroje o správnej technike tohto cviku (odborné weby o silovom tréningu, fyzioterapii, renomovaní tréneri; nie fóra). Stačia 1–3 vyhľadávania.
+2. Ak máš k dispozícii web search, dohľadaj spoľahlivé zdroje o správnej technike tohto cviku (odborné weby o silovom tréningu, fyzioterapii, renomovaní tréneri; nie fóra), stačia 1–2 vyhľadávania. Ak web search nemáš, vychádzaj z kritérií na 100 bodov a zo svojich znalostí.
 3. Údaj "active_segment" hovorí, v ktorej časti videa prebieha samotný cvik. Pohyb pred ním a po ňom (napr. zľahnutie do vzporu pred klikmi, chôdza ku kamere) je len príprava: nehodnoť ho, nepočítaj ho ako opakovanie a podľa neho neurčuj cvik. Pri rozpoznávaní cviku sa opieraj hlavne o snímky z tohto úseku a o polohu tela (body_posture).
 4. Skontroluj celé telo, nielen hlavný kĺb: hlavu a krk (neck), ramená, lakte a predlaktia (forearm), trup (trunk_lean), línia tela (body_line), boky, kolená, členky a päty (ankle, heel_lift_pct), dráhu rúk/činky, symetriu ľavej a pravej strany (ak je pohľad spredu/zozadu), tempo, výdrž v krajnej polohe a to, či sa technika nezhoršuje s únavou (set_consistency, porovnaj prvé a posledné opakovanie). Ktoré časti tela sú pre daný cvik dôležité, posúď podľa dohľadanej techniky.
 5. Porovnaj namerané uhly, tempo a snímky so správnou technikou. Opieraj sa o konkrétne čísla a snímky (čísla sú len na posúdenie, do textu pre používateľa ich nepíš), ale buď opatrný: 2D uhly z jedného pohľadu sú len odhad, posudzuj len to, čo sa z daného uhla kamery naozaj dá posúdiť.
@@ -36,6 +36,13 @@ Postup:
    - "Stabilita a konzistencia" (symetria, rovnaká kvalita všetkých opakovaní)
    Pri výdržiach použi týchto 5 oblastí po 20 bodov: "Línia tela", "Kĺby a zamknutie", "Poloha a uhly", "Stabilita", "Dĺžka a únava".
    Súčet bodov v oblastiach = score. Za každý stratený bod musí existovať konkrétny dôvod.
+   Kalibrácia – 100 bodov musí byť reálne dosiahnuteľných a skóre férové a opakovateľné:
+   - 100 bodov daj, keď sú splnené všetky kritériá na 100 bodov (ak ich používateľ poslal, inak kľúčové body správnej techniky daného cviku) a nevidno žiadnu jasnú chybu. Technika nemusí byť dokonalá do stupňa – stačí, že je čistá, v plnom rozsahu a pod kontrolou.
+   - Presnosť merania z jednej kamery je asi ±10°. Kĺb s uhlom aspoň 165° ber ako vystretý. Rozdiely v rámci tejto presnosti nie sú chyba a body za ne nestrhávaj. Čo sa z uhla kamery nedá spoľahlivo posúdiť, body nestrháva (napíš to do camera_limits).
+   - Body strhávaj podľa závažnosti chyby: drobnosť (severity nízka) 1–2 body, dôležitá chyba (stredná) 3–6 bodov, hlavná chyba (vysoká) 7–12 bodov. Za jednu chybu strhni body len raz.
+   - Pásma: 95–100 čistá technika, 85–94 dobrá s drobnosťami, 70–84 jedna až dve dôležité chyby, 50–69 viac chýb alebo hlavná chyba, pod 50 nebezpečná alebo veľmi neúplná technika.
+   - Rovnaký výkon musí dostať rovnaké skóre (±3 body).
+   Do "criteria_100" vráť kritériá na 100 bodov: ak ich používateľ poslal, v rovnakom poradí a rovnakými slovami (pri variante cviku ich prispôsob variantu); inak 3–5 vlastných kľúčových kritérií pre rozpoznaný cvik (krátko, jednoducho). Pri každom urči "met": true = splnené, false = nesplnené, null = z tohto videa sa nedá posúdiť. Ak je niektoré false, musí k nemu byť chyba v "issues" a krok v "to_100".
 7. Do "today" daj JEDNU najdôležitejšiu vec, ktorú má používateľ zmeniť pri ďalšej sérii (zvyčajne prvý krok z "to_100"). Napíš ju ako krátky pokyn v 2. osobe, jednoducho, ako by to povedal tréner. "frame" = číslo snímky (podľa "Snímka N"), na ktorej je táto chyba najlepšie vidieť.
 8. Do "to_100" napíš presný plán, čo musí používateľ pri tomto cvičení zmeniť, aby dosiahol 100 bodov: každý krok = jedna konkrétna zmena a koľko bodov prinesie. Súčet "gain" = 100 − score. Zoraď od najväčšieho prínosu. Ak je score 100, nechaj pole prázdne.
 9. Odpovedz výhradne v slovenčine. Píš pre bežného človeka, ktorý necvičí odborne a nepozná biomechaniku:
@@ -57,6 +64,7 @@ Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) pres
   "good": ["čo robí dobre – krátko, max. 8 slov na bod", "..."],
   "score_breakdown": [ { "area": "názov oblasti zo stupnice", "points": číslo 0–20, "max": 20, "note": "krátko prečo, max. 10 slov, bez stupňov a percent" } ],
   "to_100": [ { "step": "konkrétna zmena, max. 14 slov (napr. 'Choď v drepe hlbšie, boky aspoň po úroveň kolien')", "gain": počet bodov } ],
+  "criteria_100": [ { "text": "kritérium na 100 bodov, max. 10 slov", "met": true | false | null } ],
   "issues": [ { "title": "krátky názov chyby jednoduchými slovami, max. 5 slov (napr. 'Nohy na konci nevystrieš')", "detail": "1 krátka veta: čo presne robíš zle a kedy, bez stupňov a percent (môžeš uviesť číslo opakovania)", "fix": "1 krátka veta: jednoduchý pokyn, čo urobiť inak", "severity": "vysoká|stredná|nízka" } ],
   "watch_out": ["na čo si dávať pozor (bezpečnosť, typické chyby pri tomto cviku) – max. 3 body, krátko", "..."],
   "muscles": { "primary": ["hlavné zapojené svaly"], "secondary": ["pomocné svaly"] },
@@ -65,19 +73,27 @@ Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) pres
 }
 Ak je technika dobrá, "issues" môže byť prázdne. Ak sa cvik nedá rozpoznať alebo je video nepoužiteľné, nastav score na null a vysvetli to vo "verdict".`;
 
+// chyba od AI → zrozumiteľná veta pre používateľa (technický detail ide zvlášť do "detail")
+function apiError(status, msg) {
+  if (status === 429 || status === 529 || /overload|rate.?limit/i.test(msg)) return { error: 'AI je práve vyťažená. Skús to o minútu znova – video netreba nahrávať znova.', code: 'busy' };
+  if (status === 401 || status === 403 || /credit|billing|api.?key/i.test(msg)) return { error: 'Rozbor je teraz nedostupný (chyba nastavenia servera). Skús to neskôr.', code: 'config' };
+  if (status === 400 || status === 413) return { error: 'AI tento rozbor nevedela spracovať. Skús to znova, prípadne s kratším videom.', code: 'bad' };
+  return { error: 'AI má práve výpadok. Skús to o chvíľu znova – video netreba nahrávať znova.', code: 'down' };
+}
+
 export async function onRequestPost({ request, env }) {
   try {
     if (env.ACCESS_CODE && request.headers.get('x-access-code') !== env.ACCESS_CODE) {
       return json({ error: 'Nesprávny alebo chýbajúci prístupový kód.', code: 'auth' }, 401);
     }
     if (!env.ANTHROPIC_API_KEY) {
-      return json({ error: 'Na serveri chýba ANTHROPIC_API_KEY (nastav ho v Cloudflare).' }, 500);
+      return json({ error: 'Rozbor je teraz nedostupný (server nie je nastavený). Skús to neskôr.', code: 'config', detail: 'Na serveri chýba ANTHROPIC_API_KEY (nastav ho v Cloudflare).' }, 500);
     }
 
     let body;
-    try { body = await request.json(); } catch { return json({ error: 'Neplatná požiadavka.' }, 400); }
+    try { body = await request.json(); } catch { return json({ error: 'Video sa na server neodoslalo celé. Skús to znova.', code: 'bad' }, 400); }
     const { exercise, summary, keyframes } = body || {};
-    if (!summary || typeof summary !== 'object') return json({ error: 'Chýbajú namerané údaje.' }, 400);
+    if (!summary || typeof summary !== 'object') return json({ error: 'Chýba meranie z videa. Nahraj video znova.', code: 'bad' }, 400);
     const frames = Array.isArray(keyframes) ? keyframes.slice(0, MAX_IMAGES) : [];
 
     const content = [];
@@ -89,7 +105,13 @@ export async function onRequestPost({ request, env }) {
       : hint
         ? `Používateľ v appke vybral cvik „${hint}“. Over zo snímok a údajov, či to sedí; ak áno, hodnoť ho ako tento cvik a v exercise.name použi tento názov.`
         : 'Používateľ cvik nezadal – rozpoznaj ho zo snímok a údajov.';
-    content.push({ type: 'text', text: `${exText}\n\nNamerané údaje z pose detection (JSON):\n${JSON.stringify(summary)}\n\nNasledujú kľúčové snímky z videa (oranžová = rozpoznaná kostra):` });
+    // kritériá na 100 bodov od appky (pre známe cviky) – krátke texty bez riadkov
+    const criteria = Array.isArray(body.criteria)
+      ? body.criteria.filter(c => typeof c === 'string').map(c => c.replace(/[\r\n\t"`]+/g, ' ').trim().slice(0, 140)).filter(Boolean).slice(0, 8) : [];
+    const critText = criteria.length
+      ? `\n\nKritériá na 100 bodov pre tento cvik (ak je na videu jeho variant, napr. kliky na kolenách alebo drepy na stoličku, prispôsob ich variantu):\n${criteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}`
+      : '';
+    content.push({ type: 'text', text: `${exText}${critText}\n\nNamerané údaje z pose detection (JSON):\n${JSON.stringify(summary)}\n\nNasledujú kľúčové snímky z videa (oranžová = rozpoznaná kostra):` });
     frames.forEach((f, idx) => {
       const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(f?.dataUrl || '');
       if (!m || m[2].length > MAX_IMAGE_B64) return;
@@ -100,7 +122,7 @@ export async function onRequestPost({ request, env }) {
 
     const messages = [{ role: 'user', content }];
     const model = env.CLAUDE_MODEL || DEFAULT_MODEL;
-    let resp, data;
+    let resp, data, noTemp = false;
     const started = Date.now();
     // web search môže vrátiť pause_turn – vtedy pokračujeme, ale len kým neprekročíme časový limit,
     // aby používateľ nečakal donekonečna
@@ -118,7 +140,8 @@ export async function onRequestPost({ request, env }) {
         },
         body: JSON.stringify({
           model, max_tokens: 6000, system: SYSTEM, messages,
-          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+          ...(noTemp ? {} : { temperature: 0.2 }),
+          ...(criteria.length ? {} : { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }] }),
         }),
       });
       data = await resp.json().catch(() => null);
@@ -128,7 +151,9 @@ export async function onRequestPost({ request, env }) {
       } finally { clearTimeout(timer); }
       if (!resp.ok) {
         const msg = data?.error?.message || `HTTP ${resp.status}`;
-        return json({ error: `Chyba Claude API: ${msg}` }, 502);
+        // niektorý model nemusí podporovať nastavenie teploty – skúsime to raz bez nej
+        if (resp.status === 400 && !noTemp && /temperature/i.test(msg)) { noTemp = true; round--; continue; }
+        return json({ ...apiError(resp.status, msg), detail: String(msg).slice(0, 300) }, 502);
       }
       if (data.stop_reason !== 'pause_turn') break;
       if (Date.now() - started > API_DEADLINE_MS - 20_000) break; // už nestihneme ďalšie kolo
@@ -156,7 +181,7 @@ export async function onRequestPost({ request, env }) {
     }
     return json({ result, sources: sources.slice(0, 10), model: data.model, usage: data.usage });
   } catch (e) {
-    return json({ error: `Neočakávaná chyba servera: ${e?.message || e}` }, 500);
+    return json({ error: 'Na serveri sa niečo pokazilo. Skús to o chvíľu znova – video netreba nahrávať znova.', code: 'server', detail: String(e?.message || e).slice(0, 300) }, 500);
   }
 }
 
@@ -203,6 +228,7 @@ export function cleanResult(r) {
   if (r.today && typeof r.today === 'object') { r.today.title = stripTech(r.today.title); r.today.detail = stripTech(r.today.detail); }
   r.good = arr(r.good, stripTech); r.watch_out = arr(r.watch_out, stripTech); r.cues = arr(r.cues, stripTech);
   if (Array.isArray(r.to_100)) r.to_100.forEach(x => { if (x && typeof x.step === 'string') x.step = stripTech(x.step); });
+  if (Array.isArray(r.criteria_100)) r.criteria_100.forEach(x => { if (x && typeof x.text === 'string') x.text = stripTech(x.text); });
   if (Array.isArray(r.score_breakdown)) r.score_breakdown.forEach(b => { if (b && typeof b.note === 'string') b.note = dropTechSentences(b.note); });
   if (Array.isArray(r.issues)) r.issues.forEach(i => {
     if (!i || typeof i !== 'object') return;
