@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        item: ['p12e 5', 'c3e 5']
+        item: ['n4 6', 'n3 5']
     steps:
       - uses: actions/checkout@v4
       - name: Miesto a výkon
