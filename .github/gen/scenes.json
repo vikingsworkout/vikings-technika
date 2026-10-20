@@ -1,0 +1,15 @@
+{
+  "_": "Scény pre obrázky plánov v appke Viking's Workout (štýl ako g-* scény: náradie na zemi, nízky uhol, tmavá nálada s oranžovým svetlom; svetlá verzia = tá istá scéna cez deň).",
+  "dark_style": "Moody cinematic product photograph shot from a low angle just above the floor, shallow depth of field with a softly blurred background, dark interior with deep teal-blue shadows, a warm orange rim light from a window on the left glinting on the edges of the objects, subtle atmospheric haze, high-end commercial fitness advertising look, photorealistic, sharp focus on the objects, natural textures, no people, no text, no logos, no watermark.",
+  "light_style": "Bright airy daylight photograph of the same scene, soft natural daylight from large windows, white walls, light oak wooden floor, clean minimal interior, high key, gentle soft shadows, shot from a low angle just above the floor, shallow depth of field with a softly blurred background, photorealistic, sharp focus on the objects, no people, no text, no logos, no watermark.",
+  "scenes": {
+    "p12": {
+      "subject": "A simple solid wooden chair standing on the wooden floor of a cozy modern living room, a neatly folded charcoal grey sports towel lying on the seat of the chair, a pair of black running shoes with orange soles and orange laces placed on the floor in front of the chair. In the blurred background a sofa, a floor lamp and a large window.",
+      "light_subject": "A simple solid wooden chair on the floor of a bright living room, a folded charcoal grey sports towel on the seat, a pair of black running shoes with orange soles and orange laces on the floor in front of the chair, a sofa and a big window softly blurred in the background."
+    },
+    "c3": {
+      "subject": "A vintage silver mechanical stopwatch with an orange second hand lying on a neatly folded charcoal grey sports towel on a dark textured rubber gym floor. In the blurred background an industrial loft gym with exposed brick walls, wooden beams, pull-up bars and tall windows.",
+      "light_subject": "A vintage silver mechanical stopwatch with an orange second hand lying on a folded charcoal grey sports towel on a light rubber gym floor, a bright industrial loft gym with white brick walls, wooden beams and tall windows softly blurred in the background."
+    }
+  }
+}

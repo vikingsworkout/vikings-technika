@@ -1,0 +1,61 @@
+# Návrhy obrázkov plánov (scény s náradím ako g-* v appke Viking's Workout) z otvorených modelov
+# Z-Image-Turbo a FLUX.1 [schnell] (Apache 2.0) cez stable-diffusion.cpp na CPU.
+# Spúšťa sa pushom do vetvy obrazky-planov; výsledky idú do vetvy obrazky-planov-vysledky.
+name: obrazky-planov
+on:
+  workflow_dispatch:
+  push:
+    branches: [obrazky-planov]
+permissions:
+  contents: write
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [z, f]
+        scene: [p12, c3]
+        seed: ['11', '22', '33']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Miesto a výkon
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
+          df -h / ; nproc ; free -g
+      - name: stable-diffusion.cpp
+        run: |
+          git clone -q --depth 1 https://github.com/leejet/stable-diffusion.cpp sd
+          cd sd && git submodule update -q --init --depth 1 ggml
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DSD_WEBP=OFF -DSD_WEBM=OFF -DGGML_NATIVE=ON > /dev/null
+          cmake --build build -j"$(nproc)" --target sd-cli > /dev/null
+          ls -la build/bin
+      - name: Modely
+        run: python3 .github/gen/models.py ${{ matrix.model }}
+      - name: Obrázky
+        run: |
+          pip install -q numpy pillow
+          python3 .github/gen/gen.py ${{ matrix.model }} ${{ matrix.scene }} ${{ matrix.seed }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: out-${{ matrix.model }}-${{ matrix.scene }}-${{ matrix.seed }}
+          path: out/
+          if-no-files-found: ignore
+  zber:
+    needs: gen
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: out-*
+          path: all
+          merge-multiple: true
+      - name: Uloženie
+        run: |
+          mkdir -p all && cd all && ls -la
+          git init -q && git config user.name "github-actions" && git config user.email "actions@github.com"
+          git add -A && git commit -qm "Návrhy obrázkov plánov" --allow-empty
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:obrazky-planov-vysledky
