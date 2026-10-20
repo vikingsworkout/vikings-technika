@@ -807,7 +807,7 @@ $('btnBack').onclick = () => { go('#/nova'); };
 
 // krátky súhrn rozboru pre hlavnú appku (domov, profil, zápis do tréningu)
 function vwSummary(item) {
-  const r = item.result || {}, sm = item.summary || {};
+  const r = cleanResult(item.result), sm = item.summary || {};
   const isH = sm.exercise_type === 'hold';
   const t = todayOf(r);
   return {
@@ -850,6 +850,36 @@ function scoreColor(s) {
 const plural = (n, one, few, many) => n === 1 ? one : (n >= 2 && n <= 4) ? few : many;
 const ckList = (arr, cls = '') => Array.isArray(arr) && arr.length ? `<ul class="ck ${cls}">${arr.map(x => `<li><span>${esc(x)}</span></li>`).join('')}</ul>` : '<p class="mu small" style="margin:0">—</p>';
 const sevOrder = { 'vysoká': 0, 'stredná': 1, 'nízka': 2 };
+// označenie chyby pre bežného človeka (AI posiela vysoká/stredná/nízka)
+const SEV_TXT = { 'vysoká': 'hlavná chyba', 'stredná': 'dôležité', 'nízka': 'drobnosť' };
+// Texty pre používateľa bez technických čísel (stupne, percentá dĺžky trupu…). Nové rozbory čistí už server,
+// toto platí aj pre staršie uložené rozbory. Jednovetný opis chyby s takým číslom radšej vynechá.
+const TECH_PAREN = /\s*\([^()]*(?:°|%)[^()]*\)/g;
+const TECH_NUM = /\s*(?:(?:~|cca\.?|asi|okolo|približne|len|až|aspoň|takmer)\s*)*(?:(?:na|do|o|pod|nad)\s+)?~?\d+(?:[.,]\d+)?(?:\s*[–-]\s*~?\d+(?:[.,]\d+)?)?\s*(?:°|%(?:\s*(?:dĺžky|dĺžke)\s+trupu)?)/gi;
+const tidyTxt = (t) => t.replace(/\s{2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/\(\s*\)/g, '').trim();
+const stripTech = (s) => (typeof s === 'string' ? tidyTxt(s.replace(TECH_PAREN, '').replace(TECH_NUM, '')) : s);
+function dropTechSentences(s) {
+  if (typeof s !== 'string') return s;
+  const parts = s.replace(TECH_PAREN, '').split(/(?<=[.!?])\s+/).filter(Boolean);
+  return tidyTxt(parts.filter(x => !/°|\d\s*%/.test(x)).join(' '));
+}
+function cleanResult(src) {
+  let r;
+  try { r = JSON.parse(JSON.stringify(src || {})); } catch { return src || {}; }
+  const arr = (a) => (Array.isArray(a) ? a.map(x => (typeof x === 'string' ? stripTech(x) : x)).filter(x => x !== '') : a);
+  for (const k of ['verdict', 'description', 'camera_limits']) if (typeof r[k] === 'string') r[k] = stripTech(r[k]);
+  if (typeof r.summary === 'string') r.summary = dropTechSentences(r.summary) || stripTech(r.summary);
+  if (r.today && typeof r.today === 'object') { r.today.title = stripTech(r.today.title); r.today.detail = stripTech(r.today.detail); }
+  r.good = arr(r.good); r.watch_out = arr(r.watch_out); r.cues = arr(r.cues);
+  if (Array.isArray(r.to_100)) r.to_100.forEach(x => { if (x && typeof x.step === 'string') x.step = stripTech(x.step); });
+  if (Array.isArray(r.score_breakdown)) r.score_breakdown.forEach(b => { if (b && typeof b.note === 'string') b.note = dropTechSentences(b.note); });
+  if (Array.isArray(r.issues)) r.issues.forEach(i => {
+    if (!i || typeof i !== 'object') return;
+    i.title = stripTech(i.title); i.fix = stripTech(i.fix);
+    if (typeof i.detail === 'string') i.detail = dropTechSentences(i.detail);
+  });
+  return r;
+}
 
 // "Jedna vec na dnes": z poľa today od AI, inak z prvého kroku k 100 bodom alebo najväčšej chyby
 function todayOf(r) {
@@ -890,7 +920,9 @@ const P = { clip: null, urls: [], imgs: [], t: 0, playing: false, speed: 1, raf:
 const SPEED_TXT = (s) => VW ? (s === 1 ? '1×' : s === 0.5 ? '0,5×' : '0,25×') : (s === 1 ? '1×' : s === 0.5 ? '½×' : '¼×');
 function openPlayer(clip, jumpT, tip) {
   closePlayer();
-  Object.assign(P, { clip, urls: clip.frames.map(f => URL.createObjectURL(f.img)), imgs: [], t: 0, playing: false, speed: 1, cur: -1 });
+  frReset();
+  Object.assign(P, { clip, urls: [], imgs: [], t: 0, playing: false, speed: 1, cur: -1 });
+  hide('pErr', true);
   if (VW) { openPlayerVW(clip, jumpT, tip); return; }
   const c = $('pCanvas');
   c.width = clip.w * 2; c.height = clip.h * 2;
@@ -908,13 +940,79 @@ function openPlayer(clip, jumpT, tip) {
 function closePlayer() {
   if (!P.clip) return;
   pause();
-  P.urls.forEach(u => URL.revokeObjectURL(u));
+  frReset();
   Object.assign(P, { clip: null, urls: [], imgs: [] });
   $('player').hidden = true;
 }
-function getImg(i) {
-  if (!P.imgs[i] && P.urls[i]) { const im = new Image(); im.decoding = 'async'; im.src = P.urls[i]; P.imgs[i] = im; }
-  return P.imgs[i];
+// Snímky prehrávača sú JPEG Bloby (pri staršom rozbore z IndexedDB). Na iPhone sa niekedy nenačítajú
+// cez blob: URL a pri veľa naraz dekódovaných snímkach dôjde pamäť – video ostane prázdne. Preto:
+// ImageBitmap priamo z Blobu, pri chybe <img>, potom kópia dát do pamäte a nový pokus; v pamäti
+// držíme len snímky okolo práve prehrávanej a kým sa snímka načíta, ukážeme najbližšiu načítanú.
+const FR = { cache: new Map(), pend: new Set(), ok: 0, fail: 0, gen: 0 };
+function frReset() {
+  FR.gen++;
+  FR.cache.forEach(d => { try { if (d.close) d.close(); } catch { /* nič */ } });
+  FR.cache.clear(); FR.pend.clear(); FR.ok = 0; FR.fail = 0; FR.shown = false;
+}
+function imgFromBlob(b) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(b), im = new Image();
+    im.onload = () => { URL.revokeObjectURL(u); if (im.naturalWidth) res(im); else rej(new Error('prázdna snímka')); };
+    im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('snímka sa nenačítala')); };
+    im.src = u;
+  });
+}
+async function decodeFrame(blob) {
+  if (!blob) throw new Error('chýba snímka');
+  if (window.createImageBitmap) { try { return await createImageBitmap(blob); } catch { /* ďalší spôsob */ } }
+  try { return await imgFromBlob(blob); } catch { /* ďalší spôsob */ }
+  const copy = new Blob([await blob.arrayBuffer()], { type: blob.type || 'image/jpeg' }); // Blob z IndexedDB → pamäť
+  if (window.createImageBitmap) { try { return await createImageBitmap(copy); } catch { /* ďalší spôsob */ } }
+  return imgFromBlob(copy);
+}
+function frLoad(i) {
+  const clip = P.clip;
+  if (!clip || i < 0 || i >= clip.frames.length || FR.cache.has(i) || FR.pend.has(i) || FR.pend.size >= 4) return;
+  const gen = FR.gen;
+  FR.pend.add(i);
+  decodeFrame(clip.frames[i].img).then((d) => {
+    if (gen !== FR.gen) { try { if (d.close) d.close(); } catch { /* nič */ } return; }
+    FR.pend.delete(i); FR.cache.set(i, d); FR.ok++;
+    hide('pErr', true);
+    frTrim();
+    if (P.clip && !FR.shown) drawFrame(P.cur); // prvá snímka
+    else if (P.clip && P.cur === i) drawFrame(i);
+    frPrefetch(P.cur);
+  }, (e) => {
+    if (gen !== FR.gen) return;
+    FR.pend.delete(i); FR.cache.set(i, null); FR.fail++;
+    console.warn('Technika: snímka videa sa nenačítala', i, e && e.message);
+    if (!FR.ok && FR.fail >= 3) hide('pErr', false); // ani jedna snímka sa nedá zobraziť
+    frPrefetch(P.cur);
+  });
+}
+function frPrefetch(i) {
+  if (!P.clip || i < 0) return;
+  for (const k of [i, i + 1, i + 2, i - 1, i + 3, i + 4, i + 6, i + 8, i + 10, i + 12]) frLoad(k);
+}
+function frTrim() {
+  if (FR.cache.size <= 70) return;
+  for (const [k, d] of FR.cache) {
+    if (Math.abs(k - P.cur) <= 30) continue;
+    try { if (d && d.close) d.close(); } catch { /* nič */ }
+    FR.cache.delete(k);
+  }
+}
+// snímka na kreslenie: požadovaná, inak najbližšia už načítaná (index snímky + obraz)
+function frPick(i) {
+  frPrefetch(i);
+  const d = FR.cache.get(i);
+  if (d) return [i, d];
+  for (let k = 1; k <= 20; k++) {
+    const a = FR.cache.get(i - k); if (a) return [i - k, a];
+    const b = FR.cache.get(i + k); if (b) return [i + k, b];
+  }
+  return null;
 }
 function idxAt(t) {
   const fr = P.clip.frames;
@@ -963,10 +1061,13 @@ function vpUpdate(t) {
   hide('pTip', !(P.tip && P.prob && t >= P.prob.s - 0.25 && t <= P.prob.e + 0.25));
 }
 function drawFrameVW(i) {
-  const clip = P.clip, f = clip.frames[i], im = getImg(i);
-  for (let k = 1; k <= 6; k++) getImg(i + k); // prednačítanie
-  if (!im || !im.complete || !im.naturalWidth) { if (im) im.onload = () => { if (P.clip && P.cur === i) drawFrameVW(i); }; return; }
-  const out = drawPoseFrame($('pCanvas'), im, clip.w, clip.h, clipPts(f.lm), { r: 5.5, lw: 3, hi: clip.joint, bg: '#0B101D' });
+  const clip = P.clip, c = $('pCanvas');
+  const got = frPick(i);
+  if (!got) return; // ešte sa nenačítala žiadna snímka – nakreslí sa po načítaní
+  if (!c.clientWidth || !c.clientHeight) { requestAnimationFrame(() => { if (P.clip && P.cur === i) drawFrameVW(i); }); return; }
+  const [fi, im] = got, f = clip.frames[fi];
+  FR.shown = true;
+  const out = drawPoseFrame(c, im, clip.w, clip.h, clipPts(f.lm), { r: 5.5, lw: 3, hi: clip.joint, bg: '#0B101D' });
   // uhol hlavného kĺbu: oblúk a štítok (napr. „Lakeť 87°“)
   const tri = JTRI[clip.joint]?.[clip.side === 'L' ? 0 : 1];
   if (!out || !tri || f.a == null) return;
@@ -1000,12 +1101,16 @@ function playerStep(dir) {
 on('pPrev', () => playerStep(-1));
 on('pNext', () => playerStep(1));
 window.addEventListener('resize', () => { if (VW && P.clip && P.cur >= 0) drawFrameVW(P.cur); });
+// prehrávač sa môže zobraziť skôr, než má plocha rozmery (animácia, otočenie) – po zmene veľkosti prekresliť
+if (window.ResizeObserver && $('pStage')) new ResizeObserver(() => { if (VW && P.clip && P.cur >= 0) drawFrameVW(P.cur); }).observe($('pStage'));
 
 function drawFrame(i) {
+  if (!P.clip) return;
   if (VW) { drawFrameVW(i); return; }
-  const clip = P.clip, f = clip.frames[i], im = getImg(i);
-  for (let k = 1; k <= 6; k++) getImg(i + k); // prednačítanie
-  if (!im || !im.complete || !im.naturalWidth) { if (im) im.onload = () => { if (P.clip && P.cur === i) drawFrame(i); }; return; }
+  const clip = P.clip, got = frPick(i);
+  if (!got) return;
+  const [fi, im] = got, f = clip.frames[fi];
+  FR.shown = true;
   const c = $('pCanvas'), g = c.getContext('2d'), W = c.width, H = c.height;
   g.drawImage(im, 0, 0, W, H);
   if (f.lm) {
@@ -1091,7 +1196,7 @@ $('btnPlayerClose').onclick = closePlayer;
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && P.clip) closePlayer(); });
 
 function renderResult(item) {
-  const r = item.result || {};
+  const r = cleanResult(item.result);
   const ex = r.exercise || {};
   const score = typeof r.score === 'number' ? Math.max(0, Math.min(100, Math.round(r.score))) : null;
   const mismatch = item.exercise.id !== 'auto' && ex.matches_selected === false;
@@ -1174,7 +1279,7 @@ function renderResult(item) {
         ${issues.length ? issues.map((i, k) => `
           <div class="iss ${esc(i.severity || '')}">
             <div class="n">${k + 1}</div>
-            <div class="tt">${esc(i.title)}${i.severity ? `<span class="sev">${esc(i.severity)}</span>` : ''}</div>
+            <div class="tt">${esc(i.title)}${i.severity ? `<span class="sev">${esc(SEV_TXT[i.severity] || i.severity)}</span>` : ''}</div>
             ${i.detail ? `<div class="dt">${esc(i.detail)}</div>` : ''}
             ${i.fix ? `<div class="fx"><b>Ako na to:</b> ${esc(i.fix)}</div>` : ''}
           </div>`).join('') : '<p class="mu" style="margin:0">Žiadne podstatné chyby. Výborne!</p>'}

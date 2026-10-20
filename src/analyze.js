@@ -20,7 +20,7 @@ Postup:
 2. Pomocou web search dohľadaj spoľahlivé zdroje o správnej technike tohto cviku (odborné weby o silovom tréningu, fyzioterapii, renomovaní tréneri; nie fóra). Stačia 1–3 vyhľadávania.
 3. Údaj "active_segment" hovorí, v ktorej časti videa prebieha samotný cvik. Pohyb pred ním a po ňom (napr. zľahnutie do vzporu pred klikmi, chôdza ku kamere) je len príprava: nehodnoť ho, nepočítaj ho ako opakovanie a podľa neho neurčuj cvik. Pri rozpoznávaní cviku sa opieraj hlavne o snímky z tohto úseku a o polohu tela (body_posture).
 4. Skontroluj celé telo, nielen hlavný kĺb: hlavu a krk (neck), ramená, lakte a predlaktia (forearm), trup (trunk_lean), línia tela (body_line), boky, kolená, členky a päty (ankle, heel_lift_pct), dráhu rúk/činky, symetriu ľavej a pravej strany (ak je pohľad spredu/zozadu), tempo, výdrž v krajnej polohe a to, či sa technika nezhoršuje s únavou (set_consistency, porovnaj prvé a posledné opakovanie). Ktoré časti tela sú pre daný cvik dôležité, posúď podľa dohľadanej techniky.
-5. Porovnaj namerané uhly, tempo a snímky so správnou technikou. Opieraj sa o konkrétne čísla a snímky, ale buď opatrný: 2D uhly z jedného pohľadu sú len odhad, posudzuj len to, čo sa z daného uhla kamery naozaj dá posúdiť.
+5. Porovnaj namerané uhly, tempo a snímky so správnou technikou. Opieraj sa o konkrétne čísla a snímky (čísla sú len na posúdenie, do textu pre používateľa ich nepíš), ale buď opatrný: 2D uhly z jedného pohľadu sú len odhad, posudzuj len to, čo sa z daného uhla kamery naozaj dá posúdiť.
    Počet opakovaní: reps_detected je nameraný appkou z pohybu kĺbu – v texte uvádzaj tento počet. Opakovania s rom_pct pod 80 majú neúplný rozsah (napr. nevystreté ruky hore alebo plytký zostup).
    Tempo: posudzuj ho VÝHRADNE podľa nameraných časov (down_s, pause_bottom_s, up_s pri opakovaniach a súhrn "tempo"), nikdy podľa dojmu zo snímok – zo snímok sa rýchlosť posúdiť nedá. Namerané časy sú bez pomalého rozbehu a dobehu pohybu, takže sú o niečo kratšie, než ako to cvičenec vníma. Platí:
    - avg_down_s 1,2 s a viac = kontrolované až pomalé spúšťanie: pochváľ ho, NEradíš spomaliť a v oblasti „Tempo a kontrola“ zaň body nestrhávaj,
@@ -38,7 +38,13 @@ Postup:
    Súčet bodov v oblastiach = score. Za každý stratený bod musí existovať konkrétny dôvod.
 7. Do "today" daj JEDNU najdôležitejšiu vec, ktorú má používateľ zmeniť pri ďalšej sérii (zvyčajne prvý krok z "to_100"). Napíš ju ako krátky pokyn v 2. osobe, jednoducho, ako by to povedal tréner. "frame" = číslo snímky (podľa "Snímka N"), na ktorej je táto chyba najlepšie vidieť.
 8. Do "to_100" napíš presný plán, čo musí používateľ pri tomto cvičení zmeniť, aby dosiahol 100 bodov: každý krok = jedna konkrétna zmena a koľko bodov prinesie. Súčet "gain" = 100 − score. Zoraď od najväčšieho prínosu. Ak je score 100, nechaj pole prázdne.
-9. Odpovedz výhradne v slovenčine, prakticky a zrozumiteľne pre bežného cvičenca. Bez diagnóz, nie je to medicínska rada.
+9. Odpovedz výhradne v slovenčine. Píš pre bežného človeka, ktorý necvičí odborne a nepozná biomechaniku:
+   - krátke jednoduché vety v 2. osobe (ty), spisovne, bez anglických a odborných výrazov (nie „extenzia“, „protrakcia“, „ROM“, „línia trupu“, „pose detection“, „2D“) a bez názvov údajov (body_line, rom_pct, trunk_lean…),
+   - v texte pre používateľa NIKDY neuvádzaj stupne (°), percentá ani iné namerané hodnoty – tie slúžia len tebe na posúdenie. Napíš radšej, čo človek uvidí alebo pocíti. Čísla smú byť len: počet opakovaní, poradie opakovania („v 3. opakovaní“), sekundy (výdrž, tempo) a body skóre,
+   - pri každej chybe musí byť jasné, ktorá časť tela, kedy (v ktorej fáze pohybu) a čo presne je zle; „fix“ = jeden jednoduchý pokyn, ktorý sa dá hneď skúsiť, ako by ho povedal tréner na tréningu (nie všeobecná rada ani zložitý opis pohybu),
+   - neuvádzaj drobnosti, ktoré sú v rámci presnosti merania z jednej kamery (napr. koleno alebo lakeť takmer vystreté, malé kolísanie); ak si chybou nie si istý, radšej ju vynechaj. Do „issues“ daj najviac 4 chyby, ktoré naozaj zhoršujú techniku,
+   - príklady: zle „Koleno dosiahlo len okolo 168° na konci pohybu.“ → dobre „Na konci pohybu nohy celkom nevystrieš.“; zle „Zápästia sa vodorovne posúvali (až 53 % dĺžky trupu).“ → dobre „Ruky sa ti počas opakovania posúvajú po hrazde.“; zle „Uhol krku je 107–120°, hlava je zaklonená či zvretá proti línii trupu.“ → dobre „Hlavu zakláňaš dozadu a pozeráš sa hore.“
+   Bez diagnóz, nie je to medicínska rada.
 
 Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) presne v tomto tvare:
 {
@@ -49,13 +55,13 @@ Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) pres
   "summary": "max. 2 krátke vety zhrnutia, bez čísel uhlov",
   "description": "stručný popis správnej techniky tohto cviku (3–4 krátke vety)",
   "good": ["čo robí dobre – krátko, max. 8 slov na bod", "..."],
-  "score_breakdown": [ { "area": "názov oblasti zo stupnice", "points": číslo 0–20, "max": 20, "note": "krátko prečo, max. 10 slov" } ],
+  "score_breakdown": [ { "area": "názov oblasti zo stupnice", "points": číslo 0–20, "max": 20, "note": "krátko prečo, max. 10 slov, bez stupňov a percent" } ],
   "to_100": [ { "step": "konkrétna zmena, max. 14 slov (napr. 'Choď v drepe hlbšie, boky aspoň po úroveň kolien')", "gain": počet bodov } ],
-  "issues": [ { "title": "krátky názov chyby, max. 5 slov", "detail": "1 veta: čo presne vidno (môžeš uviesť opakovanie alebo uhol)", "fix": "1 veta: konkrétny pokyn, ako to opraviť", "severity": "vysoká|stredná|nízka" } ],
+  "issues": [ { "title": "krátky názov chyby jednoduchými slovami, max. 5 slov (napr. 'Nohy na konci nevystrieš')", "detail": "1 krátka veta: čo presne robíš zle a kedy, bez stupňov a percent (môžeš uviesť číslo opakovania)", "fix": "1 krátka veta: jednoduchý pokyn, čo urobiť inak", "severity": "vysoká|stredná|nízka" } ],
   "watch_out": ["na čo si dávať pozor (bezpečnosť, typické chyby pri tomto cviku) – max. 3 body, krátko", "..."],
   "muscles": { "primary": ["hlavné zapojené svaly"], "secondary": ["pomocné svaly"] },
   "cues": ["3–5 krátkych pokynov na zapamätanie, napr. 'kolená smerom nad špičky'"],
-  "camera_limits": "čo sa z tohto uhla kamery nedalo posúdiť a ako natočiť lepšie, alebo null"
+  "camera_limits": "jednoducho: čo sa z tohto uhla kamery nedalo posúdiť a ako natočiť lepšie (napr. 'Natoč sa z boku, nech je vidno celé telo.'), alebo null"
 }
 Ak je technika dobrá, "issues" môže byť prázdne. Ak sa cvik nedá rozpoznať alebo je video nepoužiteľné, nastav score na null a vysvetli to vo "verdict".`;
 
@@ -138,6 +144,8 @@ export async function onRequestPost({ request, env }) {
       if (sum > 0 && sum <= 100) result.score = Math.round(sum);
     }
 
+    cleanResult(result);
+
     const sources = [];
     for (const m of messages.concat([{ content: data.content }])) {
       for (const b of (Array.isArray(m.content) ? m.content : [])) {
@@ -172,4 +180,34 @@ function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
   });
+}
+
+// Poistka k zadaniu: z textov pre používateľa odstráni technické čísla (stupne, percentá dĺžky trupu…),
+// ktoré bežnému cvičencovi nič nepovedia. Jednovetný opis chyby s takým číslom radšej vynechá celý.
+const TECH_PAREN = /\s*\([^()]*(?:°|%)[^()]*\)/g;
+const TECH_NUM = /\s*(?:(?:~|cca\.?|asi|okolo|približne|len|až|aspoň|takmer)\s*)*(?:(?:na|do|o|pod|nad)\s+)?~?\d+(?:[.,]\d+)?(?:\s*[–-]\s*~?\d+(?:[.,]\d+)?)?\s*(?:°|%(?:\s*(?:dĺžky|dĺžke)\s+trupu)?)/gi;
+const tidy = (t) => t.replace(/\s{2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1').replace(/\(\s*\)/g, '').trim();
+export function stripTech(s) {
+  return typeof s === 'string' ? tidy(s.replace(TECH_PAREN, '').replace(TECH_NUM, '')) : s;
+}
+export function dropTechSentences(s) {
+  if (typeof s !== 'string') return s;
+  const parts = s.replace(TECH_PAREN, '').split(/(?<=[.!?])\s+/).filter(Boolean);
+  return tidy(parts.filter(x => !/°|\d\s*%/.test(x)).join(' '));
+}
+export function cleanResult(r) {
+  if (!r || typeof r !== 'object') return r;
+  const arr = (a, f) => (Array.isArray(a) ? a.map(x => (typeof x === 'string' ? f(x) : x)).filter(x => x !== '') : a);
+  for (const k of ['verdict', 'description', 'camera_limits']) if (typeof r[k] === 'string') r[k] = stripTech(r[k]);
+  if (typeof r.summary === 'string') r.summary = dropTechSentences(r.summary) || stripTech(r.summary);
+  if (r.today && typeof r.today === 'object') { r.today.title = stripTech(r.today.title); r.today.detail = stripTech(r.today.detail); }
+  r.good = arr(r.good, stripTech); r.watch_out = arr(r.watch_out, stripTech); r.cues = arr(r.cues, stripTech);
+  if (Array.isArray(r.to_100)) r.to_100.forEach(x => { if (x && typeof x.step === 'string') x.step = stripTech(x.step); });
+  if (Array.isArray(r.score_breakdown)) r.score_breakdown.forEach(b => { if (b && typeof b.note === 'string') b.note = dropTechSentences(b.note); });
+  if (Array.isArray(r.issues)) r.issues.forEach(i => {
+    if (!i || typeof i !== 'object') return;
+    i.title = stripTech(i.title); i.fix = stripTech(i.fix);
+    if (typeof i.detail === 'string') i.detail = dropTechSentences(i.detail);
+  });
+  return r;
 }

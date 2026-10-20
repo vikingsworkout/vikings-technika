@@ -119,7 +119,8 @@ export const PLAYER_HTML = `
   </div>
   <div class="vp-stage" id="pStage">
     <canvas id="pCanvas"></canvas>
-    <span class="vp-pts"><i></i>19 bodov</span>
+    <span class="vp-pts"><i></i>Kostra tela</span>
+    <div class="vp-err" id="pErr" hidden><b>Video sa nepodarilo načítať</b><span>Rozbor platí aj tak. Snímky s kostrou nájdeš v celom rozbore pod skóre.</span></div>
     <div class="vp-tip" id="pTip" hidden><b id="pTipT"></b><span id="pTipD"></span></div>
   </div>
   <div class="vp-ctl">
