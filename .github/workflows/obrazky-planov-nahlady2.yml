@@ -1,10 +1,10 @@
-# Náhľady scén pre plány (len tmavá verzia), každá úloha hneď po dokončení uloží výsledok
+# Ďalšie náhľady scén s náradím (paralety, kruhy, bradlá, domáci kútik), len tmavá verzia, každá úloha hneď po dokončení uloží výsledok
 # do vetvy obrazky-planov-nahlady-vysledky, aby sa dalo vyberať priebežne.
-name: obrazky-planov-nahlady
+name: obrazky-planov-nahlady2
 on:
   workflow_dispatch:
   push:
-    branches: [obrazky-planov-nahlady]
+    branches: [obrazky-planov-nahlady2]
 permissions:
   contents: write
 jobs:
@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scene: [p12a, p12b, p12c, p12d, p12e, c3a, c3b, c3c, c3d, c3e]
+        scene: [n1, n2, n3, n4, n5]
         seed: ['5', '6']
     steps:
       - uses: actions/checkout@v4
