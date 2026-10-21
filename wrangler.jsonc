@@ -6,5 +6,8 @@
   "assets": { "directory": "./public", "binding": "ASSETS" },
   // premenné a secrets nastavené v Cloudflare dashboarde sa pri deployi nezmažú
   "keep_vars": true,
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // počty rozborov používateľov (3 zadarmo, s Pro 10 mesačne) – jeden Durable Object na používateľa
+  "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "Quota" }] },
+  "migrations": [{ "tag": "v1-quota", "new_sqlite_classes": ["Quota"] }]
 }

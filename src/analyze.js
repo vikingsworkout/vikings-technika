@@ -8,9 +8,19 @@
 //   CLAUDE_MODEL       (voliteľné, predvolene claude-sonnet-5-5)
 
 import { fixResultSk, hasCzech, collectTexts, applyTexts } from '../public/js/sk.js';
+import { access, quotaTake, quotaGive, quotaGet, quotaInfo, limitText } from './quota.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const FIX_MODEL = 'claude-haiku-5-5'; // rýchla jazyková oprava, keď v rozbore ostane čeština (CLAUDE_FIX_MODEL ho prepíše)
+// Modely, ktoré si appka smie vyžiadať (porovnanie modelov v admin teste), a ich cena v $ za milión tokenov [vstup, výstup].
+const MODELS = { 'claude-sonnet-5-5': [2, 10], 'claude-haiku-5-5': [0.10, 0.50] };
+const SEARCH_USD = 0.01; // jedno vyhľadávanie na webe
+function usdOf(model, u) {
+  const p = MODELS[model];
+  if (!p || !u) return 0;
+  const inTok = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+  return inTok * p[0] / 1e6 + (u.output_tokens || 0) * p[1] / 1e6 + ((u.server_tool_use && u.server_tool_use.web_search_requests) || 0) * SEARCH_USD;
+}
 const MAX_IMAGES = 12;
 const MAX_IMAGE_B64 = 600_000;
 const API_DEADLINE_MS = 110_000; // celkový čas na odpoveď AI
@@ -89,16 +99,41 @@ function apiError(status, msg) {
 }
 
 export async function onRequestPost({ request, env }) {
+  // prístup: správca (bez obmedzenia) alebo prihlásený používateľ appky s počtom rozborov (pozri quota.js)
+  let gate;
+  try { gate = await access(env, request); } catch (e) { return json({ error: 'Na serveri sa niečo pokazilo. Skús to o chvíľu znova.', code: 'server', detail: String(e?.message || e).slice(0, 200) }, 500); }
+  if (!gate.ok) return json({ error: gate.error, code: 'auth' }, 401);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'Video sa na server neodoslalo celé. Skús to znova.', code: 'bad' }, 400); }
+  if (!body || typeof body !== 'object') body = {};
+  if (gate.plan === 'admin') return analyzeBody(body, env);
+  delete body.model; delete body.noSearch; // výber modelu len pre správcu (porovnanie modelov)
+  const held = await quotaTake(env, gate.user.id, gate.plan);
+  if (!held.ok) return json({ error: limitText(gate.plan), code: 'limit', quota: quotaInfo(gate.plan, held.used) }, 402);
+  const res = await analyzeBody(body, env);
+  let j = null;
+  try { j = await res.clone().json(); } catch { j = null; }
+  // počíta sa len ohodnotený rozbor; inak sa rezervácia vráti
+  const counted = res.ok && j && j.result && typeof j.result.score === 'number';
+  const used = counted ? held.used : (await quotaGive(env, gate.user.id, held.key)).used;
+  return j ? json({ ...j, quota: quotaInfo(gate.plan, used) }, res.status) : res;
+}
+
+// koľko rozborov ešte zostáva (appka to ukáže pred natáčaním)
+export async function onQuota({ request, env }) {
+  let gate;
+  try { gate = await access(env, request); } catch { return json({ error: 'Na serveri sa niečo pokazilo.', code: 'server' }, 500); }
+  if (!gate.ok) return json({ error: gate.error, code: 'auth' }, 401);
+  if (gate.plan === 'admin') return json({ plan: 'admin' });
+  const r = await quotaGet(env, gate.user.id, gate.plan);
+  return json(quotaInfo(gate.plan, r.used));
+}
+
+async function analyzeBody(body, env) {
   try {
-    if (env.ACCESS_CODE && request.headers.get('x-access-code') !== env.ACCESS_CODE) {
-      return json({ error: 'Nesprávny alebo chýbajúci prístupový kód.', code: 'auth' }, 401);
-    }
     if (!env.ANTHROPIC_API_KEY) {
       return json({ error: 'Rozbor je teraz nedostupný (server nie je nastavený). Skús to neskôr.', code: 'config', detail: 'Na serveri chýba ANTHROPIC_API_KEY (nastav ho v Cloudflare).' }, 500);
     }
-
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'Video sa na server neodoslalo celé. Skús to znova.', code: 'bad' }, 400); }
     const { exercise, summary, keyframes } = body || {};
     if (!summary || typeof summary !== 'object') return json({ error: 'Chýba meranie z videa. Nahraj video znova.', code: 'bad' }, 400);
     const frames = Array.isArray(keyframes) ? keyframes.slice(0, MAX_IMAGES) : [];
@@ -128,9 +163,20 @@ export async function onRequestPost({ request, env }) {
     content.push({ type: 'text', text: 'Vyhodnoť techniku a vráť iba JSON podľa zadania.' });
 
     const messages = [{ role: 'user', content }];
-    const model = env.CLAUDE_MODEL || DEFAULT_MODEL;
+    // model z požiadavky len zo zoznamu povolených (porovnanie modelov), inak nastavený alebo predvolený
+    const model = (typeof body.model === 'string' && MODELS[body.model] ? body.model : '') || env.CLAUDE_MODEL || DEFAULT_MODEL;
+    const noSearch = body.noSearch === true; // bez vyhľadávania na webe (lacnejší model by inak platil viac za hľadanie než za rozbor)
     let resp, data, noTemp = false;
     const started = Date.now();
+    // spotreba a cena všetkých volaní AI pri tomto rozbore (aj pokračovania po vyhľadávaní a jazykovej opravy)
+    const spend = { usd: 0, in: 0, out: 0, search: 0 };
+    const addUse = (m, u) => {
+      if (!u) return;
+      spend.usd += usdOf(m, u);
+      spend.in += (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+      spend.out += u.output_tokens || 0;
+      spend.search += (u.server_tool_use && u.server_tool_use.web_search_requests) || 0;
+    };
     // web search môže vrátiť pause_turn – vtedy pokračujeme, ale len kým neprekročíme časový limit,
     // aby používateľ nečakal donekonečna
     for (let round = 0; round < 4; round++) {
@@ -148,7 +194,7 @@ export async function onRequestPost({ request, env }) {
         body: JSON.stringify({
           model, max_tokens: 6000, system: SYSTEM, messages,
           ...(noTemp ? {} : { temperature: 0.2 }),
-          ...(criteria.length ? {} : { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }] }),
+          ...(criteria.length || noSearch ? {} : { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }] }),
         }),
       });
       data = await resp.json().catch(() => null);
@@ -162,6 +208,7 @@ export async function onRequestPost({ request, env }) {
         if (resp.status === 400 && !noTemp && /temperature/i.test(msg)) { noTemp = true; round--; continue; }
         return json({ ...apiError(resp.status, msg), detail: String(msg).slice(0, 300) }, 502);
       }
+      addUse(model, data.usage);
       if (data.stop_reason !== 'pause_turn') break;
       if (Date.now() - started > API_DEADLINE_MS - 20_000) break; // už nestihneme ďalšie kolo
       messages.push({ role: 'assistant', content: data.content });
@@ -178,7 +225,7 @@ export async function onRequestPost({ request, env }) {
 
     cleanResult(result);
     // slovenčina: texty s českými slovami prepíše rýchla AI; známe české slová potom opraví aj slovník (poistka)
-    const skFixed = await fixCzech(env, result, started + API_DEADLINE_MS + 15_000);
+    const skFixed = await fixCzech(env, result, started + API_DEADLINE_MS + 15_000, addUse);
     fixResultSk(result);
 
     const sources = [];
@@ -189,18 +236,18 @@ export async function onRequestPost({ request, env }) {
         }
       }
     }
-    return json({ result, sources: sources.slice(0, 10), model: data.model, usage: data.usage, ...(skFixed ? { sk: skFixed } : {}) });
+    const cost = { usd: Math.round(spend.usd * 100000) / 100000, in: spend.in, out: spend.out, search: spend.search };
+    return json({ result, sources: sources.slice(0, 10), model: data.model, usage: data.usage, cost, ms: Date.now() - started, ...(skFixed ? { sk: skFixed } : {}) });
   } catch (e) {
     return json({ error: 'Na serveri sa niečo pokazilo. Skús to o chvíľu znova – video netreba nahrávať znova.', code: 'server', detail: String(e?.message || e).slice(0, 300) }, 500);
   }
 }
 
 // GET slúži aj na rýchle overenie prístupového kódu ešte pred analýzou videa.
-export function onRequestGet({ request, env } = {}) {
-  if (env?.ACCESS_CODE && request?.headers.get('x-access-code') !== env.ACCESS_CODE) {
-    return json({ error: 'Nesprávny alebo chýbajúci prístupový kód.', code: 'auth' }, 401);
-  }
-  return json({ ok: true, info: 'POST /api/analyze' });
+export async function onRequestGet({ request, env } = {}) {
+  const gate = await access(env || {}, request).catch(() => ({ ok: false, error: 'Na serveri sa niečo pokazilo.' }));
+  if (!gate.ok) return json({ error: gate.error, code: 'auth' }, 401);
+  return json({ ok: true, plan: gate.plan, info: 'POST /api/analyze' });
 }
 
 // Jazyková oprava: texty, v ktorých ostala čeština, prepíše rýchly model do jednoduchej slovenčiny.
@@ -209,7 +256,7 @@ const FIX_SYSTEM = `Si jazykový korektor slovenčiny vo fitness appke. Dostane�
 Každý text prepíš do prirodzenej, jednoduchej spisovnej slovenčiny, ako by to povedal tréner (napr. „ujíždějí“ → „uhýbajú“, „kyčle“ → „boky“, „záda“ → „chrbát“, „dolů“ → „dole“).
 Význam nemeň, nič nepridávaj ani nevynechávaj, ponechaj oslovenie ty a približnú dĺžku. V texte nesmie ostať žiadne z písmen ě, ř, ů.
 Vráť IBA jeden JSON objekt s rovnakými kľúčmi a opravenými textami, bez ďalšieho textu.`;
-export async function fixCzech(env, result, until) {
+export async function fixCzech(env, result, until, onUse) {
   const texts = collectTexts(result, hasCzech);
   const keys = Object.keys(texts);
   if (!keys.length) return 0;
@@ -226,6 +273,7 @@ export async function fixCzech(env, result, until) {
     });
     const data = await resp.json().catch(() => null);
     if (!resp.ok || !data) return -1;
+    if (onUse) onUse(env.CLAUDE_FIX_MODEL || FIX_MODEL, data.usage);
     const fixed = parseJson((data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n'));
     if (!fixed || typeof fixed !== 'object') return -1;
     const ok = {};

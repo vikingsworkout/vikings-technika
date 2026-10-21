@@ -10,6 +10,8 @@ export const vwResultId = (q.get('r') || '').slice(0, 40);
 // k uloženému rozboru aj názov a id cviku z appky – keď sa rozbor v telefóne nenájde, ukážeme ostatné rozbory tohto cviku
 export const vwResultName = (q.get('n') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
 export const vwResultEid = (q.get('e') || '').slice(0, 60);
+// správca appky (porovnanie modelov AI, prístupový kód); ostatní používajú prihlásenie z appky
+export const vwAdmin = VW && q.get('adm') === '1';
 
 // náhľad cviku z appky (ukážka záberu na obrazovke Natoč) – len obrázky z videa.vikingsworkout.com
 const IMG_PATH = /^[A-Za-z0-9._~%\/-]{1,200}\.(jpg|jpeg|webp|png)(\?[A-Za-z0-9._~%=&-]{0,80})?$/i;
@@ -48,6 +50,30 @@ const po = q.get('po') || '';
 const parentOrigin = VW && ALLOWED.test(po) && window.parent !== window ? po : null;
 
 export const vwEmbedded = !!parentOrigin;
+
+// Prihlásenie používateľa: token (Supabase) pošle hlavná appka na požiadanie. Držíme ho, kým neexpiruje
+// (s rezervou 2 minúty); force = appka ho má obnoviť (server ho odmietol).
+let tokC = { v: '', exp: 0 };
+const jwtExp = (t) => { try { return (JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0) * 1000; } catch { return 0; } };
+export function vwToken(force = false) {
+  if (!parentOrigin) return Promise.resolve('');
+  if (!force && tokC.v && Date.now() < tokC.exp - 120000) return Promise.resolve(tokC.v);
+  return new Promise((resolve) => {
+    const done = (v) => {
+      clearTimeout(t); window.removeEventListener('message', onMsg);
+      if (v) tokC = { v, exp: jwtExp(v) || Date.now() + 10 * 60000 };
+      resolve(v || '');
+    };
+    const onMsg = (ev) => {
+      if (ev.origin !== parentOrigin || ev.source !== window.parent) return;
+      const m = ev.data;
+      if (m && m.type === 'vw-technika' && m.action === 'token') done(typeof m.token === 'string' ? m.token.slice(0, 4000) : '');
+    };
+    const t = setTimeout(() => done(''), 5000); // staršia appka neodpovie
+    window.addEventListener('message', onMsg);
+    vwPost('token', { force: !!force });
+  });
+}
 export function vwPost(action, extra = {}) {
   if (!parentOrigin) return;
   try { window.parent.postMessage({ type: 'vw-technika', action, ...extra }, parentOrigin); } catch { /* appka zatvorená */ }

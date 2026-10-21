@@ -479,6 +479,36 @@ html.vw.vw-light .pk-ai-ch { color: var(--acc); }
 .savewarn small, .savenote small { display: block; margin-top: 6px; font-size: 11.5px; color: var(--mu); overflow-wrap: anywhere; }
 .savenote { margin: 0 2px 14px; font-size: 13px; line-height: 1.4; color: var(--mu); }
 
+/* počet rozborov (Natoč) */
+.sh-quota { margin: -8px 2px 14px; font-size: 13px; font-weight: 700; color: var(--mu); }
+.sh-limit { padding: 14px 16px; margin-bottom: 10px; gap: 6px; }
+.sh-limit b { font-size: 16px; font-weight: 800; }
+.sh-limit span { font-size: 13.5px; line-height: 1.4; color: var(--tx2); }
+.sh-limit .btn { margin-top: 8px; }
+
+/* porovnanie modelov AI (len správca) */
+#cmpBox:not(:empty) { margin-top: 22px; }
+.cmp { padding: 14px 16px; gap: 10px; }
+.cmp-note { margin: 0; font-size: 13.5px; line-height: 1.4; color: var(--tx2); }
+.cmp-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 8px 12px; align-items: center; font-size: 14px; }
+.cmp-grid > b { font-size: 12.5px; font-weight: 800; color: var(--mu); text-align: right; }
+.cmp-grid > span { text-align: right; font-weight: 700; }
+.cmp-grid > span.k { text-align: left; color: var(--mu); font-weight: 600; }
+.cmp-sc { font-size: 22px; font-weight: 900 !important; }
+.cmp-spin { display: inline-block; width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid var(--line); border-top-color: var(--acc); animation: vwspin .8s linear infinite; vertical-align: middle; }
+.cmp-err { color: var(--bad); font-size: 13px; }
+.cmp-errline { margin: 0; font-size: 13px; color: var(--bad); }
+.cmp-sum { margin: 2px 0 0; font-size: 14px; line-height: 1.4; font-weight: 700; }
+.cmp-d { border-top: 1px solid var(--line); padding-top: 6px; }
+.cmp-d summary { cursor: pointer; font-weight: 800; font-size: 14.5px; padding: 6px 0; }
+.cmp-d h4 { margin: 10px 0 4px; font-size: 11.5px; letter-spacing: .1em; color: var(--mu); }
+.cmp-d ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.45; }
+.cmp-d li + li { margin-top: 4px; }
+.cmp-d p { margin: 0; font-size: 13.5px; line-height: 1.45; }
+.cmp-v { font-weight: 700; }
+.cmp-again { margin-top: 2px; }
+.cmp-when { margin: 0; font-size: 11.5px; color: var(--mu); text-align: center; }
+
 /* natoč */
 .sh-h1 { margin: 0 2px 4px !important; line-height: 1.1; }
 .sh-sub { margin: 0 2px 14px; font-size: 14px; font-weight: 600; color: var(--mu); }

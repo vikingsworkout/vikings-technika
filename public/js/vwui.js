@@ -34,14 +34,16 @@ export function frameSvg(x, y, w, h) {
 export const NEW_HTML = `
   <h1 class="sh-h1" id="newTitle">Natoč cvik</h1>
   <p class="sh-sub" id="newSub"></p>
+  <p class="sh-quota" id="newQuota" hidden></p>
   <div class="sh-prev" id="shPrev"></div>
   <section class="vw-card sh-tips" id="shTips"></section>
   <div class="vw-cap" id="shCapChecks">ČO SKONTROLUJEM</div>
   <div class="sh-chips" id="shChecks"></div>
   <details class="sh-100" id="sh100" hidden><summary><span class="sh-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></span><span class="s1t"><b>Čo treba na 100 bodov</b><span>Podľa toho rozbor hodnotí</span></span></summary><ul id="sh100l"></ul></details>
   <div class="vw-bottom">
+    <div class="vw-card sh-limit" id="newLimit" hidden></div>
     <button class="btn pri sh-rec" id="btnRec"><span class="dot"></span>Nahrávať</button>
-    <label class="btn ghost" for="inFile">Vybrať video z galérie</label>
+    <label class="btn ghost" for="inFile" id="lblFile">Vybrať video z galérie</label>
   </div>
   <input type="file" id="inCam" accept="video/*" capture="environment" hidden>
   <input type="file" id="inFile" accept="video/*" hidden>`;
@@ -104,7 +106,7 @@ export const WORK_HTML = `
       <p class="small mu">Zadaj prístupový kód, ktorý si dostal od trénera. Zapamätá sa v tomto zariadení.</p>
       <input type="password" id="codeInput" placeholder="Prístupový kód" autocomplete="off" style="margin-bottom:10px">
     </div>
-    <div class="row"><button class="btn pri" id="btnRetry">Pokračovať</button><button class="btn sec" id="btnBack">Späť</button></div>
+    <div class="row"><button class="btn pri" id="btnErrPro" hidden>Odomknúť Pro</button><button class="btn pri" id="btnRetry">Pokračovať</button><button class="btn sec" id="btnBack">Späť</button></div>
   </div>
   <div class="vw-bottom an-bottom" id="workBottom">
     <span>Rozbor sa uloží k cviku aj do profilu.</span>

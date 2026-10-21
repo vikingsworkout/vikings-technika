@@ -3,7 +3,7 @@ import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive
 import { createLiveCounter } from './livecount.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
-import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap } from './vw.js';
+import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwAdmin, vwToken, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap } from './vw.js';
 import { fixResultSk } from './sk.js';
 import { IC, frameSvg, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
 
@@ -82,10 +82,10 @@ function show(view) {
 // ---------- smerovanie ----------
 async function route() {
   const h = location.hash;
-  if (h === '#/vyber' && VW) { renderPick(); show('vPick'); preloadSoon(); return; }
+  if (h === '#/vyber' && VW) { renderPick(); show('vPick'); preloadSoon(); loadQuota(); return; }
   if (h === '#/nova') {
     if (VW && !pick) { go('#/vyber'); return; }
-    renderNew(); show('vNew'); if (VW) layoutShot(); preloadSoon(); return;
+    renderNew(); show('vNew'); if (VW) { layoutShot(); loadQuota(); } preloadSoon(); return;
   }
   if (h === '#/nahravanie') { show('vRec'); openRecorder(); return; }
   if (h.startsWith('#/r/')) {
@@ -98,7 +98,7 @@ async function route() {
   if (h === '#/praca' && current) { show('vWork'); return; }
   if (VW) { // v appke sa začína natáčaním cviku z appky, inak výberom cviku
     if (pick) { renderNew(); show('vNew'); layoutShot(); } else { renderPick(); show('vPick'); }
-    preloadSoon(); return;
+    preloadSoon(); loadQuota(); return;
   }
   renderHome(); show('vHome');
 }
@@ -260,6 +260,7 @@ function renderShoot() {
   hide('sh100', !top.length);
   $('sh100l').innerHTML = top.map(c => `<li>${esc(c)}</li>`).join('');
   $('btnRec').innerHTML = '<span class="dot"></span>Nahrávať';
+  renderQuota();
 }
 
 // výrez obrázka a rámik „Celé telo v zábere“: podľa polohy postavy na náhľade (zistenej vopred na GitHube),
@@ -583,6 +584,7 @@ function setProgress(p, text) {
 // again = má zmysel skúsiť to isté video znova (inak ponúkneme nahrať iné)
 function showError(msg, needCode = false, again = true) {
   $('workErr').hidden = false; $('workErrText').textContent = msg;
+  hide('btnErrPro', true);
   $('codeBox').hidden = !needCode;
   if (needCode) $('codeInput').value = ls.get('vt-code') || '';
   $('btnRetry').hidden = !again && !needCode;
@@ -717,11 +719,13 @@ async function startAnalysis(file) {
     vid.src = URL.createObjectURL(file); vid.hidden = false;
     vid.play().catch(() => {});
   }
+  // v appke: keď už rozbory došli, ukážeme to na obrazovke Natoč (s ponukou Pro)
+  if (VW && QUOTA && QUOTA.left <= 0) { current = null; go('#/nova'); return; }
   go('#/praca'); show('vWork');
   setProgress(0, 'Overujem prístup…');
-  // kód overíme hneď, nie až po minútovej analýze videa
+  // prístup overíme hneď, nie až po minútovej analýze videa
   if (await accessDenied()) {
-    showError('Táto appka je chránená prístupovým kódom. Zadaj ho a pokračuj.', true);
+    showError(needCodeBox() ? 'Táto appka je chránená prístupovým kódom. Zadaj ho a pokračuj.' : 'Rozbor techniky funguje po prihlásení v appke. Zatvor Techniku, prihlás sa a skús to znova.', needCodeBox(), false);
     current = null;
     return;
   }
@@ -765,10 +769,57 @@ async function accessDenied() {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 10_000);
-    const res = await fetch('/api/analyze', { headers: { 'x-access-code': ls.get('vt-code') || '' }, cache: 'no-store', signal: ctrl.signal });
+    let res = await fetch('/api/analyze', { headers: await apiHeaders(), cache: 'no-store', signal: ctrl.signal });
+    if (res.status === 401 && VW) res = await fetch('/api/analyze', { headers: await apiHeaders(true), cache: 'no-store', signal: ctrl.signal });
     clearTimeout(t);
     return res.status === 401;
   } catch { return false; }
+}
+
+// hlavičky pre server: prístupový kód (správca) a v appke prihlásenie používateľa (token z appky)
+async function apiHeaders(force = false) {
+  const h = { 'x-access-code': ls.get('vt-code') || '' };
+  if (VW) { const tk = await vwToken(force); if (tk) h.Authorization = 'Bearer ' + tk; }
+  return h;
+}
+// prístupový kód zadáva len správca; ostatní v appke používajú prihlásenie
+const needCodeBox = () => !VW || vwAdmin;
+
+// ---------- v appke: počet rozborov (bez Pro 3 spolu, s Pro 10 mesačne; správca bez obmedzenia) ----------
+let QUOTA = null; // { plan: 'free' | 'pro', used, limit, left, reset?, pro? }
+let quotaAt = 0;
+async function loadQuota(force = false) {
+  if (!VW) return null;
+  if (!force && quotaAt && Date.now() - quotaAt < 60000) { renderQuota(); return QUOTA; }
+  try {
+    let res = await fetch('/api/quota', { headers: await apiHeaders(), cache: 'no-store' });
+    if (res.status === 401) res = await fetch('/api/quota', { headers: await apiHeaders(true), cache: 'no-store' });
+    if (res.ok) setQuota(await res.json());
+  } catch { /* bez siete: obmedzenie overí server pri rozbore */ }
+  return QUOTA;
+}
+function setQuota(j) {
+  if (!j || typeof j !== 'object') return;
+  QUOTA = (j.plan === 'free' || j.plan === 'pro') && typeof j.left === 'number' ? j : null; // správca: bez obmedzenia
+  quotaAt = Date.now();
+  renderQuota();
+}
+const zostava = (n) => (n >= 2 && n <= 4 ? 'zostávajú' : 'zostáva');
+const resetDay = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${Number(m[3])}. ${Number(m[2])}.` : 'začiatku budúceho mesiaca'; };
+function renderQuota() {
+  const line = $('newQuota'), box = $('newLimit');
+  if (!VW || !line || !box) return;
+  const q = QUOTA, out = !!(q && q.left <= 0);
+  line.hidden = !q || out;
+  if (q && !out) line.textContent = q.plan === 'pro'
+    ? `Tento mesiac ti ${zostava(q.left)} ${q.left} z ${q.limit} rozborov techniky.`
+    : `Zadarmo ti ${zostava(q.left)} ${q.left} z ${q.limit} rozborov techniky.`;
+  box.hidden = !out;
+  box.innerHTML = !out ? '' : q.plan === 'pro'
+    ? `<b>Tento mesiac si využil všetkých ${q.limit} rozborov</b><span>Ďalšie rozbory techniky budeš mať od ${esc(resetDay(q.reset))}</span>`
+    : `<b>Využil si ${q.limit} ${plural(q.limit, 'rozbor', 'rozbory', 'rozborov')} zadarmo</b><span>S Pro máš ${q.pro || 10} rozborov techniky každý mesiac, k tomu všetky plány a štatistiky.</span><button class="btn pri" id="btnGoPro">Odomknúť Pro</button>`;
+  on('btnGoPro', () => vwPost('pro'));
+  hide('btnRec', out); hide('lblFile', out);
 }
 
 // kritériá na 100 bodov pre AI: zo zvoleného cviku, v appke aj z cviku spárovaného s názvom z appky
@@ -788,12 +839,16 @@ async function runAi() {
   const ctrl = new AbortController();
   const killer = setTimeout(() => ctrl.abort(), 150_000); // poistka, aby appka nevisela donekonečna
   try {
-    const res = await fetch('/api/analyze', {
+    const payload = JSON.stringify({ exercise: current.exercise, summary: current.summary, keyframes: current.keyframes, criteria: criteriaFor(current) });
+    const call = async (force) => fetch('/api/analyze', {
       method: 'POST', signal: ctrl.signal,
-      headers: { 'content-type': 'application/json', 'x-access-code': ls.get('vt-code') || '' },
-      body: JSON.stringify({ exercise: current.exercise, summary: current.summary, keyframes: current.keyframes, criteria: criteriaFor(current) }),
+      headers: { 'content-type': 'application/json', ...(await apiHeaders(force)) },
+      body: payload,
     });
+    let res = await call(false);
+    if (res.status === 401 && VW) res = await call(true); // prihlásenie z appky vypršalo – appka ho obnoví
     const data = await res.json().catch(() => ({ error: 'Server teraz neodpovedá. Skús to o chvíľu znova – video netreba nahrávať znova.', detail: `HTTP ${res.status}` }));
+    if (data && data.quota) setQuota(data.quota);
     if (!res.ok) {
       if (data.detail) console.warn('Rozbor – detail chyby:', data.detail);
       const err = new Error(data.error || 'Rozbor sa nepodaril. Skús to znova.'); err.code = data.code; err.user = true; throw err;
@@ -807,14 +862,22 @@ async function runAi() {
     go('#/r/' + current.id);
   } catch (e) {
     console.error(e);
-    const msg = e.code === 'auth' ? 'Táto appka je chránená prístupovým kódom.'
+    const msg = e.code === 'auth' ? (needCodeBox() ? 'Táto appka je chránená prístupovým kódom.' : e.message || 'Rozbor techniky funguje po prihlásení v appke.')
       : e.name === 'AbortError' ? 'Server neodpovedal včas. Skontroluj internet a skús to znova – video netreba nahrávať znova.'
       : e.user ? e.message
       : 'Nepodarilo sa spojiť so serverom. Skontroluj internet a skús to znova – video netreba nahrávať znova.';
-    showError(msg, e.code === 'auth');
+    if (e.code === 'limit') { // rozbory došli (napr. na inom zariadení medzitým)
+      showError(msg, false, false);
+      if (VW) { $('workTitle').textContent = 'Rozbory techniky sa minuli'; $('workSub').textContent = QUOTA && QUOTA.plan === 'pro' ? 'Ďalšie budeš mať od ' + resetDay(QUOTA.reset) : 'Ďalšie rozbory sú v Pro'; }
+      hide('btnErrPro', !(VW && QUOTA && QUOTA.plan === 'free'));
+      $('btnBack').textContent = 'Späť';
+      return;
+    }
+    showError(msg, e.code === 'auth' && needCodeBox(), e.code !== 'auth' || needCodeBox());
   } finally { clearInterval(tick); clearTimeout(killer); }
 }
 
+on('btnErrPro', () => vwPost('pro'));
 $('btnRetry').onclick = () => {
   if (!$('codeBox').hidden) ls.set('vt-code', $('codeInput').value.trim());
   $('workErr').hidden = true;
@@ -1349,6 +1412,7 @@ function renderResult(item) {
       </div>
       <button class="btn ghost" id="btnDel" style="margin:4px auto 0;display:block;color:var(--mu)">Vymazať z histórie</button>
     </div>
+    ${VW && vwAdmin ? '<div id="cmpBox"></div>' : ''}
     ${VW ? '<div id="resHist"></div>' : ''}
 
     ${VW ? `<div class="stickybar vwbar">
@@ -1358,6 +1422,7 @@ function renderResult(item) {
   `;
   if ($('btnVwMain')) $('btnVwMain').onclick = () => { if (vwUse) vwPost('use', { reps: vwUse.reps || 0, hold: vwUse.hold || 0 }); else vwPost('close'); };
   if (VW) fillResHist(item);
+  if (VW && vwAdmin) fillCmp(item);
 
   if ($('btnSee')) $('btnSee').onclick = () => hasClip ? openPlayer(item.clip, errT, today) : openViewer(frame);
   $('vResult').querySelectorAll('.frames button').forEach(b => b.onclick = () => openViewer(item.keyframes[Number(b.dataset.k)]));
@@ -1449,6 +1514,110 @@ async function fillResHist(item) {
     ${same.length ? `<section class="vw-card pk-list">${same.slice(0, 3).map(histRow).join('')}</section>` : ''}`;
   bindHist(box);
   $('btnHistAll').onclick = () => { histCtx = { eid, name }; go('#/rozbory'); };
+}
+
+// ---------- v appke, len správca: porovnanie modelov AI ----------
+// Tie isté údaje a snímky z videa vyhodnotí Sonnet aj Haiku naraz; ukáže skóre, čas, cenu a celé rozbory vedľa seba.
+// Výsledok sa uloží v tomto zariadení (aby sa porovnanie neplatilo znova), do profilu ani do appky nejde.
+const CMP_KEY = 'vt-porovnania';
+const CMP_MODELS = [['claude-sonnet-5-5', 'Sonnet 5.5', {}], ['claude-haiku-5-5', 'Haiku 5.5', { noSearch: true }]];
+function cmpAll() { try { const o = JSON.parse(ls.get(CMP_KEY) || '{}'); return o && typeof o === 'object' ? o : {}; } catch { return {}; } }
+function cmpSave(id, rec) {
+  const all = cmpAll(); all[id] = rec;
+  const out = {};
+  Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0)).slice(0, 15).forEach(k => { out[k] = all[k]; });
+  ls.set(CMP_KEY, JSON.stringify(out));
+}
+function slimRes(r) {
+  const c = cleanResult(r || {});
+  return { score: typeof c.score === 'number' ? Math.round(c.score) : null, verdict: c.verdict || '', today: c.today || null,
+    issues: (Array.isArray(c.issues) ? c.issues : []).slice(0, 4), good: (Array.isArray(c.good) ? c.good : []).slice(0, 4),
+    to_100: (Array.isArray(c.to_100) ? c.to_100 : []).slice(0, 5) };
+}
+function criteriaOfItem(it) {
+  const e = it.exercise && it.exercise.id !== 'auto' ? findExercise(it.exercise.id) : matchExercise(itemName(it));
+  return e && e.id !== 'auto' && Array.isArray(e.top) ? e.top : [];
+}
+const fmtX = (x) => String(x >= 10 ? Math.round(x) : Math.round(x * 10) / 10).replace('.', ',');
+function cmpSummary(S, H, orig) {
+  const a = S.res.score, b = H.res.score, parts = [];
+  if (typeof a === 'number' && typeof b === 'number') {
+    const d = b - a;
+    parts.push(d === 0 ? 'Haiku dal rovnaké skóre' : `Haiku dal o ${Math.abs(d)} ${plural(Math.abs(d), 'bod', 'body', 'bodov')} ${d > 0 ? 'viac' : 'menej'}`);
+  }
+  if (S.ms && H.ms) parts.push(S.ms >= H.ms ? `bol ${fmtX(S.ms / H.ms)}× rýchlejší` : `bol ${fmtX(H.ms / S.ms)}× pomalší`);
+  if (S.usd && H.usd) parts.push(S.usd >= H.usd ? `${fmtX(S.usd / H.usd)}× lacnejší` : `${fmtX(H.usd / S.usd)}× drahší`);
+  let t = parts.length ? parts.join(', ') + '.' : '';
+  if (typeof orig === 'number') t += ` Pôvodný rozbor mal ${orig} ${plural(orig, 'bod', 'body', 'bodov')}.`;
+  return t.trim();
+}
+function cmpDetails(label, r) {
+  const li = (arr, f) => (arr.length ? `<ul>${arr.map(f).join('')}</ul>` : '<p class="mu">—</p>');
+  return `<details class="cmp-d"><summary>${esc(label)} – celý rozbor</summary>
+    ${r.verdict ? `<p class="cmp-v">${esc(r.verdict)}</p>` : ''}
+    ${r.today && r.today.title ? `<h4>JEDNA VEC NA DNES</h4><p>${esc(r.today.title)}${r.today.detail ? ` – ${esc(r.today.detail)}` : ''}</p>` : ''}
+    <h4>ČO ZLEPŠIŤ</h4>${li(r.issues || [], i => `<li><b>${esc(i.title || '')}</b>${i.severity ? ` <small>(${esc(SEV_TXT[i.severity] || i.severity)})</small>` : ''}${i.fix ? `<br>${esc(i.fix)}` : ''}</li>`)}
+    <h4>ČO ROBÍŠ DOBRE</h4>${li(r.good || [], g => `<li>${esc(g)}</li>`)}
+    ${(r.to_100 || []).length ? `<h4>CESTA K 100 BODOM</h4>${li(r.to_100, x => `<li>${esc(x.step || '')}${Number(x.gain) ? ` <b>+${Math.round(Number(x.gain))}</b>` : ''}</li>`)}` : ''}
+  </details>`;
+}
+function renderCmp(box, item, rec, live) {
+  const runs = live || (rec && rec.runs) || null;
+  const usd = (v) => (v == null ? '–' : v.toFixed(3).replace('.', ',') + ' $');
+  const sec = (ms) => (ms == null ? '–' : Math.max(1, Math.round(ms / 1000)) + ' s');
+  const cell = (m, f) => { const r = runs && runs[m]; return r && r.busy ? '<i class="cmp-spin" aria-label="Pracuje"></i>' : r && r.err ? '<span class="cmp-err">chyba</span>' : r && r.res ? f(r) : '–'; };
+  const [mS, mH] = CMP_MODELS.map(x => x[0]);
+  let h = '<div class="vw-cap">POROVNANIE MODELOV AI · LEN PRE TEBA</div><section class="vw-card cmp">';
+  if (!runs) {
+    h += `<p class="cmp-note">Tie isté údaje a snímky z tohto videa vyhodnotí Sonnet 5.5 (teraz v appke) aj lacnejší Haiku 5.5. Uvidíš skóre, čas, cenu a oba rozbory vedľa seba. Spolu to stojí asi 5 centov.</p>
+      <button class="btn sec" id="btnCmp">Porovnať Haiku a Sonnet</button>`;
+  } else {
+    h += `<div class="cmp-grid">
+      <span class="k"></span><b>Sonnet 5.5</b><b>Haiku 5.5</b>
+      <span class="k">Skóre</span><span class="cmp-sc">${cell(mS, r => r.res.score ?? '?')}</span><span class="cmp-sc">${cell(mH, r => r.res.score ?? '?')}</span>
+      <span class="k">Čas</span><span>${cell(mS, r => sec(r.ms))}</span><span>${cell(mH, r => sec(r.ms))}</span>
+      <span class="k">Cena</span><span>${cell(mS, r => usd(r.usd))}</span><span>${cell(mH, r => usd(r.usd))}</span>
+    </div>`;
+    const S = runs[mS], H = runs[mH];
+    if (!live && S && S.res && H && H.res) h += `<p class="cmp-sum">${esc(cmpSummary(S, H, rec && rec.orig))}</p>`;
+    for (const [m, label] of CMP_MODELS) {
+      const r = runs[m];
+      if (r && r.err) h += `<p class="cmp-errline">${esc(label)}: ${esc(r.err)}</p>`;
+      if (r && r.res) h += cmpDetails(label, r.res);
+    }
+    if (live) h += '<p class="cmp-when">Oba modely pracujú, zvyčajne to trvá do minúty…</p>';
+    else h += `<button class="btn ghost cmp-again" id="btnCmp">Porovnať znova</button><p class="cmp-when">Porovnané ${esc(whenLabel(rec.at))}</p>`;
+  }
+  box.innerHTML = h + '</section>';
+  on('btnCmp', () => runCmp(item));
+}
+function fillCmp(item) {
+  const box = $('cmpBox');
+  if (box) renderCmp(box, item, cmpAll()[item.id] || null, null);
+}
+async function runCmp(item) {
+  const box = $('cmpBox');
+  if (!box || box.dataset.busy) return;
+  box.dataset.busy = '1';
+  const st = {};
+  CMP_MODELS.forEach(([m]) => { st[m] = { busy: true }; });
+  renderCmp(box, item, null, st);
+  const body = { exercise: item.exercise, summary: item.summary, keyframes: item.keyframes || [], criteria: criteriaOfItem(item) };
+  await Promise.all(CMP_MODELS.map(async ([model, , extra]) => {
+    const t0 = Date.now(), ctrl = new AbortController(), kill = setTimeout(() => ctrl.abort(), 150_000);
+    try {
+      const res = await fetch('/api/analyze', { method: 'POST', signal: ctrl.signal, headers: { 'content-type': 'application/json', ...(await apiHeaders()) }, body: JSON.stringify({ ...body, model, ...extra }) });
+      const d = await res.json().catch(() => ({}));
+      st[model] = res.ok && d.result ? { res: slimRes(d.result), usd: d.cost ? d.cost.usd : null, ms: d.ms || (Date.now() - t0) } : { err: d.error || 'Chyba ' + res.status };
+    } catch (e) {
+      st[model] = { err: e.name === 'AbortError' ? 'Neodpovedal včas' : 'Bez spojenia so serverom' };
+    } finally { clearTimeout(kill); }
+    if (box.isConnected) renderCmp(box, item, null, st);
+  }));
+  delete box.dataset.busy;
+  const rec = { at: Date.now(), orig: typeof item.result?.score === 'number' ? Math.round(item.result.score) : null, runs: st };
+  cmpSave(item.id, rec);
+  if (box.isConnected) renderCmp(box, item, rec, null);
 }
 
 // ---------- štart ----------
