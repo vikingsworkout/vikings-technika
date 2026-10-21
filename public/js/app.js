@@ -330,21 +330,40 @@ const PICK_TILES = [
   { n: 'Drepy', c: 'Nohy', id: 'drep' }, { n: 'Výpady', c: 'Nohy', id: 'vypad' }, { n: 'Mostík', c: 'Zadok', id: 'most' },
   { n: 'Stojka', c: 'Výdrž', id: 'stojka' }, { n: 'L-sit', c: 'Výdrž', id: 'l-sit' }, { n: 'Plank', c: 'Výdrž', id: 'plank' },
 ];
-function renderPick() {
-  $('pkAuto').onclick = () => { applyPick(makePick('auto', 'Rozpoznať automaticky', { id: 'auto' })); go('#/nova'); };
+// cviky z tréningu: pri dlhšom tréningu zbalené – prvé dva cviky a riadok s ďalšími (aby bolo vidno, že ich je viac)
+let pkDayAll = false;
+const PK_SHOW = 2;
+const iniOf = (n) => esc((String(n || '').match(/\p{L}/u) || ['C'])[0].toUpperCase());
+function renderPickDay() {
   const d = vwDay;
-  $('pkDay').innerHTML = d ? `
+  if (!d) { $('pkDay').innerHTML = ''; return; }
+  const many = d.x.length > PK_SHOW + 1, open = pkDayAll || !many;
+  const rest = d.x.slice(PK_SHOW), n = rest.length;
+  const row = (x, i) => {
+    const plan = x.t ? `${x.s ? x.s + ' × ' : ''}${x.t} s` : x.r ? `${x.s ? x.s + ' × ' : ''}${x.r} ${plural(x.r, 'opakovanie', 'opakovania', 'opakovaní')}` : '';
+    const meta = [plan, x.sc != null ? `naposledy ${x.sc} ${plural(x.sc, 'bod', 'body', 'bodov')}` : ''].filter(Boolean).join(' · ');
+    return `<button class="pk-row" data-i="${i}"><span class="pk-ini">${iniOf(x.n)}</span>
+      <span class="pk-rt"><b>${esc(x.n)}</b>${meta ? `<span>${esc(meta)}</span>` : ''}</span>${IC.chev}</button>`;
+  };
+  const moreTxt = open ? 'Zobraziť menej' : n === 1 ? 'Ešte 1 cvik z tréningu' : n <= 4 ? `Ďalšie ${n} cviky z tréningu` : `Ďalších ${n} cvikov z tréningu`;
+  $('pkDay').innerHTML = `
     <div class="pk-dayh"><span class="vw-cap">${d.d ? 'Z DNEŠNÉHO TRÉNINGU' : 'Z NAJBLIŽŠIEHO TRÉNINGU'}</span><span>${esc(d.l)}</span></div>
-    <section class="vw-card pk-list">${d.x.map((x, i) => {
-      const plan = x.t ? `${x.s ? x.s + ' × ' : ''}${x.t} s` : x.r ? `${x.s ? x.s + ' × ' : ''}${x.r} ${plural(x.r, 'opakovanie', 'opakovania', 'opakovaní')}` : '';
-      const meta = [plan, x.sc != null ? `naposledy ${x.sc} ${plural(x.sc, 'bod', 'body', 'bodov')}` : ''].filter(Boolean).join(' · ');
-      return `<button class="pk-row" data-i="${i}"><span class="pk-ini">${esc((x.n.match(/\p{L}/u) || ['C'])[0].toUpperCase())}</span>
-        <span class="pk-rt"><b>${esc(x.n)}</b>${meta ? `<span>${esc(meta)}</span>` : ''}</span>${IC.chev}</button>`;
-    }).join('')}</section>` : '';
+    <section class="vw-card pk-list">${(open ? d.x : d.x.slice(0, PK_SHOW)).map(row).join('')}
+      ${many ? `<button class="pk-more" id="pkMore" aria-expanded="${open}">
+        ${open ? '' : `<span class="pk-stack" aria-hidden="true">${rest.slice(0, 4).map(x => `<span class="pk-ini">${iniOf(x.n)}</span>`).join('')}</span>`}
+        <span class="pk-more-t">${moreTxt}</span>
+        <svg class="pk-chev${open ? ' up' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>` : ''}
+    </section>`;
   $('pkDay').querySelectorAll('.pk-row').forEach(b => b.onclick = () => {
     const x = d.x[Number(b.dataset.i)];
     applyPick(makePick('list', x.n, { eid: x.e, img: x.img, box: x.box, boxp: x.boxp })); go('#/nova');
   });
+  on('pkMore', () => { pkDayAll = !pkDayAll; renderPickDay(); });
+}
+function renderPick() {
+  $('pkAuto').onclick = () => { applyPick(makePick('auto', 'Rozpoznať automaticky', { id: 'auto' })); go('#/nova'); };
+  renderPickDay();
   $('pkGrid').innerHTML = PICK_TILES.map((t, i) => `<button class="pk-tile" data-i="${i}"><b>${esc(t.n)}</b><span>${esc(t.c)}</span></button>`).join('');
   $('pkGrid').querySelectorAll('.pk-tile').forEach(b => b.onclick = () => {
     const t = PICK_TILES[Number(b.dataset.i)];

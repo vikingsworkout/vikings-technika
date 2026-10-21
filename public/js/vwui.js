@@ -57,7 +57,7 @@ export const PICK_HTML = `
     <span class="pk-ai-ch">${IC.chev}</span>
   </button>
   <div id="pkDay"></div>
-  <div class="vw-cap">ĎALŠIE CVIKY</div>
+  <div class="vw-cap">NAVRHOVANÉ CVIKY</div>
   <div class="pk-grid" id="pkGrid"></div>
   <div class="vw-bottom pk-bottom">
     <label class="pk-gal" for="inFilePick">${IC.gallery}Vybrať video z galérie</label>

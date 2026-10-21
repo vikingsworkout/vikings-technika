@@ -455,6 +455,15 @@ html.vw.vw-light .pk-ai-ch { color: var(--acc); }
 .pk-rt b { font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pk-rt span { font-size: 12.5px; color: var(--mu); }
 .pk-row > svg { flex: none; width: 16px; height: 16px; color: var(--dim); }
+.pk-more { appearance: none; width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 0; border: 0; background: none; color: var(--tx2); font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
+.pk-more:active { transform: scale(.98); }
+.pk-stack { display: flex; flex: none; padding-left: 2px; }
+.pk-stack .pk-ini { width: 30px; height: 30px; font-size: 12px; margin-left: -9px; background: linear-gradient(rgba(255,90,31,.18), rgba(255,90,31,.18)), #141B2A; box-shadow: inset 0 0 0 1px rgba(255,122,61,.35), 0 0 0 2px #141B2A; }
+.pk-stack .pk-ini:first-child { margin-left: 0; }
+html.vw.vw-light .pk-stack .pk-ini { background: linear-gradient(rgba(255,90,31,.12), rgba(255,90,31,.12)), #FFFFFF; box-shadow: inset 0 0 0 1px rgba(255,122,61,.35), 0 0 0 2px #FFFFFF; }
+.pk-more-t { flex: 1; min-width: 0; }
+.pk-chev { flex: none; width: 16px; height: 16px; color: var(--dim); transition: transform .2s ease; }
+.pk-chev.up { transform: rotate(180deg); }
 #pkGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .pk-tile { appearance: none; height: 74px; padding: 11px 12px; border-radius: 18px; background: var(--s1); border: 1px solid var(--line); box-shadow: var(--card-sh); color: var(--tx); font: inherit; text-align: left; cursor: pointer;
   display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; min-width: 0; transition: transform .12s ease; }
