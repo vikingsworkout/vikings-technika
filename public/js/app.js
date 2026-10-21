@@ -1,5 +1,6 @@
 import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor } from './exercises.js';
-import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive, liveAngle } from './pose.js';
+import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive } from './pose.js';
+import { createLiveCounter } from './livecount.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
 import { VW, vwFrom, vwExName, vwResultId, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap } from './vw.js';
@@ -429,13 +430,14 @@ on('btnRecBig', () => {
 
 // ---------- v appke: živá kostra, „vidím celé telo“ a počítadlo opakovaní počas nahrávania ----------
 // Je to len orientačný náhľad – presný počet opakovaní a rozbor príde z analýzy celého videa.
-const LIVE = { on: false, model: null, failed: false, busy: false, errs: 0, t0: 0, raf: 0, last: 0, lastSt: 0, lm: null, st: '', cand: '', since: 0, tr: {}, joint: null, hist: [], still0: null, best: 0 };
-const JT = { elbow: [[11, 13, 15], [12, 14, 16]], knee: [[23, 25, 27], [24, 26, 28]], hip: [[11, 23, 25], [12, 24, 26]] };
+const LIVE = { on: false, model: null, failed: false, busy: false, errs: 0, t0: 0, raf: 0, last: 0, lastSt: 0, lm: null, st: '', cand: '', since: 0, cnt: null, joint: null, hist: [], still0: null, best: 0 };
 const JPAIR = { elbow: [13, 14], knee: [25, 26], hip: [23, 24], shoulder: [11, 12], body_line: [23, 24] };
 const LIVE_BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
 function liveStart() {
   if (!VW || LIVE.on) return;
   Object.assign(LIVE, { on: true, lm: null, st: '', cand: '', busy: false, errs: 0, failed: false, t0: performance.now() });
+  // počítadlo opakovaní: ráta až keď sa človek ustáli v polohe cviku a len pohyby, pri ktorých ide aj telo (nie chôdzu, nastavovanie)
+  LIVE.cnt = createLiveCounter({ signal: selected.signal || null, posture: selected.posture || null, minAmp: selected.minAmp || 30, start: selected.start || 'top' });
   liveLandmarker().then(m => { LIVE.model = m; LIVE.failed = !m; if (LIVE.on) liveStatus(true); });
   LIVE.raf = requestAnimationFrame(liveTick);
 }
@@ -444,7 +446,7 @@ function liveStop() {
   LIVE.on = false; cancelAnimationFrame(LIVE.raf);
   const c = $('recCanvas'); if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
 }
-function liveReset() { LIVE.tr = {}; LIVE.joint = null; LIVE.hist = []; LIVE.still0 = null; LIVE.best = 0; liveCountShow(); }
+function liveReset() { if (LIVE.cnt) LIVE.cnt.reset(); LIVE.joint = null; LIVE.hist = []; LIVE.still0 = null; LIVE.best = 0; liveCountShow(); }
 function liveTick(now) {
   if (!LIVE.on) return;
   LIVE.raf = requestAnimationFrame(liveTick);
@@ -463,7 +465,7 @@ function liveTick(now) {
     LIVE.errs = 0;
     const t = performance.now();
     LIVE.lm = lm;
-    if (recState === 'recording') liveCount(lm, t, v);
+    liveCount(lm, t, v); // poloha sa sleduje už počas odpočtu, opakovania sa rátajú len pri nahrávaní
     liveDraw(lm, v);
     liveStatus(false, t);
   });
@@ -495,24 +497,11 @@ function liveStatus(force, now = performance.now()) {
 }
 function liveCount(lm, now, v) {
   const W = v.videoWidth || 1, H = v.videoHeight || 1;
-  if (pickHold()) { liveHold(lm, now, W, H); liveCountShow(); return; }
-  const joints = selected.signal ? [selected.signal] : ['elbow', 'knee', 'hip'];
-  const delta = Math.max(20, 0.5 * (selected.minAmp || 30));
-  for (const j of joints) {
-    if (!lm || !JT[j]) continue;
-    const a = JT[j].map(t => liveAngle(lm, t[0], t[1], t[2], W, H)).filter(x => x != null);
-    if (!a.length) continue;
-    const x = a.reduce((s, y) => s + y, 0) / a.length;
-    const tr = LIVE.tr[j] || (LIVE.tr[j] = { ema: x, st: selected.start === 'bottom' ? 'down' : 'up', ext: x, n: 0, lo: x, hi: x });
-    tr.ema = tr.ema * 0.5 + x * 0.5;
-    tr.lo = Math.min(tr.lo, tr.ema); tr.hi = Math.max(tr.hi, tr.ema);
-    if (tr.st === 'up') { tr.ext = Math.max(tr.ext, tr.ema); if (tr.ext - tr.ema >= delta) { tr.st = 'down'; tr.ext = tr.ema; } }
-    else { tr.ext = Math.min(tr.ext, tr.ema); if (tr.ema - tr.ext >= delta) { tr.st = 'up'; tr.ext = tr.ema; tr.n++; } }
-  }
-  // pri automatickom režime počítame podľa kĺbu s najväčším pohybom
-  let best = null;
-  for (const j of joints) { const tr = LIVE.tr[j]; if (tr && tr.hi - tr.lo >= 35 && (!best || tr.hi - tr.lo > LIVE.tr[best].hi - LIVE.tr[best].lo)) best = j; }
-  LIVE.joint = best || selected.signal || null;
+  const rec = recState === 'recording';
+  if (pickHold()) { if (rec) { liveHold(lm, now, W, H); liveCountShow(); } return; }
+  if (LIVE.cnt) LIVE.cnt.update(lm || null, now, W, H, rec);
+  if (!rec) return;
+  LIVE.joint = (LIVE.cnt && LIVE.cnt.joint) || selected.signal || null;
   if (!selected.signal) liveHold(lm, now, W, H); // automaticky môže ísť aj o výdrž
   liveCountShow();
 }
@@ -530,7 +519,7 @@ function liveHold(lm, now, W, H) {
 }
 function liveCountShow() {
   if (!VW || !$('recCountN')) return;
-  const reps = LIVE.joint && LIVE.tr[LIVE.joint] ? LIVE.tr[LIVE.joint].n : 0;
+  const reps = LIVE.cnt ? LIVE.cnt.count : 0;
   const holdS = Math.floor(LIVE.best);
   const asHold = pickHold() || (!selected.signal && !reps && holdS >= 3);
   $('recCountN').textContent = asHold ? holdS : reps;

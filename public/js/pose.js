@@ -547,12 +547,29 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   const joints = signal ? [signal] : ['elbow', 'knee', 'hip'];
   const stats = (arr) => { const m = arr.reduce((a, b) => a + b, 0) / arr.length; const sd = Math.sqrt(arr.reduce((a, b) => a + (b - m) ** 2, 0) / arr.length); return { m, cv: m ? sd / m : 1 }; };
   let best = null;
+  const torsoMed = pct(okM.map(m => m.torso), 0.5) || 1;
+  const rangeOf = (k, a, b) => {
+    let lo = Infinity, hi = -Infinity;
+    for (let i = a; i <= b; i++) { const m = frames[i] && frames[i].m; if (m && m[k] != null) { lo = Math.min(lo, m[k]); hi = Math.max(hi, m[k]); } }
+    return hi >= lo ? (hi - lo) / torsoMed : 0;
+  };
+  const bodyMoved = (a, b, j, p) => {
+    if (j === 'knee') return rangeOf('hipY', a, b) >= 0.2;
+    if (j === 'hip') return signal ? rangeOf('hipY', a, b) >= 0.12 : rangeOf('hipY', a, b) >= 0.12 || rangeOf('shY', a, b) >= 0.12 || rangeOf('ankleY', a, b) >= 0.25;
+    const sy = rangeOf('shY', a, b);
+    if (p === 'P') return sy >= 0.25;
+    if (p === 'H') return sy >= 0.12;
+    return sy >= 0.12 || rangeOf('wrY', a, b) >= 0.35;
+  };
   const consider = (from, to, joint, segP) => {
     const vals = series(joint).slice(from, to + 1);
     let reps = detectReps(vals, { minAmp, startType }).reps
       .map(r => ({ start: r.start + from, reach: r.reach + from, bottom: r.bottom + from, leave: r.leave + from, end: r.end + from,
         amp: Math.max(r.ampDown, r.ampUp), ampMin: r.ampDown ? Math.min(r.ampDown, r.ampUp) : r.ampUp, dur: (r.end - r.start) * step }))
       .filter(r => r.dur >= 0.4 && r.dur <= 12 && r.ampMin >= 0.6 * minAmp);
+    // pri opakovaní sa musí pohnúť aj telo (pri drepe boky, pri kliku a zhybe ramená) – pokrčenie nohy pri chôdzi
+    // alebo pri nastavovaní (noha na lavičku) nie je opakovanie
+    reps = reps.filter(r => bodyMoved(r.start, r.end, joint, segP));
     if (reps.length > 1) { // odfiltruj výrazne menšie „opakovania“ (šum, prechodový pohyb)
       const med = median(reps.map(r => r.ampMin));
       reps = reps.filter(r => r.ampMin >= 0.4 * med);

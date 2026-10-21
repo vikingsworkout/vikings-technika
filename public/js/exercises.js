@@ -28,7 +28,7 @@ export const EXERCISES = [
     camera: 'Zboku, mierne spredu (asi 45°). Kamera vo výške bokov, 2–3 m od teba. V zábere celé telo od chodidiel po hlavu.',
   },
   {
-    id: 'vypad', top: ['Zadné koleno klesne takmer k zemi', 'Predné koleno nad chodidlom, nepadá dovnútra', 'Trup vzpriamený', 'Stojíš stabilne, bez kývania', 'Pohyb pod kontrolou'], dist: '2–3 m od teba', checks: ['Hĺbka', 'Predné koleno', 'Vzpriamený trup', 'Rovnováha', 'Tempo'], start: 'top', group: 'k', hint: 'Zboku, vo výške bokov', keys: ['výpad','vypad','lunge'], name: 'Výpad', en: 'Lunge', signal: 'knee', posture: 'V', minAmp: 30,
+    id: 'vypad', top: ['Zadné koleno klesne takmer k zemi', 'Predné koleno nad chodidlom, nepadá dovnútra', 'Trup vzpriamený', 'Stojíš stabilne, bez kývania', 'Pohyb pod kontrolou'], dist: '2–3 m od teba', checks: ['Hĺbka', 'Predné koleno', 'Vzpriamený trup', 'Rovnováha', 'Tempo'], start: 'top', group: 'k', hint: 'Zboku, vo výške bokov', keys: ['výpad','vypad','lunge','bulharsk','split squat'], name: 'Výpad', en: 'Lunge', signal: 'knee', posture: 'V', minAmp: 30,
     camera: 'Zboku, kamera vo výške bokov, 2–3 m. V zábere obe nohy celé počas celého pohybu.',
   },
   {
