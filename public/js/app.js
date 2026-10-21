@@ -334,6 +334,29 @@ const PICK_TILES = [
 let pkDayAll = false;
 const PK_SHOW = 2;
 const iniOf = (n) => esc((String(n || '').match(/\p{L}/u) || ['C'])[0].toUpperCase());
+// miniatúra cviku z náhľadu videa (výrez okolo postavy podľa polohy z náhľadu); kým sa nenačíta, vidno písmeno
+const thumbOf = (x, cls = '') => (x.img
+  ? `<span class="pk-ini pk-th${cls}">${iniOf(x.n)}<img src="${esc(x.img)}" alt="" loading="lazy" decoding="async"${x.box ? ` data-box="${x.box.join(',')}"` : ''}></span>`
+  : `<span class="pk-ini${cls}">${iniOf(x.n)}</span>`);
+function fitThumb(img) {
+  const b = img.dataset.box ? img.dataset.box.split(',').map(Number) : null;
+  const a = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+  const bw = b ? Math.max(0.05, b[2] - b[0]) : 1, bh = b ? Math.max(0.05, b[3] - b[1]) : 1;
+  const kMin = Math.max(1, 1 / a); // obrázok musí zakryť celú miniatúru
+  const k = b ? Math.min(4, Math.max(kMin, Math.min(0.9 / bh, 0.9 / (bw * a)))) : kMin;
+  const h = 0.5 / (k * a), v = 0.5 / k;
+  const cx = Math.min(1 - h, Math.max(h, b ? (b[0] + b[2]) / 2 : 0.5));
+  const cy = Math.min(1 - v, Math.max(v, b ? (b[1] + b[3]) / 2 : 0.5));
+  img.style.height = (k * 100).toFixed(1) + '%';
+  img.style.transform = `translate(${(-cx * 100).toFixed(2)}%, ${(-cy * 100).toFixed(2)}%)`;
+  img.classList.add('on');
+}
+function bindThumbs(root) {
+  root.querySelectorAll('.pk-th img').forEach(img => {
+    if (img.complete && img.naturalWidth) fitThumb(img);
+    else { img.onload = () => fitThumb(img); img.onerror = () => img.remove(); }
+  });
+}
 function renderPickDay() {
   const d = vwDay;
   if (!d) { $('pkDay').innerHTML = ''; return; }
@@ -342,7 +365,7 @@ function renderPickDay() {
   const row = (x, i) => {
     const plan = x.t ? `${x.s ? x.s + ' × ' : ''}${x.t} s` : x.r ? `${x.s ? x.s + ' × ' : ''}${x.r} ${plural(x.r, 'opakovanie', 'opakovania', 'opakovaní')}` : '';
     const meta = [plan, x.sc != null ? `naposledy ${x.sc} ${plural(x.sc, 'bod', 'body', 'bodov')}` : ''].filter(Boolean).join(' · ');
-    return `<button class="pk-row" data-i="${i}"><span class="pk-ini">${iniOf(x.n)}</span>
+    return `<button class="pk-row" data-i="${i}">${thumbOf(x, ' pk-big')}
       <span class="pk-rt"><b>${esc(x.n)}</b>${meta ? `<span>${esc(meta)}</span>` : ''}</span>${IC.chev}</button>`;
   };
   const moreTxt = open ? 'Zobraziť menej' : n === 1 ? 'Ešte 1 cvik z tréningu' : n <= 4 ? `Ďalšie ${n} cviky z tréningu` : `Ďalších ${n} cvikov z tréningu`;
@@ -350,7 +373,7 @@ function renderPickDay() {
     <div class="pk-dayh"><span class="vw-cap">${d.d ? 'Z DNEŠNÉHO TRÉNINGU' : 'Z NAJBLIŽŠIEHO TRÉNINGU'}</span><span>${esc(d.l)}</span></div>
     <section class="vw-card pk-list">${(open ? d.x : d.x.slice(0, PK_SHOW)).map(row).join('')}
       ${many ? `<button class="pk-more" id="pkMore" aria-expanded="${open}">
-        ${open ? '' : `<span class="pk-stack" aria-hidden="true">${rest.slice(0, 4).map(x => `<span class="pk-ini">${iniOf(x.n)}</span>`).join('')}</span>`}
+        ${open ? '' : `<span class="pk-stack" aria-hidden="true">${rest.slice(0, 4).map(x => thumbOf(x)).join('')}</span>`}
         <span class="pk-more-t">${moreTxt}</span>
         <svg class="pk-chev${open ? ' up' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>` : ''}
@@ -360,6 +383,7 @@ function renderPickDay() {
     applyPick(makePick('list', x.n, { eid: x.e, img: x.img, box: x.box, boxp: x.boxp })); go('#/nova');
   });
   on('pkMore', () => { pkDayAll = !pkDayAll; renderPickDay(); });
+  bindThumbs($('pkDay'));
 }
 function renderPick() {
   $('pkAuto').onclick = () => { applyPick(makePick('auto', 'Rozpoznať automaticky', { id: 'auto' })); go('#/nova'); };
