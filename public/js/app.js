@@ -3,7 +3,8 @@ import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive
 import { createLiveCounter } from './livecount.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
-import { VW, vwFrom, vwExName, vwResultId, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap } from './vw.js';
+import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap } from './vw.js';
+import { fixResultSk } from './sk.js';
 import { IC, frameSvg, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
 
 const $ = (id) => document.getElementById(id);
@@ -21,7 +22,7 @@ if (VW) {
 }
 // v appke Viking's Workout meníme obrazovky bez nových záznamov v histórii (Späť v appke zatvorí Techniku)
 const go = (h) => { if (VW) location.replace(h); else location.hash = h; };
-const views = ['vHome', 'vPick', 'vNew', 'vRec', 'vWork', 'vResult'];
+const views = ['vHome', 'vPick', 'vNew', 'vRec', 'vWork', 'vResult', 'vHist'];
 const ls = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* nič */ } },
@@ -64,10 +65,10 @@ function show(view) {
     document.documentElement.classList.add('vw-ready'); // až teraz je na obrazovke správny obsah (pozri index.html)
     document.querySelector('header').classList.toggle('hide', view === 'vRec' || view === 'vWork');
     // Výber a Natoč: šípka späť (prvá obrazovka Techniku zatvorí), výsledok: krížik zatvorí Techniku
-    const close = view === 'vResult' || view === 'vHome' || (view === 'vPick' && !appPick) || (view === 'vNew' && pick && pick.src === 'app');
+    const close = view === 'vResult' || view === 'vHome' || view === 'vHist' || (view === 'vPick' && !appPick) || (view === 'vNew' && pick && pick.src === 'app');
     const b = $('btnHome');
     b.dataset.mode = close ? 'close' : 'back';
-    const ico = view === 'vResult' || view === 'vHome' ? 'x' : 'back';
+    const ico = view === 'vResult' || view === 'vHome' || view === 'vHist' ? 'x' : 'back';
     if (b.dataset.ico !== ico) { b.dataset.ico = ico; b.innerHTML = ico === 'x' ? ICON_X : ICON_BACK; }
     b.setAttribute('aria-label', close ? 'Zavrieť Techniku' : 'Späť');
     $('hRight').innerHTML = view === 'vNew' ? '<button class="hlink" id="btnOther">Iný cvik</button>' : KICK('TECHNIKA');
@@ -89,8 +90,11 @@ async function route() {
   if (h === '#/nahravanie') { show('vRec'); openRecorder(); return; }
   if (h.startsWith('#/r/')) {
     const item = (current && current.id === h.slice(4)) ? current : await db.get(h.slice(4));
+    if (location.hash !== h) return; // medzitým iná obrazovka
     if (item && item.result) { current = item; renderResult(item); show('vResult'); return; }
+    if (VW) { await renderHist({ missing: true, eid: vwResultEid, name: vwResultName }); show('vHist'); return; }
   }
+  if (h === '#/rozbory' && VW) { await renderHist(histCtx || { eid: vwResultEid, name: vwResultName }); show('vHist'); return; }
   if (h === '#/praca' && current) { show('vWork'); return; }
   if (VW) { // v appke sa začína natáčaním cviku z appky, inak výberom cviku
     if (pick) { renderNew(); show('vNew'); layoutShot(); } else { renderPick(); show('vPick'); }
@@ -795,7 +799,8 @@ async function runAi() {
       const err = new Error(data.error || 'Rozbor sa nepodaril. Skús to znova.'); err.code = data.code; err.user = true; throw err;
     }
     current.result = data.result; current.sources = data.sources || [];
-    await db.save(current);
+    const sv = await db.save(current);
+    current.saveSt = sv.st; current.saveErr = sv.err || '';
     db.pruneClips(15);
     if (VW) { vwPost('result', { data: vwSummary(current) }); AN.stage = 'done'; renderSteps(); } // hlavná appka si uloží skóre (domov, profil)
     setProgress(1, 'Hotovo');
@@ -892,7 +897,7 @@ function cleanResult(src) {
     i.title = stripTech(i.title); i.fix = stripTech(i.fix);
     if (typeof i.detail === 'string') i.detail = dropTechSentences(i.detail);
   });
-  return r;
+  return fixResultSk(r); // české slová (napr. „ujíždějí“) → slovenské
 }
 
 // "Jedna vec na dnes": z poľa today od AI, inak z prvého kroku k 100 bodom alebo najväčšej chyby
@@ -1266,6 +1271,9 @@ function renderResult(item) {
       <span style="flex:1"><b>${today && !today.good ? 'Pozri, kde sa to stalo' : 'Pozri si snímku'}</b><span>${esc(frame.label)} · ${fmtT(frame.t)}</span></span>
     </button>` : ''}
 
+    ${item.saveSt === '' && item.saveErr ? `<div class="card err savewarn"><b>Rozbor sa nepodarilo uložiť do telefónu.</b> Teraz ho vidíš, ale po zatvorení sa k nemu už nevrátiš. Skús uvoľniť miesto v telefóne.<small>${esc(item.saveErr)}</small></div>`
+      : (item.saveSt === 'lite' || item.saveSt === 'noclip') && item.saveErr ? `<p class="savenote">Video tejto série sa do telefónu neuložilo, rozbor áno.<small>${esc(item.saveErr)}</small></p>` : ''}
+
     <button class="fullbtn" id="btnFull" aria-expanded="false" aria-controls="full">
       <span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg></span>
       <span class="ft"><b id="btnFullT">Zobraziť celý rozbor</b><span id="btnFullS">Cesta k 100 bodom, chyby, svaly a snímky</span></span>
@@ -1341,6 +1349,7 @@ function renderResult(item) {
       </div>
       <button class="btn ghost" id="btnDel" style="margin:4px auto 0;display:block;color:var(--mu)">Vymazať z histórie</button>
     </div>
+    ${VW ? '<div id="resHist"></div>' : ''}
 
     ${VW ? `<div class="stickybar vwbar">
       <button class="btn pri" id="btnVwMain">${vwUse ? `${ICON_CHECK}${esc(vwUse.label)}` : 'Hotovo'}</button>
@@ -1348,6 +1357,7 @@ function renderResult(item) {
     </div>` : `<div class="stickybar"><button class="btn pri" id="btnAgain">${score == null ? 'Natočiť znova' : today && !today.good ? 'Skúsiť to opraviť' : 'Natočiť ďalšiu sériu'}</button></div>`}
   `;
   if ($('btnVwMain')) $('btnVwMain').onclick = () => { if (vwUse) vwPost('use', { reps: vwUse.reps || 0, hold: vwUse.hold || 0 }); else vwPost('close'); };
+  if (VW) fillResHist(item);
 
   if ($('btnSee')) $('btnSee').onclick = () => hasClip ? openPlayer(item.clip, errT, today) : openViewer(frame);
   $('vResult').querySelectorAll('.frames button').forEach(b => b.onclick = () => openViewer(item.keyframes[Number(b.dataset.k)]));
@@ -1369,7 +1379,10 @@ function renderResult(item) {
     selectExercise(exId);
     go('#/nova');
   };
-  $('btnDel').onclick = async () => { await db.remove(item.id); go('#/'); };
+  $('btnDel').onclick = async () => {
+    await db.remove(item.id);
+    if (VW) { histCtx = { eid: item.vwEid || '', name: itemName(item) }; go('#/rozbory'); } else go('#/');
+  };
   $('btnRe').onclick = () => {
     const e = findExercise($('reEx').value);
     current = { ...item, id: String(Date.now()), created: Date.now(), exercise: { id: e.id, name: e.name, en: e.en }, result: null, vwName: undefined, vwEid: undefined };
@@ -1377,6 +1390,65 @@ function renderResult(item) {
     else { $('workTitle').textContent = 'Opakujem rozbor…'; $('workVideo').removeAttribute('src'); $('workVideo').hidden = true; }
     go('#/praca'); show('vWork'); runAi();
   };
+}
+
+// ---------- v appke: moje rozbory (predošlé natáčania) ----------
+// Z profilu v appke sa otvára uložený rozbor. Keď sa v telefóne nenájde (staršie rozbory sa na iPhone niekedy
+// neuložili), ukážeme rozbory, ktoré v telefóne sú – najprv tohto cviku. Pod každým rozborom sú predošlé rozbory
+// toho istého cviku a odkaz na všetky.
+let histCtx = null; // { eid, name } cviku pre zoznam „Všetky“
+const normNm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+const itemName = (it) => (VW && it.vwName) || it.result?.exercise?.name || it.exercise?.name || 'Cvik';
+const sameEx = (it, eid, nm) => !!((eid && it.vwEid === eid) || (nm && normNm(itemName(it)) === nm));
+function whenLabel(ts) {
+  const d = new Date(ts || 0);
+  return `${dayLabel(ts)} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+const THUMB_OK = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+function histRow(it) {
+  const s = typeof it.result?.score === 'number' ? Math.max(0, Math.min(100, Math.round(it.result.score))) : null;
+  const th = typeof it.thumb === 'string' && THUMB_OK.test(it.thumb) ? it.thumb : '';
+  const sm = it.summary || {};
+  const what = sm.exercise_type === 'hold' ? (sm.hold?.duration_s ? `výdrž ${Math.round(sm.hold.duration_s)} s` : '')
+    : sm.reps_detected ? `${sm.reps_detected} ${plural(sm.reps_detected, 'opakovanie', 'opakovania', 'opakovaní')}` : '';
+  const name = itemName(it);
+  return `<button class="pk-row hs-row" data-id="${esc(it.id)}" aria-label="Otvoriť rozbor: ${esc(name)}, ${esc(whenLabel(it.created))}${s != null ? `, ${s} ${plural(s, 'bod', 'body', 'bodov')}` : ''}">
+    <span class="pk-ini hs-th"${th ? ` style="background-image:url('${th}')"` : ''}>${th ? '' : esc((name.match(/\p{L}/u) || ['C'])[0].toUpperCase())}</span>
+    <span class="pk-rt"><b>${esc(name)}</b><span>${esc([whenLabel(it.created), what].filter(Boolean).join(' · '))}</span></span>
+    <span class="hs-sc" style="color:${scoreColor(s)}">${s ?? '–'}</span>${IC.chev}</button>`;
+}
+function bindHist(root) {
+  root.querySelectorAll('.hs-row').forEach(b => b.onclick = () => go('#/r/' + b.dataset.id));
+}
+async function renderHist({ missing = false, eid = '', name = '' } = {}) {
+  const all = (await db.list()).filter(it => it && it.result);
+  const nm = normNm(name);
+  const mine = eid || nm ? all.filter(it => sameEx(it, eid, nm)) : [];
+  const rest = all.filter(it => !mine.includes(it)).slice(0, 40);
+  $('vHist').innerHTML = `
+    <h1 class="pk-h1">Moje rozbory</h1>
+    ${missing ? `<div class="vw-card hs-miss" role="status"><b>Tento rozbor sa nepodarilo otvoriť</b>
+      <span>V telefóne sa nenašiel – starší rozbor sa pravdepodobne neuložil. Nové rozbory sa už ukladajú správne.</span></div>` : ''}
+    ${mine.length ? `<div class="vw-cap">${esc(name.toUpperCase())}</div><section class="vw-card pk-list">${mine.map(histRow).join('')}</section>` : ''}
+    ${rest.length ? `<div class="vw-cap${mine.length ? ' hs-cap2' : ''}">${mine.length ? 'OSTATNÉ CVIKY' : 'VŠETKY ROZBORY'}</div><section class="vw-card pk-list">${rest.map(histRow).join('')}</section>` : ''}
+    ${!all.length ? '<p class="hs-empty">Zatiaľ tu nemáš žiadne uložené rozbory.</p>' : ''}
+    <div class="vw-bottom"><button class="btn pri" id="btnHistNew"><span class="dot"></span>${name ? 'Natočiť ' + esc(lowerName(name)) : 'Natočiť cvik'}</button></div>`;
+  bindHist($('vHist'));
+  $('btnHistNew').onclick = () => {
+    if (name) { applyPick(makePick('list', name, { eid })); go('#/nova'); } else go('#/vyber');
+  };
+}
+async function fillResHist(item) {
+  const box = $('resHist');
+  if (!box) return;
+  const all = (await db.list()).filter(it => it && it.result && it.id !== item.id);
+  if (!box.isConnected || current !== item || !all.length) return;
+  const eid = item.vwEid || '', name = itemName(item);
+  const same = all.filter(it => sameEx(it, eid, normNm(name)));
+  box.innerHTML = `<div class="vw-cap rh-cap"><span>${same.length ? 'PREDOŠLÉ ROZBORY TOHTO CVIKU' : 'MOJE ROZBORY'}</span><button class="rh-all" id="btnHistAll">Všetky ›</button></div>
+    ${same.length ? `<section class="vw-card pk-list">${same.slice(0, 3).map(histRow).join('')}</section>` : ''}`;
+  bindHist(box);
+  $('btnHistAll').onclick = () => { histCtx = { eid, name }; go('#/rozbory'); };
 }
 
 // ---------- štart ----------

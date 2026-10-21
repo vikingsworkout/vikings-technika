@@ -7,7 +7,10 @@
 //   ACCESS_CODE        (odporúčané – prístupový kód, ktorý zadáš raz v appke)
 //   CLAUDE_MODEL       (voliteľné, predvolene claude-sonnet-5-5)
 
+import { fixResultSk, hasCzech, collectTexts, applyTexts } from '../public/js/sk.js';
+
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
+const FIX_MODEL = 'claude-haiku-5-5'; // rýchla jazyková oprava, keď v rozbore ostane čeština (CLAUDE_FIX_MODEL ho prepíše)
 const MAX_IMAGES = 12;
 const MAX_IMAGE_B64 = 600_000;
 const API_DEADLINE_MS = 110_000; // celkový čas na odpoveď AI
@@ -45,12 +48,16 @@ Postup:
    Do "criteria_100" vráť kritériá na 100 bodov: ak ich používateľ poslal, v rovnakom poradí a rovnakými slovami (pri variante cviku ich prispôsob variantu); inak 3–5 vlastných kľúčových kritérií pre rozpoznaný cvik (krátko, jednoducho). Pri každom urči "met": true = splnené, false = nesplnené, null = z tohto videa sa nedá posúdiť. Ak je niektoré false, musí k nemu byť chyba v "issues" a krok v "to_100".
 7. Do "today" daj JEDNU najdôležitejšiu vec, ktorú má používateľ zmeniť pri ďalšej sérii (zvyčajne prvý krok z "to_100"). Napíš ju ako krátky pokyn v 2. osobe, jednoducho, ako by to povedal tréner. "frame" = číslo snímky (podľa "Snímka N"), na ktorej je táto chyba najlepšie vidieť.
 8. Do "to_100" napíš presný plán, čo musí používateľ pri tomto cvičení zmeniť, aby dosiahol 100 bodov: každý krok = jedna konkrétna zmena a koľko bodov prinesie. Súčet "gain" = 100 − score. Zoraď od najväčšieho prínosu. Ak je score 100, nechaj pole prázdne.
-9. Odpovedz výhradne v slovenčine. Píš pre bežného človeka, ktorý necvičí odborne a nepozná biomechaniku:
-   - krátke jednoduché vety v 2. osobe (ty), spisovne, bez anglických a odborných výrazov (nie „extenzia“, „protrakcia“, „ROM“, „línia trupu“, „pose detection“, „2D“) a bez názvov údajov (body_line, rom_pct, trunk_lean…),
+9. Jazyk: odpovedz výhradne po slovensky – spisovne, ale jednoducho, tak ako hovorí tréner na tréningu. Píš pre bežného človeka, ktorý necvičí odborne a nepozná biomechaniku:
+   - žiadna čeština ani české tvary slov – v texte nesmie byť ani jedno z písmen ě, ř, ů. Zle → dobre: „ujíždějí“ → „uhýbajú“, „kyčle“ → „boky“, „záda“ → „chrbát“, „lokty“ → „lakte“, „břicho“ → „brucho“, „dolů“ → „dole“, „rovně“ → „rovno“, „pomalu“ → „pomaly“, „při“ → „pri“,
+   - bežné slová, ktorým rozumie každý: boky, zadok, brucho, chrbát, ramená, lakte, kolená, päty, špičky, hlava, pohľad. Žiadne odborné ani anglické výrazy (nie „extenzia“, „flexia“, „protrakcia“, „valgus“, „ROM“, „core“, „línia trupu“, „pose detection“, „2D“) ani názvy údajov (body_line, rom_pct, trunk_lean…),
+   - krátke jednoduché vety v 2. osobe (ty),
+   - názov chyby („title“) napíš ako jasný opis toho, čo robíš, aby ho pochopil aj začiatočník bez vysvetlenia. Dobre: „Nejdeš vždy rovnako hlboko“, „Boky ti uhýbajú do strán“, „Pri zostupe sa predkláňaš“. Zle: „Hĺbka sa mení“, „Asymetria bokov“, „Nestabilita trupu“,
    - v texte pre používateľa NIKDY neuvádzaj stupne (°), percentá ani iné namerané hodnoty – tie slúžia len tebe na posúdenie. Napíš radšej, čo človek uvidí alebo pocíti. Čísla smú byť len: počet opakovaní, poradie opakovania („v 3. opakovaní“), sekundy (výdrž, tempo) a body skóre,
    - pri každej chybe musí byť jasné, ktorá časť tela, kedy (v ktorej fáze pohybu) a čo presne je zle; „fix“ = jeden jednoduchý pokyn, ktorý sa dá hneď skúsiť, ako by ho povedal tréner na tréningu (nie všeobecná rada ani zložitý opis pohybu),
    - neuvádzaj drobnosti, ktoré sú v rámci presnosti merania z jednej kamery (napr. koleno alebo lakeť takmer vystreté, malé kolísanie); ak si chybou nie si istý, radšej ju vynechaj. Do „issues“ daj najviac 4 chyby, ktoré naozaj zhoršujú techniku,
    - príklady: zle „Koleno dosiahlo len okolo 168° na konci pohybu.“ → dobre „Na konci pohybu nohy celkom nevystrieš.“; zle „Zápästia sa vodorovne posúvali (až 53 % dĺžky trupu).“ → dobre „Ruky sa ti počas opakovania posúvajú po hrazde.“; zle „Uhol krku je 107–120°, hlava je zaklonená či zvretá proti línii trupu.“ → dobre „Hlavu zakláňaš dozadu a pozeráš sa hore.“
+   Pred odoslaním si prečítaj každý text a oprav slová, ktoré nie sú po slovensky alebo ktorým by bežný človek nerozumel.
    Bez diagnóz, nie je to medicínska rada.
 
 Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) presne v tomto tvare:
@@ -65,7 +72,7 @@ Výstup: vráť IBA jeden JSON objekt (bez ďalšieho textu, bez markdownu) pres
   "score_breakdown": [ { "area": "názov oblasti zo stupnice", "points": číslo 0–20, "max": 20, "note": "krátko prečo, max. 10 slov, bez stupňov a percent" } ],
   "to_100": [ { "step": "konkrétna zmena, max. 14 slov (napr. 'Choď v drepe hlbšie, boky aspoň po úroveň kolien')", "gain": počet bodov } ],
   "criteria_100": [ { "text": "kritérium na 100 bodov, max. 10 slov", "met": true | false | null } ],
-  "issues": [ { "title": "krátky názov chyby jednoduchými slovami, max. 5 slov (napr. 'Nohy na konci nevystrieš')", "detail": "1 krátka veta: čo presne robíš zle a kedy, bez stupňov a percent (môžeš uviesť číslo opakovania)", "fix": "1 krátka veta: jednoduchý pokyn, čo urobiť inak", "severity": "vysoká|stredná|nízka" } ],
+  "issues": [ { "title": "krátky jasný opis chyby jednoduchými slovami, max. 5 slov (napr. 'Nohy na konci nevystrieš', 'Boky ti uhýbajú do strán')", "detail": "1 krátka veta: čo presne robíš zle a kedy, bez stupňov a percent (môžeš uviesť číslo opakovania)", "fix": "1 krátka veta: jednoduchý pokyn, čo urobiť inak", "severity": "vysoká|stredná|nízka" } ],
   "watch_out": ["na čo si dávať pozor (bezpečnosť, typické chyby pri tomto cviku) – max. 3 body, krátko", "..."],
   "muscles": { "primary": ["hlavné zapojené svaly"], "secondary": ["pomocné svaly"] },
   "cues": ["3–5 krátkych pokynov na zapamätanie, napr. 'kolená smerom nad špičky'"],
@@ -170,6 +177,9 @@ export async function onRequestPost({ request, env }) {
     }
 
     cleanResult(result);
+    // slovenčina: texty s českými slovami prepíše rýchla AI; známe české slová potom opraví aj slovník (poistka)
+    const skFixed = await fixCzech(env, result, started + API_DEADLINE_MS + 15_000);
+    fixResultSk(result);
 
     const sources = [];
     for (const m of messages.concat([{ content: data.content }])) {
@@ -179,7 +189,7 @@ export async function onRequestPost({ request, env }) {
         }
       }
     }
-    return json({ result, sources: sources.slice(0, 10), model: data.model, usage: data.usage });
+    return json({ result, sources: sources.slice(0, 10), model: data.model, usage: data.usage, ...(skFixed ? { sk: skFixed } : {}) });
   } catch (e) {
     return json({ error: 'Na serveri sa niečo pokazilo. Skús to o chvíľu znova – video netreba nahrávať znova.', code: 'server', detail: String(e?.message || e).slice(0, 300) }, 500);
   }
@@ -191,6 +201,38 @@ export function onRequestGet({ request, env } = {}) {
     return json({ error: 'Nesprávny alebo chýbajúci prístupový kód.', code: 'auth' }, 401);
   }
   return json({ ok: true, info: 'POST /api/analyze' });
+}
+
+// Jazyková oprava: texty, v ktorých ostala čeština, prepíše rýchly model do jednoduchej slovenčiny.
+// Vráti počet opravených textov, 0 = nebolo treba, -1 = nepodarilo sa (ostanú texty po slovníkovej oprave).
+const FIX_SYSTEM = `Si jazykový korektor slovenčiny vo fitness appke. Dostaneš JSON s textmi z rozboru techniky cviku, v ktorých sú české slová alebo české tvary.
+Každý text prepíš do prirodzenej, jednoduchej spisovnej slovenčiny, ako by to povedal tréner (napr. „ujíždějí“ → „uhýbajú“, „kyčle“ → „boky“, „záda“ → „chrbát“, „dolů“ → „dole“).
+Význam nemeň, nič nepridávaj ani nevynechávaj, ponechaj oslovenie ty a približnú dĺžku. V texte nesmie ostať žiadne z písmen ě, ř, ů.
+Vráť IBA jeden JSON objekt s rovnakými kľúčmi a opravenými textami, bez ďalšieho textu.`;
+export async function fixCzech(env, result, until) {
+  const texts = collectTexts(result, hasCzech);
+  const keys = Object.keys(texts);
+  if (!keys.length) return 0;
+  const left = until - Date.now();
+  if (left < 8000) return -1;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), Math.min(15_000, left - 3000));
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      signal: ctrl.signal,
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': String(env.ANTHROPIC_API_KEY).trim(), 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: env.CLAUDE_FIX_MODEL || FIX_MODEL, max_tokens: 2000, system: FIX_SYSTEM, messages: [{ role: 'user', content: JSON.stringify(texts) }] }),
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok || !data) return -1;
+    const fixed = parseJson((data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n'));
+    if (!fixed || typeof fixed !== 'object') return -1;
+    const ok = {};
+    for (const k of keys) if (typeof fixed[k] === 'string' && fixed[k].trim()) ok[k] = stripTech(fixed[k]);
+    applyTexts(result, ok);
+    return Object.keys(ok).length;
+  } catch { return -1; } finally { clearTimeout(timer); }
 }
 
 function parseJson(text) {

@@ -1,5 +1,5 @@
 // Režim „v appke Viking's Workout“: Technika je otvorená v hlavnej appke (iframe).
-// Parametre: ?vw=1&ex=<názov cviku z appky>&from=detail|set|home&theme=dark|light&po=<origin appky>&r=<id rozboru>
+// Parametre: ?vw=1&ex=<názov cviku z appky>&from=detail|set|home&theme=dark|light&po=<origin appky>&r=<id rozboru>&n=<názov>&e=<id cviku>
 //   &img=<cesta k náhľadu cviku na videa.vikingsworkout.com>&box=<poloha postavy na náhľade>&boxp=<na plnom náhľade>&day=<JSON dnešného tréningu z plánu>
 const q = new URLSearchParams(location.search);
 
@@ -7,6 +7,9 @@ export const VW = q.get('vw') === '1';
 export const vwFrom = ['detail', 'set', 'home'].includes(q.get('from')) ? q.get('from') : 'home';
 export const vwExName = (q.get('ex') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
 export const vwResultId = (q.get('r') || '').slice(0, 40);
+// k uloženému rozboru aj názov a id cviku z appky – keď sa rozbor v telefóne nenájde, ukážeme ostatné rozbory tohto cviku
+export const vwResultName = (q.get('n') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+export const vwResultEid = (q.get('e') || '').slice(0, 60);
 
 // náhľad cviku z appky (ukážka záberu na obrazovke Natoč) – len obrázky z videa.vikingsworkout.com
 const IMG_PATH = /^[A-Za-z0-9._~%\/-]{1,200}\.(jpg|jpeg|webp|png)(\?[A-Za-z0-9._~%=&-]{0,80})?$/i;
