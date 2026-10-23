@@ -1,12 +1,13 @@
 # Pomocná úloha na skúšky presnosti počítania: stiahne MediaPipe (knižnica, WASM, modely postavy)
-# a videá cvikov z R2 a uloží ich ako artefakt (na 3 dni). Spúšťa sa len pri pushi do vetvy test-mp.
+# a videá cvikov z R2 a uloží ich do samostatnej vetvy test-mp-files (bez histórie; po skúškach sa zmaže).
+# Spúšťa sa len pri pushi do vetvy test-mp.
 name: mp-assets
 on:
   workflow_dispatch:
   push:
     branches: [test-mp]
 permissions:
-  contents: read
+  contents: write
 jobs:
   assets:
     runs-on: ubuntu-latest
@@ -16,15 +17,18 @@ jobs:
         run: |
           mkdir -p out/mp out/models out/videa
           cd out/mp && npm pack -q @mediapipe/tasks-vision@0.10.14 > /dev/null && tar xzf mediapipe-tasks-vision-0.10.14.tgz && rm -f *.tgz && cd ../..
-          for m in full lite heavy; do
+          for m in full lite; do
             curl -sSfL -o out/models/pose_landmarker_$m.task "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_$m/float16/1/pose_landmarker_$m.task" || echo "chýba model $m"
           done
           for p in e1-slucka3 e2-slucka3 n2-slucka3 n6-slucka3 z1-slucka3 z3-slucka3 e17-slucka3 e24-slucka21 z7 t3 h1-slucka3 h2-slucka3 r5-slucka20 v11 v13 e9-slucka21 z5 e5-slucka3; do
             curl -sSfL -A Mozilla/5.0 -o "out/videa/$p.mp4" "https://videa.vikingsworkout.com/exercises/$p.mp4" || echo "chýba video $p"
           done
-          ls -la out/mp/package out/models out/videa | head -80
-      - uses: actions/upload-artifact@v4
-        with:
-          name: mp
-          path: out/
-          retention-days: 3
+          du -sh out/*; ls -la out/mp/package out/mp/package/wasm out/models out/videa
+      - name: Uloženie do vetvy test-mp-files
+        run: |
+          cd out
+          git init -q r && cd r
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          cp -r ../mp ../models ../videa .
+          git add -A && git commit -qm "MediaPipe a videá cvikov na skúšky presnosti"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:test-mp-files
