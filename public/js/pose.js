@@ -352,7 +352,7 @@ function zigzag(s, delta) {
 // startType: 'top' (kliky, drepy, príťahy – séria začína hore), 'bottom' (mostík, hip thrust, tlak nad hlavu
 // – začína dole, prvý výstup je opakovanie), null = odhadnúť z priebehu.
 // Časy: start = koniec hornej polohy, reach = príchod dole, leave = odchod zdola, end = príchod hore.
-function detectReps(values, { minAmp = 25, startType = null } = {}) {
+function detectReps(values, { minAmp = 25, startType = null, lastAtValley = false } = {}) {
   const s = smooth(interpolate(values));
   const lo = pct(s, 0.05), hi = pct(s, 0.95);
   if (lo == null || hi - lo < 20) return { reps: [], range: lo == null ? 0 : hi - lo };
@@ -369,6 +369,14 @@ function detectReps(values, { minAmp = 25, startType = null } = {}) {
     const V = ext[k];
     if (V.t !== 'V') continue;
     const P1 = ext[k - 1], P2 = ext[k + 1];
+    if (!P2 && lastAtValley && P1 && k === ext.length - 1) {
+      // zhyby: posledné opakovanie končí hore (brada nad hrazdou) – platí aj bez spustenia späť do visu
+      const v = s[V.i], e1 = eps(s[P1.i], v);
+      let start = P1.i; for (let j = P1.i; j <= V.i; j++) if (s[j] >= s[P1.i] - e1) start = j;
+      let reach = V.i; for (let j = start; j <= V.i; j++) if (s[j] <= v + e1) { reach = j; break; }
+      reps.push({ start, reach, bottom: V.i, leave: V.i, end: Math.max(reach, V.i), ampDown: s[P1.i] - v, ampUp: s[P1.i] - v, last: true });
+      continue;
+    }
     if (!P2) continue;                        // bez návratu hore to nie je opakovanie (napr. ľahnutie na konci)
     if (!P1 && type !== 'bottom') continue;   // začiatok dole pri kliku/drepe (z ľahu, z drepu) nie je opakovanie
     const v = s[V.i], e2 = eps(s[P2.i], v);
@@ -386,8 +394,13 @@ function detectReps(values, { minAmp = 25, startType = null } = {}) {
   return { reps, range: hi - lo, type };
 }
 
+const DUEL_HALF = 0.6; // súboj: opakovanie s rozsahom pod touto časťou bežného rozsahu sa neráta (polovičné)
+
 // ---------- hlavná funkcia ----------
-export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, maxFrames = 400, onProgress = () => {}, onFrame = null } = {}) {
+// 1) scanVideo: prechod videom, body tela v každej snímke
+// 2) measureFrames: opakovania / výdrž zo snímok (bez videa – dá sa overiť aj mimo prehliadača)
+// 3) analyzeVideo: oboje + kľúčové snímky a záznam pre prehrávač
+export async function scanVideo(file, { maxSeconds = MAX_SECONDS, maxFrames = 400, onProgress = () => {}, onFrame = null } = {}) {
   onProgress(0, 'Načítavam model na rozpoznanie postavy…');
   let engine, v;
   try { [engine, v] = await Promise.all([getEngine(), loadVideo(file)]); }
@@ -487,7 +500,12 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   await Promise.all(blobs);
   clipFrames = clipFrames.filter(c => c.img);
   const timing = { scan_s: Math.round((performance.now() - tm.t0) / 100) / 10, seek_ms: Math.round(tm.seek / Math.max(1, times.length)), det_ms: Math.round(tm.det / Math.max(1, tm.n)) };
+  return { v, engine, W, H, fullDuration, duration, step, frames, clipFrames, cc, stride, timing };
+}
 
+// frames: [{ t, lm, m? }] v rovnakých odstupoch `step` (s); W × H = rozmery videa v pixeloch
+export function measureFrames(frames, { W, H, step, duration, fullDuration = duration, signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, duel = false } = {}) {
+  for (const f of frames) if (f.m === undefined) f.m = f.lm ? frameMetrics(f.lm, W, H) : null;
   const ok = frames.filter(f => f.m);
   if (ok.length < Math.max(5, frames.length * 0.3)) {
     throw userErr('Na videu sa nepodarilo spoľahlivo rozpoznať postavu. Natoč sa tak, aby bolo celé telo v zábere, pri dobrom svetle a na pokojnom pozadí.', false);
@@ -500,7 +518,10 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   const swr = pct(ok.map(f => f.m.shoulderWidthRatio), 0.5);
   const view = swr < 0.35 ? 'zboku' : swr > 0.6 ? 'spredu alebo zozadu' : 'šikmo (asi 45°)';
 
-  const series = (k) => frames.map(f => f.m ? f.m[sideKey][k] : null);
+  // signál opakovania: uhol kĺbu, alebo výška bokov / ramien (100 = dĺžka trupu, hore = viac) – pri cvikoch, kde sa uhol
+  // z pohľadu kamery skoro nemení (bočné výpady spredu) alebo sa mení dvakrát za opakovanie (muscle-up)
+  const HEIGHT = { hipH: 'hipY', shH: 'shY', wrH: 'wrY' };
+  const series = (k) => frames.map(f => !f.m ? null : HEIGHT[k] ? -100 * f.m[HEIGHT[k]] / torsoMed : f.m[sideKey][k]);
 
   // --- 1) rozdelenie videa podľa polohy tela (stoj vs. vodorovne), aby sa
   //        prípravný pohyb (napr. zľahnutie do vzporu pred klikmi) nerátal ako opakovanie
@@ -513,6 +534,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     if (!f.m) return null;
     if (f.m.legs != null && f.m.legs > 55) return 'H';
     if (f.m.wristsUp && floorY - f.m.ankleY > 0.07 * bodyLen) return 'P';
+    if (posture === 'P' && f.m.wristsUp) return 'P'; // zhyby: ruky nad ramenami = vis (aj keď celé video je na hrazde)
     return 'V';
   });
   for (let i = 0; i < rawPost.length; i++) if (rawPost[i] == null) rawPost[i] = i ? rawPost[i - 1] : null;
@@ -554,8 +576,10 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     return hi >= lo ? (hi - lo) / torsoMed : 0;
   };
   const bodyMoved = (a, b, j, p) => {
-    if (j === 'knee') return rangeOf('hipY', a, b) >= 0.2;
-    if (j === 'hip') return signal ? rangeOf('hipY', a, b) >= 0.12 : rangeOf('hipY', a, b) >= 0.12 || rangeOf('shY', a, b) >= 0.12 || rangeOf('ankleY', a, b) >= 0.25;
+    if (HEIGHT[j]) return true; // výška tela je sama pohybom tela
+    if (j === 'knee') return (duel && p === 'H') || rangeOf('hipY', a, b) >= 0.2; // v ľahu (príťahy pätami) sa boky nehýbu
+    // mostík, hip thrust: boky hore; sklapovačky, zdvihy nôh: hýbu sa ramená alebo nohy (boky ostávajú na mieste)
+    if (j === 'hip') return signal && startType === 'bottom' ? rangeOf('hipY', a, b) >= 0.12 : rangeOf('hipY', a, b) >= 0.12 || rangeOf('shY', a, b) >= 0.12 || rangeOf('ankleY', a, b) >= 0.25;
     const sy = rangeOf('shY', a, b);
     if (p === 'P') return sy >= 0.25;
     if (p === 'H') return sy >= 0.12;
@@ -563,8 +587,8 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   };
   const consider = (from, to, joint, segP) => {
     const vals = series(joint).slice(from, to + 1);
-    let reps = detectReps(vals, { minAmp, startType }).reps
-      .map(r => ({ start: r.start + from, reach: r.reach + from, bottom: r.bottom + from, leave: r.leave + from, end: r.end + from,
+    let reps = detectReps(vals, { minAmp, startType, lastAtValley: posture === 'P' && signal === 'elbow' }).reps
+      .map(r => ({ last: !!r.last, start: r.start + from, reach: r.reach + from, bottom: r.bottom + from, leave: r.leave + from, end: r.end + from,
         amp: Math.max(r.ampDown, r.ampUp), ampMin: r.ampDown ? Math.min(r.ampDown, r.ampUp) : r.ampUp, dur: (r.end - r.start) * step }))
       .filter(r => r.dur >= 0.4 && r.dur <= 12 && r.ampMin >= 0.6 * minAmp);
     // pri opakovaní sa musí pohnúť aj telo (pri drepe boky, pri kliku a zhybe ramená) – pokrčenie nohy pri chôdzi
@@ -572,7 +596,13 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     reps = reps.filter(r => bodyMoved(r.start, r.end, joint, segP));
     if (reps.length > 1) { // odfiltruj výrazne menšie „opakovania“ (šum, prechodový pohyb)
       const med = median(reps.map(r => r.ampMin));
-      reps = reps.filter(r => r.ampMin >= 0.4 * med);
+      reps = reps.filter(r => r.ampMin >= (duel ? DUEL_HALF : 0.4) * med); // v súboji sa polovičné neratajú
+    }
+    // posledný zhyb bez spustenia platí len keď došiel celý hore (rozsah ako pri ostatných)
+    if (reps.some(r => r.last)) {
+      const others = reps.filter(r => !r.last);
+      const med = others.length ? median(others.map(r => r.ampMin)) : 0;
+      reps = reps.filter(r => !r.last || (others.length ? r.ampMin >= 0.8 * med : r.ampMin >= minAmp));
     }
     if (reps.length >= 3) { // opakovanie v inej výške tela (zoskok z hrazdy, odchod) nie je opakovanie
       const hipAt = (i) => { for (let d = 0; d < 6; d++) { const f = frames[i + d] || frames[i - d]; if (f && f.m) return f.m.hipY; } return null; };
@@ -597,7 +627,15 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     if (pp.length >= 2) for (const j of joints) consider(pp[0].from, pp[pp.length - 1].to, j, posture);
   }
   if (!best && posture) for (const sg of longEnough) for (const j of joints) consider(sg.from, sg.to, j, sg.p);
+  // súboj s cvikom bez danej polohy (dipy, zdvihy nôh vo vise…): poloha sa počas série mení, skúsime aj celé video
+  if (duel && !posture && segments.length > 1) for (const j of joints) consider(0, frames.length - 1, j, null);
   if (!best) for (const j of joints) consider(0, frames.length - 1, j, null); // záloha: celé video
+  // súboj: uhol kĺbu nič nenašiel (napr. pohľad spredu) → výška bokov (drepy, výpady) alebo ramien (kliky, zhyby)
+  const ALT = { knee: 'hipH', elbow: 'shH' };
+  if (!best && duel && ALT[signal]) {
+    for (const sg of preferred) consider(sg.from, sg.to, ALT[signal], sg.p);
+    if (!best) consider(0, frames.length - 1, ALT[signal], null);
+  }
 
   const reps = best ? best.reps : [];
   const sig = best ? best.joint : (signal || 'knee');
@@ -686,6 +724,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   // Úsek výdrže = najdlhší čas, keď sa telo takmer nehýbe (v okne ~1 s) a je v polohe daného cviku.
   const HOLD_TARGETS = {
     plank: (m) => Math.abs(m.bodyTilt) < 35 && !m.invert && m.handsBelow,
+    'plank-rovne': (m) => Math.abs(m.bodyTilt) < 35 && !m.invert && m.handsBelow && (m[sideKey].knee ?? 180) >= 150, // súboj: plank na kolenách sa neráta
     planche: (m) => Math.abs(m.bodyTilt) < 40 && !m.invert && m.handsBelow,
     handstand: (m) => m.invert && m.handsBelow,
     lever: (m) => Math.abs(m.bodyTilt) < 45 && !m.invert && !m.handsBelow,
@@ -716,7 +755,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     other: { joint: 'body_line', name: 'iná poloha' },
   };
   const findHold = (targetFn) => {
-    const ser = ['body_line', 'hip', 'elbow'].map(k => smooth(interpolate(frames.map(f => f.m ? f.m[sideKey][k] : null))));
+    const ser = (duel ? ['body_line', 'hip'] : ['body_line', 'hip', 'elbow']).map(k => smooth(interpolate(frames.map(f => f.m ? f.m[sideKey][k] : null)))); // v súboji bez lakťa (pri vise ho kamera „trasie“)
     const hx = smooth(interpolate(frames.map(f => f.m ? f.m.hipX / f.m.torso : null)));
     const hy = smooth(interpolate(frames.map(f => f.m ? f.m.hipY / f.m.torso : null)));
     const half = Math.max(2, Math.round(0.5 / step));
@@ -724,11 +763,11 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     const still = frames.map((f, i) => {
       if (!f.m) return false;
       const a = Math.max(0, i - half), b = Math.min(frames.length - 1, i + half);
-      if (ser.some(arr => rng(arr, a, b) > 16)) return false;
-      if (rng(hx, a, b) > 0.22 || rng(hy, a, b) > 0.22) return false;
+      if (ser.some(arr => rng(arr, a, b) > (duel ? 24 : 16))) return false;
+      if (rng(hx, a, b) > (duel ? 0.45 : 0.22) || rng(hy, a, b) > (duel ? 0.45 : 0.22)) return false; // v súboji: hojdanie na krúžkoch, trasenie na konci
       return targetFn ? targetFn(f.m) : true;
     });
-    const gap = Math.round(0.5 / step), runs = [];
+    const gap = Math.round((duel ? 0.7 : 0.5) / step), runs = [];
     let cur = null;
     still.forEach((x, i) => { if (!x) return; if (cur && i - cur.to <= gap) cur.to = i; else { cur = { from: i, to: i }; runs.push(cur); } });
     const bestRun = runs.reduce((a, r) => (!a || r.to - r.from > a.to - a.from ? r : a), null);
@@ -738,8 +777,20 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     return { from: Math.max(0, bestRun.from - ext), to: Math.min(frames.length - 1, bestRun.to + ext) };
   };
   let holdRun = null, holdTarget = target, autoKind = null;
-  if (type === 'hold') holdRun = (HOLD_TARGETS[target] && findHold(HOLD_TARGETS[target])) || findHold(null);
-  else if (!signal) {
+  if (type === 'hold' && duel && target !== 'plank-rovne') {
+    // vlastná výdrž v súboji: najdlhší pokoj mimo obyčajného stoja; poloha z názvu cviku rozhodne, keď je skoro rovnako dlhá
+    // (poloha z názvu sa overuje na celom úseku – jednotlivé snímky pri nezvyčajnom cviku často nesedia)
+    const g = findHold((m) => holdKind(m) !== 'stand') || findHold(null), tf = HOLD_TARGETS[target];
+    const fit = (run) => { let n = 0, k = 0; for (let i = run.from; i <= run.to; i++) if (frames[i].m) { n++; if (tf(frames[i].m)) k++; } return n ? k / n : 0; };
+    holdRun = !tf ? g : g && fit(g) >= 0.25 ? g : findHold(tf) || g;
+  } else if (type === 'hold') {
+    holdRun = (HOLD_TARGETS[target] && findHold(HOLD_TARGETS[target]))
+      // plank v súboji: bez kolien na zemi (pri pohľade zboku), inak hocijaký pokoj
+      || (target === 'plank-rovne' ? findHold((m) => !(Math.abs(m.bodyTilt) < 35 && (m[sideKey].knee ?? 180) < 140)) : null)
+      // neznáma výdrž: najprv pokoj v polohe cviku (nie obyčajný stoj pred cvikom a po ňom)
+      || (!target ? findHold((m) => holdKind(m) !== 'stand') : null)
+      || findHold(null);
+  } else if (!signal && !duel && type !== 'reps') { // súboj s opakovaniami = len opakovania
     // automatické rozpoznanie: dlhší pokoj v polohe cviku (stojka, plank, lever, L-sit…) je výdrž
     const h = findHold(null);
     if (h) {
@@ -798,6 +849,14 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
       angle_notes: 'Výdrž (statický cvik). Uhly v stupňoch, 2D z kamery, median/p10/p90 počas výdrže. body_line: rameno–bok–členok, 180 = telo v priamke (menej = prehnuté alebo zlomené v bokoch). hip: rameno–bok–koleno (pri L-site ideálne okolo 90). knee/elbow: 180 = vystreté. shoulder: lakeť–rameno–bok (pri stojke ideálne okolo 180 = otvorené ramená). neck: ucho–rameno–bok. trunk_lean: odklon trupu od zvislice. legs_from_vertical: odklon nôh od zvislice (90 = vodorovne). body_tilt_deg: náklon línie ramená–členky od vodorovnej (0 = vodorovne, kladné = nohy nižšie ako ramená, záporné = nohy vyššie). vertical_dev_deg: pri stojke odklon línie dlane–členky od zvislice (0 = členky presne nad dlaňami). stability: hip_sway_pct = kolísanie bokov do strán v % dĺžky trupu, hip_height_sway_pct = kolísanie hore-dole, body_line_range_deg = rozkolísanie línie tela. fatigue: prvá vs. posledná štvrtina výdrže, hip_drop_pct = o koľko % dĺžky trupu klesli boky (kladné = nižšie).',
     };
   }
+
+  return { summary, reps, repData, sig, sideKey, isHoldResult, holdRun, hJoint, actFrom, actTo, pad, rawPost };
+}
+
+export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, duel = false, maxSeconds = MAX_SECONDS, maxFrames = 400, onProgress = () => {}, onFrame = null } = {}) {
+  const { v, engine, W, H, fullDuration, duration, step, frames, clipFrames, cc, stride, timing } = await scanVideo(file, { maxSeconds, maxFrames, onProgress, onFrame });
+  const { summary, reps, repData, sig, sideKey, isHoldResult, holdRun, hJoint, actFrom, actTo, pad, rawPost } =
+    measureFrames(frames, { W, H, step, duration, fullDuration, signal, posture, minAmp, start: startType, type, target, holdJoint, duel });
 
   // ---------- kľúčové snímky ----------
   onProgress(0.92, 'Pripravujem kľúčové snímky…');

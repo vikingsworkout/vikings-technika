@@ -1,6 +1,6 @@
 // Jednoduchý service worker: appka sa dá nainštalovať a vlastné súbory sa načítajú
 // aj pri slabom signáli. Vždy skúsi najprv sieť (aby sa zmeny prejavili hneď).
-const CACHE = 'vt-v32';
+const CACHE = 'vt-v33';
 // náhľady cvikov z appky (videa.vikingsworkout.com): z pamäte hneď, druhé otvorenie bez čakania
 const ICACHE = 'vt-nahlady-v1';
 // rozpoznávanie postavy (MediaPipe: knižnica, WASM, modely) – súbory s pevnou verziou, ~25 MB.

@@ -1,4 +1,4 @@
-import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor } from './exercises.js';
+import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor, duelMeasure } from './exercises.js';
 import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive } from './pose.js';
 import { createLiveCounter } from './livecount.js';
 import * as db from './db.js';
@@ -52,9 +52,9 @@ function applyPick(p) {
 const appPick = VW && vwDuel ? duelPick() : VW && vwExName ? makePick('app', vwExName, { img: vwImg, box: vwBox, boxp: vwBoxP }) : null;
 if (appPick) applyPick(appPick);
 if (vwDuel) document.documentElement.classList.add('duel');
-// Súboj: cvik podľa disciplíny z appky; meria sa presne ním (plank ako výdrž), bez rozboru AI
+// Súboj: cvik podľa disciplíny z appky (vlastný cvik podľa názvu); meria sa presne ním (plank ako výdrž), bez rozboru AI
 function duelPick() {
-  const g = findExercise(vwDuel.id);
+  const g = duelMeasure(vwDuel.dx, vwExName);
   return { src: 'app', name: vwExName || g.name, eid: '', img: '', box: null, boxp: null, guide: g, measure: g };
 }
 // najdlhšie nahrávanie: v Súboji séria do vyčerpania (3 min) alebo dlhá výdrž (5 min)
@@ -281,7 +281,8 @@ function renderShootDuel() {
   $('newTitle').textContent = pick.name;
   $('newSub').textContent = D.goal ? `${D.who ? D.who + ': ' : 'Na prekonanie: '}${D.goal}${hold ? ' s' : ` ${plural(D.goal, 'opakovanie', 'opakovania', 'opakovaní')}`}${D.who ? ' – prekonaj to' : ''}`
     : hold ? 'Natoč výdrž – appka zmeria sekundy' : 'Natoč sériu – appka spočíta opakovania';
-  const pic = EX_PIC[g.id] ? picSvg(g.id).replace('class="pic"', 'class="sh-pic"') : `<span class="sh-pic ai">${ICON_AI}</span>`;
+  const pid = g.base || g.id;
+  const pic = EX_PIC[pid] ? picSvg(pid).replace('class="pic"', 'class="sh-pic"') : `<span class="sh-pic ai">${ICON_AI}</span>`;
   $('shPrev').innerHTML = `<div class="sh-ph">${pic}</div><div class="sh-vig"></div><svg class="sh-frame" id="shFrame" aria-hidden="true"></svg><span class="sh-ok" id="shOk">${IC.check}Celé telo v zábere</span>`;
   $('shPrev').classList.remove('loading');
   const row = (ic, html) => `<div class="sh-tip"><span class="sh-ic">${ic}</span><span>${html}</span></div>`;
@@ -586,7 +587,7 @@ function liveCount(lm, now, v) {
   if (LIVE.cnt) LIVE.cnt.update(lm || null, now, W, H, rec);
   if (!rec) return;
   LIVE.joint = (LIVE.cnt && LIVE.cnt.joint) || selected.signal || null;
-  if (!selected.signal) liveHold(lm, now, W, H); // automaticky môže ísť aj o výdrž
+  if (!selected.signal && selected.type !== 'reps') liveHold(lm, now, W, H); // automaticky môže ísť aj o výdrž
   liveCountShow();
 }
 // výdrž: telo sa takmer nehýbe (boky a ramená v rámci ~1 s)
@@ -605,7 +606,7 @@ function liveCountShow() {
   if (!VW || !$('recCountN')) return;
   const reps = LIVE.cnt ? LIVE.cnt.count : 0;
   const holdS = Math.floor(LIVE.best);
-  const asHold = pickHold() || (!selected.signal && !reps && holdS >= 3);
+  const asHold = pickHold() || (!selected.signal && selected.type !== 'reps' && !reps && holdS >= 3);
   $('recCountN').textContent = asHold ? holdS : reps;
   $('recCountL').textContent = asHold ? 'S VÝDRŽE' : reps === 1 ? 'OPAKOVANIE' : reps >= 2 && reps <= 4 ? 'OPAKOVANIA' : 'OPAKOVANÍ';
 }
@@ -869,7 +870,7 @@ async function duelAnalysis(file) {
     };
     // dlhšia séria → viac snímok (aspoň ~6 za sekundu), aby sa nestratilo ani rýchle opakovanie
     const { summary: sm, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, start: selected.start ?? null,
-      type: selected.type ?? null, target: selected.target ?? null, holdJoint: selected.holdJoint ?? null, maxSeconds: maxRec(), maxFrames: hold ? 500 : 900, onProgress, onFrame: workFrame });
+      type: selected.type ?? null, target: selected.target ?? null, holdJoint: selected.holdJoint ?? null, duel: true, maxSeconds: maxRec(), maxFrames: hold ? 500 : 900, onProgress, onFrame: workFrame });
     workMeasured(sm, clip);
     let val = hold ? Math.round(sm.hold?.duration_s || 0) : (sm.exercise_type === 'hold' ? 0 : (sm.reps_detected || 0));
     if (!val && live) val = live; // celé video nedalo výsledok – počet z nahrávania

@@ -97,6 +97,93 @@ export function findExercise(id) {
   return EXERCISES.find(e => e.id === id) || (id === 'auto' ? AUTO : null);
 }
 
+// ---------- Súboj 1 na 1: čo a ako merať ----------
+// Disciplíny z appky; vlastný cvik („vlastny“ = opakovania, „vlastny-s“ = sekundy výdrže) sa meria podľa názvu,
+// ktorý napísal vyzývateľ. Známe slová určia, čo sa počíta (uhol kĺbu alebo výška tela), inak appka cvik rozpozná sama.
+// Signály: elbow / knee / hip = uhol kĺbu; shH / hipH / wrH = výška ramien / bokov / zápästí (100 = dĺžka trupu).
+export const DUEL_EX = { zhyby: 'pritah-hrazda', kliky: 'klik', drepy: 'drep', plank: 'plank' };
+const bezDiakritiky = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+// opakovania: kľúčové slová (bez diakritiky, vyhráva najdlhšia zhoda) → signál, poloha tela, najmenší rozsah, začiatok série;
+// base = obrázok a návod na natočenie zo zoznamu cvikov
+const DUEL_REPS = [
+  { keys: ['klik', 'push up', 'push-up', 'pushup'], signal: 'elbow', posture: null, minAmp: 30, start: 'top', base: 'klik', kind: 'push' },
+  { keys: ['pike'], signal: 'elbow', posture: null, minAmp: 30, start: 'top', kind: 'push' },
+  // v stojke (hlavou dole) kamera uhol lakťa často nezachytí → výška ramien
+  { keys: ['kliky v stojke', 'klik v stojke', 'kliky do stojky', 'hspu', 'handstand push'], signal: 'shH', posture: null, minAmp: 20, start: 'top' },
+  { keys: ['zhyb', 'shyb', 'pritah', 'pull up', 'pull-up', 'pullup', 'chin up', 'chin-up', 'chinup', 'ring row', 'tah k pasu'], signal: 'elbow', posture: 'P', minAmp: 40, start: 'top', base: 'pritah-hrazda', kind: 'pull' },
+  { keys: ['austral', 'inverted', 'veslovan', 'trx pritah'], signal: 'elbow', posture: null, minAmp: 30, start: 'top', kind: 'pull' },
+  { keys: ['dip', 'bradl', 'tricepsov', 'triceps'], signal: 'elbow', posture: null, minAmp: 30, start: 'top', kind: 'push' },
+  { keys: ['pritahy piat', 'piat', 'leg curl', 'zakopavan'], signal: 'knee', posture: null, minAmp: 30, start: 'top' },
+  // TRX triceps: predlaktia za hlavou kamera „trasie“ → telo sa nakláňa dopredu a späť, výška ramien
+  { keys: ['trx triceps', 'trx tricep'], signal: 'shH', posture: null, minAmp: 20, start: 'top' },
+  { keys: ['bicep', 'curl'], signal: 'elbow', posture: null, minAmp: 40, start: 'top' },
+  // muscle-up: lakte sa ohnú dvakrát za opakovanie (príťah aj spúšťanie) → výška ramien
+  { keys: ['muscle', 'muscel', 'masl'], signal: 'shH', posture: null, minAmp: 50, start: 'bottom' },
+  { keys: ['drep', 'squat', 'pistol', 'skok', 'jump', 'pritahom kolien'], signal: 'knee', posture: 'V', minAmp: 35, start: 'top', base: 'drep' },
+  { keys: ['vypad', 'lunge', 'bulharsk', 'split', 'vykrok'], signal: 'knee', posture: 'V', minAmp: 30, start: 'top', base: 'vypad' },
+  // spredu sa uhol kolena pri bočnom výpade skoro nemení → výška bokov
+  { keys: ['bocne vypady', 'bocny vypad', 'bocnych vypad', 'kozack', 'cossack', 'lateral', 'side lunge', 'vo vypade'], signal: 'hipH', posture: 'V', minAmp: 25, start: 'top' },
+  { keys: ['vystup', 'step up', 'step-up', 'stepup'], signal: 'knee', posture: 'V', minAmp: 30, start: 'top' },
+  { keys: ['mostik', 'bridge', 'panv', 'zdvih bokov', 'zdvihanie bokov', 'hip raise'], signal: 'hip', posture: null, minAmp: 20, start: 'bottom', base: 'most' },
+  { keys: ['hip thrust', 'hip-thrust', 'hipthrust'], signal: 'hip', posture: null, minAmp: 25, start: 'bottom', base: 'hip-thrust' },
+  { keys: ['sklapovac', 'sklopovac', 'skladack', 'brusak', 'brusn', 'sed-lah', 'sed lah', 'sedlah', 'sit up', 'sit-up', 'situp', 'crunch', 'v-up', 'v up', 'vup'], signal: 'hip', posture: null, minAmp: 30, start: 'top' },
+  { keys: ['zdvih', 'dvihanie', 'leg raise', 'toes to bar', 'k hrazde', 'kolena k', 'nohy k', 'pritahovanie kolien', 'pritah kolien', 'skrcenie', 'zdvihy noh'], signal: 'hip', posture: null, minAmp: 30, start: 'top' },
+  { keys: ['mrtvy tah', 'deadlift', 'swing', 'kettlebell'], signal: 'hip', posture: 'V', minAmp: 30, start: 'top' },
+  // celé telo hore-dole: angličák (burpee), up-down, sprawl
+  { keys: ['burpee', 'burpe', 'anglicak', 'up down', 'up-down', 'updown', 'sprawl'], signal: 'hipH', posture: null, minAmp: 60, start: 'top' },
+  // dragon flag: telo sa spúšťa a dvíha ako celok → výška bokov
+  { keys: ['dragon', 'drak'], signal: 'hipH', posture: null, minAmp: 30, start: 'top' },
+  // panák: ruky hore-dole
+  { keys: ['panak', 'jumping jack', 'jacks'], signal: 'wrH', posture: null, minAmp: 80, start: null },
+  { keys: ['tlak nad hlavu', 'overhead', 'military'], base: 'tlak-nad-hlavu' },
+  { keys: ['bench', 'tlak na lavicke'], base: 'bench' },
+];
+// opakovania, ktoré kamera spoľahlivo nespočíta (striedanie strán, rotácie, malý pohyb) – zapíšu sa ručne
+const DUEL_NO = ['twist', 'rusky', 'noznic', 'flutter', 'horolez', 'climber', 'chrobak', 'bird dog', 'birddog', 'vypon', 'calf', 'stierac',
+  'dotykom ramien', 'shoulder tap', 'husenic', 'inchworm', 'superman', 'rotaci', 'skin the cat', 'prevlek', 'head banger', 'rozpazen',
+  'striedave', 'presun zo vzporu', 'kobry', 'ruckovan', 'svih', 'boxovan', 'presmyk', 'korculiar'];
+// výdrže: kľúčové slová → poloha tela, ktorú hľadáme (bez zhody: najdlhší pokoj v polohe cviku)
+const DUEL_HOLDS = [
+  { keys: ['plank', 'planka', 'doska', 'vydrz v kliku', 'vzpor v kliku'], target: 'plank', base: 'plank' },
+  { keys: ['stojk', 'handstand', 'headstand'], target: 'handstand', base: 'stojka' },
+  { keys: ['l-sit', 'l sit', 'lsit', 'v 90'], target: 'lsit', holdJoint: 'hip', base: 'l-sit' },
+  { keys: ['lever', 'predny vis', 'zadny vis'], target: 'lever', base: 'front-lever' },
+  { keys: ['planche', 'plans'], target: 'planche', base: 'planche' },
+  { keys: ['vis', 'hang', 'visenie', 'vydrz v zhybe'], target: 'hang' },
+  { keys: ['stolick', 'sed pri stene', 'wall sit', 'podrep', 'drep'], target: 'squat', holdJoint: 'knee' },
+];
+// na čas, ale nie výdrž (beh, švihadlo, strečing…) – kamera nezmeria, zapíše sa ručne
+const DUEL_NO_S = ['beh', 'sprint', 'svihadl', 'poskok', 'skakan', 'kolena', 'boxovan', 'presmyk', 'chodz', 'rotaci', 'natahovan', 'strecing',
+  'poloha dietata', 'korculiar', 'jumping', 'panak'];
+const bestKey = (list, n) => {
+  let best = null, len = 0;
+  for (const e of list) for (const k of e.keys) if (n.includes(k) && k.length > len) { best = e; len = k.length; }
+  return best;
+};
+const has = (list, n) => list.some(k => n.includes(k));
+export function duelMeasure(dx, name = '') {
+  if (DUEL_EX[dx]) {
+    const e = findExercise(DUEL_EX[dx]);
+    // plank v súboji: len s vystretými nohami (na kolenách sa neráta)
+    return { ...e, base: e.id, cam: true, ...(dx === 'plank' ? { target: 'plank-rovne' } : { type: 'reps' }) };
+  }
+  const n = bezDiakritiky(name);
+  const nm = String(name || '').trim() || 'Vlastný cvik';
+  if (dx === 'vlastny-s') {
+    const h = bestKey(DUEL_HOLDS, n), b = h && h.base ? findExercise(h.base) : null;
+    return { ...AUTO, ...(b ? { hint: b.hint, dist: b.dist, camera: b.camera } : {}), id: 'vlastny-s', name: nm, base: b ? b.id : null,
+      type: 'hold', target: h ? h.target : null, holdJoint: h ? h.holdJoint || 'body_line' : null, maxSeconds: 300, cam: !!h || !has(DUEL_NO_S, n) };
+  }
+  const r = bestKey(DUEL_REPS, n), b = r && r.base ? findExercise(r.base) : null;
+  let m = r && r.signal ? r : b || {};
+  // s tlesknutím, výbušné, lukostrelecké, jednou rukou: ruky sa pustia alebo pracuje raz jedna, raz druhá ruka –
+  // uhol lakťa na viditeľnej strane klame → počíta sa podľa výšky ramien
+  if (r && (r.kind === 'push' || r.kind === 'pull') && /tlies|tlesk|clap|lukostrel|archer|jednoruc|jednou ruk|one arm|pisaci|typewriter|exploziv|vybusn|dynamick/.test(n))
+    m = r.kind === 'pull' ? { signal: 'shH', posture: null, minAmp: 30, start: 'bottom' } : { signal: 'shH', posture: null, minAmp: 20, start: 'top' };
+  return { ...AUTO, ...(b ? { hint: b.hint, dist: b.dist, camera: b.camera } : {}), id: 'vlastny', name: nm, base: b ? b.id : null,
+    type: 'reps', signal: m.signal || null, posture: m.posture ?? null, minAmp: m.minAmp || 30, start: m.start ?? null, maxSeconds: 180, cam: !!r || !has(DUEL_NO, n) };
+}
+
 // Pokúsi sa namapovať názov cviku od AI na položku zo zoznamu (pre predvyplnenie výberu).
 // Vyhráva najdlhšia zhoda, aby napr. „výdrž v kliku“ našla plank a nie klik.
 export function matchExercise(name) {

@@ -6,13 +6,14 @@ const q = new URLSearchParams(location.search);
 export const VW = q.get('vw') === '1';
 export const vwFrom = ['detail', 'set', 'home', 'duel'].includes(q.get('from')) ? q.get('from') : 'home';
 export const vwExName = (q.get('ex') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
-// Súboj 1 na 1 z appky (?from=duel&dx=zhyby|kliky|drepy|plank&goal=<výsledok súpera>&who=<meno>&rl=<pravidlá>):
+// Súboj 1 na 1 z appky (?from=duel&dx=zhyby|kliky|drepy|plank|vlastny|vlastny-s&ex=<názov>&goal=<výsledok súpera>&who=<meno>&rl=<pravidlá>):
 // natočí sa jedna séria (výdrž), appka spočíta opakovania (zmeria sekundy) priamo v mobile, bez rozboru AI,
-// a výsledok aj s videom vráti appke do výzvy.
-const DUEL_EX = { zhyby: 'pritah-hrazda', kliky: 'klik', drepy: 'drep', plank: 'plank' };
+// a výsledok aj s videom vráti appke do výzvy. Vlastný cvik: vlastny = opakovania, vlastny-s = sekundy (názov v ex).
+const DUEL_DX = ['zhyby', 'kliky', 'drepy', 'plank', 'vlastny', 'vlastny-s'];
 const num0 = (v, max) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(n, max) : 0; };
-export const vwDuel = VW && vwFrom === 'duel' && DUEL_EX[q.get('dx')] ? {
-  dx: q.get('dx'), id: DUEL_EX[q.get('dx')],
+const dx0 = q.get('dx') || '';
+export const vwDuel = VW && vwFrom === 'duel' && DUEL_DX.includes(dx0) && (!dx0.startsWith('vlastny') || !!vwExName) ? {
+  dx: dx0,
   goal: num0(q.get('goal'), 100000),
   who: (q.get('who') || '').replace(/\s+/g, ' ').trim().slice(0, 40),
   rules: (q.get('rl') || '').replace(/\s+/g, ' ').trim().slice(0, 400),

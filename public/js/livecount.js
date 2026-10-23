@@ -12,6 +12,8 @@
 // W × H = rozmery videa (kvôli pomeru strán), counting = či práve beží nahrávanie.
 
 const JT = { elbow: [[11, 13, 15], [12, 14, 16]], knee: [[23, 25, 27], [24, 26, 28]], hip: [[11, 23, 25], [12, 24, 26]] };
+// výška ramien / bokov / zápästí (Súboj: muscle-up, bočné výpady, angličák, panák…) – 100 = dĺžka trupu, hore = viac
+const HJ = { shH: 'sy', hipH: 'hy', wrH: 'wy' };
 const VIS = 0.45;
 
 function angleAt(lm, a, b, c, W, H) {
@@ -60,6 +62,7 @@ export function createLiveCounter({ signal = null, posture = null, minAmp = 30, 
   const newRep = (t0) => ({ t0, from: t0 });
   // telo sa pri opakovaní naozaj pohlo (boky dole pri drepe, ramená pri kliku/zhybe)
   function moved(j, rep) {
+    if (HJ[j]) return true; // výška tela je sama pohybom tela
     const hy = span('hy', rep.from), sy = span('sy', rep.from), wy = span('wy', rep.from), ay = span('ay', rep.from);
     if (j === 'knee') return hy >= 0.2;
     // mostík/hip thrust: boky hore; pri automatickom rozpoznaní aj zdvíhanie nôh alebo trupu (napr. skracovačky)
@@ -83,9 +86,13 @@ export function createLiveCounter({ signal = null, posture = null, minAmp = 30, 
     if (!counting || !S.armed || !b) return;
 
     for (const j of joints) {
-      const a = JT[j].map(q => angleAt(lm, q[0], q[1], q[2], W, H)).filter(x => x != null);
-      if (!a.length) continue;
-      const x = a.reduce((s, y) => s + y, 0) / a.length;
+      let x;
+      if (HJ[j]) { if (b[HJ[j]] == null || !S.T) continue; x = -100 * b[HJ[j]] / S.T; }
+      else {
+        const a = JT[j].map(q => angleAt(lm, q[0], q[1], q[2], W, H)).filter(x => x != null);
+        if (!a.length) continue;
+        x = a.reduce((s, y) => s + y, 0) / a.length;
+      }
       const r = S.rng[j] || (S.rng[j] = { lo: x, hi: x });
       let tr = S.tr[j];
       if (!tr) tr = S.tr[j] = { ema: x, st: start === 'bottom' ? 'down' : 'up', ext: x, extT: t, rep: start === 'bottom' ? newRep(t) : null };
