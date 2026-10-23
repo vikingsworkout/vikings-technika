@@ -3,7 +3,7 @@ import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive
 import { createLiveCounter } from './livecount.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
-import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwAdmin, vwToken, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap } from './vw.js';
+import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwAdmin, vwToken, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap, vwDuel } from './vw.js';
 import { fixResultSk } from './sk.js';
 import { IC, frameSvg, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
 
@@ -49,8 +49,16 @@ function applyPick(p) {
   pick = p; selected = p.measure;
   vwHint = selected.id === 'auto' && p.src !== 'auto' ? p.name : '';
 }
-const appPick = VW && vwExName ? makePick('app', vwExName, { img: vwImg, box: vwBox, boxp: vwBoxP }) : null;
+const appPick = VW && vwDuel ? duelPick() : VW && vwExName ? makePick('app', vwExName, { img: vwImg, box: vwBox, boxp: vwBoxP }) : null;
 if (appPick) applyPick(appPick);
+if (vwDuel) document.documentElement.classList.add('duel');
+// Súboj: cvik podľa disciplíny z appky; meria sa presne ním (plank ako výdrž), bez rozboru AI
+function duelPick() {
+  const g = findExercise(vwDuel.id);
+  return { src: 'app', name: vwExName || g.name, eid: '', img: '', box: null, boxp: null, guide: g, measure: g };
+}
+// najdlhšie nahrávanie: v Súboji séria do vyčerpania (3 min) alebo dlhá výdrž (5 min)
+const maxRec = () => vwDuel ? (isHold(selected) ? 300 : 180) : maxSecondsFor(selected);
 const ICON_BACK = IC.back;
 const ICON_X = IC.x;
 const KICK = (txt) => `<span class="kick">${IC.kick}<span>${esc(txt)}</span></span>`;
@@ -71,7 +79,7 @@ function show(view) {
     const ico = view === 'vResult' || view === 'vHome' || view === 'vHist' ? 'x' : 'back';
     if (b.dataset.ico !== ico) { b.dataset.ico = ico; b.innerHTML = ico === 'x' ? ICON_X : ICON_BACK; }
     b.setAttribute('aria-label', close ? 'Zavrieť Techniku' : 'Späť');
-    $('hRight').innerHTML = view === 'vNew' ? '<button class="hlink" id="btnOther">Iný cvik</button>' : KICK('TECHNIKA');
+    $('hRight').innerHTML = vwDuel ? KICK('SÚBOJ') : view === 'vNew' ? '<button class="hlink" id="btnOther">Iný cvik</button>' : KICK('TECHNIKA');
     on('btnOther', () => go('#/vyber'));
   }
   $('btnNew').hidden = true; // na domove je hlavné tlačidlo priamo v karte
@@ -82,10 +90,12 @@ function show(view) {
 // ---------- smerovanie ----------
 async function route() {
   const h = location.hash;
+  if (h === '#/suboj' && vwDuel) { if (DUEL) { renderDuel(); show('vResult'); } else go('#/nova'); return; }
+  if (h === '#/vyber' && vwDuel) { go('#/nova'); return; }
   if (h === '#/vyber' && VW) { renderPick(); show('vPick'); preloadSoon(); loadQuota(); return; }
   if (h === '#/nova') {
     if (VW && !pick) { go('#/vyber'); return; }
-    renderNew(); show('vNew'); if (VW) { layoutShot(); loadQuota(); } preloadSoon(); return;
+    renderNew(); show('vNew'); if (VW) { layoutShot(); if (!vwDuel) loadQuota(); } preloadSoon(); return;
   }
   if (h === '#/nahravanie') { show('vRec'); openRecorder(); return; }
   if (h.startsWith('#/r/')) {
@@ -98,7 +108,7 @@ async function route() {
   if (h === '#/praca' && current) { show('vWork'); return; }
   if (VW) { // v appke sa začína natáčaním cviku z appky, inak výberom cviku
     if (pick) { renderNew(); show('vNew'); layoutShot(); } else { renderPick(); show('vPick'); }
-    preloadSoon(); loadQuota(); return;
+    preloadSoon(); if (!vwDuel) loadQuota(); return;
   }
   renderHome(); show('vHome');
 }
@@ -176,6 +186,7 @@ const EX_PIC = {
   'tlak-nad-hlavu': ['<path d="M6 6.5h36M8.5 2.5v8M39.5 2.5v8"/>', [24, 16.5, 4.2], 'M15.5 6.5l3.5 16M32.5 6.5 29 22.5M19 22.5h10M24 22v11.5M24 33.5l-3.5 11M24 33.5l3.5 11'],
   'hip-thrust': ['<circle cx="25" cy="14" r="5.5"/><path d="M4 25.5h10M9 25.5V42M4 42h40"/>', [7, 19, 3.8], 'M11.5 22.5 25 20.5l11.5.5V38h5'],
   most: ['<path d="M3 42h42"/>', [7.5, 37.5, 3.8], 'M12.5 39 26 29l10.5-3 2.5 14.5h4.5M13.5 40.5h8'],
+  plank: ['<path d="M4 40.5h40"/>', [9, 27.5, 4.2], 'M14 31.5 28 34.2 42 36.8M14.5 32v7.8H7.5'],
 };
 const picSvg = (id) => {
   const p = EX_PIC[id];
@@ -228,6 +239,7 @@ function renderNew() {
 const isAutoPick = () => !pick || pick.src === 'auto';
 const pickHold = () => !!(pick && pick.guide && isHold(pick.guide));
 function renderShoot() {
+  if (vwDuel) { renderShootDuel(); return; }
   const g = pick.guide, G = g || AUTO, max = maxSecondsFor(selected);
   const auto = isAutoPick();
   $('newTitle').textContent = auto ? 'Natoč cvik' : 'Natoč ' + lowerName(accName(pick.name));
@@ -261,6 +273,27 @@ function renderShoot() {
   $('sh100l').innerHTML = top.map(c => `<li>${esc(c)}</li>`).join('');
   $('btnRec').innerHTML = '<span class="dot"></span>Nahrávať';
   renderQuota();
+}
+
+// Súboj: natočiť sériu (výdrž) – appka spočíta opakovania (sekundy), ukáže pravidlá a výsledok súpera
+function renderShootDuel() {
+  const g = pick.guide, hold = isHold(g), D = vwDuel;
+  $('newTitle').textContent = pick.name;
+  $('newSub').textContent = D.goal ? `${D.who ? D.who + ': ' : 'Na prekonanie: '}${D.goal}${hold ? ' s' : ` ${plural(D.goal, 'opakovanie', 'opakovania', 'opakovaní')}`}${D.who ? ' – prekonaj to' : ''}`
+    : hold ? 'Natoč výdrž – appka zmeria sekundy' : 'Natoč sériu – appka spočíta opakovania';
+  const pic = EX_PIC[g.id] ? picSvg(g.id).replace('class="pic"', 'class="sh-pic"') : `<span class="sh-pic ai">${ICON_AI}</span>`;
+  $('shPrev').innerHTML = `<div class="sh-ph">${pic}</div><div class="sh-vig"></div><svg class="sh-frame" id="shFrame" aria-hidden="true"></svg><span class="sh-ok" id="shOk">${IC.check}Celé telo v zábere</span>`;
+  $('shPrev').classList.remove('loading');
+  const row = (ic, html) => `<div class="sh-tip"><span class="sh-ic">${ic}</span><span>${html}</span></div>`;
+  $('shTips').innerHTML = row(IC.phone, `<b>${esc(g.hint)}</b>, ${esc(g.dist)}`)
+    + row(IC.tripod, '<b>Mobil opri stabilne</b> alebo daj na statív')
+    + row(IC.timer, hold ? '<b>Jedna výdrž</b>, najviac 5 minút' : '<b>Jedna séria</b> do vyčerpania, najviac 3 minúty');
+  $('shCapChecks').textContent = 'PRAVIDLÁ SÚBOJA';
+  hide('shCapChecks', !D.rules);
+  $('shChecks').innerHTML = D.rules ? `<p class="du-rules">${esc(D.rules)}</p>` : '';
+  hide('sh100', true); hide('newQuota', true); hide('newLimit', true); hide('lblFile', true);
+  $('btnRec').innerHTML = '<span class="dot"></span>Nahrávať';
+  hide('btnRec', false);
 }
 
 // výrez obrázka a rámik „Celé telo v zábere“: podľa polohy postavy na náhľade (zistenej vopred na GitHube),
@@ -422,7 +455,7 @@ const recorder = new Recorder($('recVideo'), {
       const b = $('btnRecBig');
       b.className = 'rc-btn' + (st === 'recording' ? ' stop' : st === 'countdown' ? ' cancel' : '');
       b.setAttribute('aria-label', st === 'recording' ? 'Zastaviť a analyzovať' : st === 'countdown' ? 'Zrušiť odpočet' : 'Spustiť nahrávanie');
-      $('recHint').textContent = st === 'recording' ? 'Ťukni, keď dokončíš sériu'
+      $('recHint').textContent = st === 'recording' ? (vwDuel && pickHold() ? 'Ťukni, keď výdrž skončí' : 'Ťukni, keď dokončíš sériu')
         : st === 'countdown' ? 'Zaujmi polohu · ťuknutím odpočet zrušíš' : 'Polož mobil a ťukni – máš 5 sekúnd na prípravu';
       if (st === 'recording') { liveReset(); hide('recCount', false); $('recTime').textContent = '0:00'; }
       else hide('recCount', true);
@@ -439,6 +472,9 @@ const recorder = new Recorder($('recVideo'), {
   },
 });
 
+// Súboj: video ide súperovi – menšie rozlíšenie a dátový tok (3 min série ≈ 22 MB, 5 min výdrže ≈ 22 MB)
+if (vwDuel) { recorder.size = { w: 960, h: 540 }; recorder.bps = isHold(selected) ? 600_000 : 1_000_000; }
+
 $('btnRec').onclick = () => {
   if (!recorderSupported()) { $('inCam').click(); return; } // starší prehliadač: systémová kamera
   go('#/nahravanie');
@@ -446,7 +482,7 @@ $('btnRec').onclick = () => {
 
 async function openRecorder() {
   if (VW) {
-    $('recName').textContent = isAutoPick() ? 'Rozpoznám automaticky' : pick.name;
+    $('recName').textContent = isAutoPick() ? 'Rozpoznám automaticky' : vwDuel && vwDuel.goal ? `${pick.name} · prekonaj ${vwDuel.goal}${isHold(selected) ? ' s' : ''}` : pick.name;
     hide('recCount', true); recState = 'off'; liveStatus(true);
   }
   clearTimeout(preloadT);
@@ -460,7 +496,7 @@ async function openRecorder() {
 }
 async function recStart() {
   try {
-    const file = await recorder.start({ countdown: 5, maxSeconds: maxSecondsFor(selected) });
+    const file = await recorder.start({ countdown: 5, maxSeconds: maxRec() });
     recorder.close(); liveStop();
     startAnalysis(file);
   } catch (e) { if (e) console.error(e); }
@@ -642,8 +678,8 @@ function showError(msg, needCode = false, again = true) {
 }
 // nadpis obrazovky Analýza (aj po opakovanom pokuse po chybe)
 function workHead() {
-  $('workTitle').textContent = AN.isHold ? 'Analyzujem tvoju výdrž' : isAutoPick() ? 'Analyzujem tvoje video' : 'Analyzujem tvoju sériu';
-  $('workSub').textContent = 'Zvyčajne to trvá do minúty';
+  $('workTitle').textContent = vwDuel ? (AN.isHold ? 'Meriam tvoju výdrž' : 'Počítam tvoje opakovania') : AN.isHold ? 'Analyzujem tvoju výdrž' : isAutoPick() ? 'Analyzujem tvoje video' : 'Analyzujem tvoju sériu';
+  $('workSub').textContent = vwDuel ? 'Video sa spracúva v mobile, nikam sa zatiaľ neposiela' : 'Zvyčajne to trvá do minúty';
 }
 
 // ---------- v appke: obrazovka Analýza (kroky, náhľad s kostrou) ----------
@@ -653,10 +689,10 @@ function workReset(stage = 'model') {
   Object.assign(AN, { stage, p: 0, people: stage !== 'model', measured: false, t: 0, dur: 0, reps: 0, hold: 0, isHold: pickHold(), down: null, ai: 0 });
   if (!VW) return;
   const nm = !isAutoPick() ? pick.name : (current?.exercise?.hint || '');
-  $('workKick').innerHTML = `${IC.kick}<span>${esc(('TECHNIKA' + (nm ? ' · ' + nm : '')).toUpperCase())}</span>`;
+  $('workKick').innerHTML = `${IC.kick}<span>${esc(((vwDuel ? 'SÚBOJ' : 'TECHNIKA') + (nm ? ' · ' + nm : '')).toUpperCase())}</span>`;
   workHead();
   hide('workBand', false); hide('workPill', true); hide('workStatus', true); hide('workErr', true); $('workSteps').classList.remove('stopped');
-  hide('workBottom', false); hide('btnWorkBg', !vwEmbedded);
+  hide('workBottom', !!vwDuel); hide('btnWorkBg', !vwEmbedded || !!vwDuel);
   $('btnWorkBg').textContent = vwFrom === 'set' ? 'Pokračovať v tréningu' : 'Pokračovať v appke';
   const c = $('workCanvas'); c.getContext('2d').clearRect(0, 0, c.width, c.height);
   renderSteps();
@@ -683,7 +719,7 @@ function renderSteps() {
     : done(hold ? 'Línia tela zmeraná' : 'Uhly a tempo zmerané', hold ? 'línia tela a stabilita' : AN.down != null ? `spúšťanie ${String(AN.down).replace('.', ',')} s, rozsah každého opakovania` : 'uhly kĺbov v každej snímke');
   const s4 = at < 3 ? todo('Rozbor a skóre', 'čo zlepšiť a ako na 100 bodov')
     : at === 3 ? act('Rozbor a skóre', '', AN.ai) : done('Rozbor a skóre', 'hotovo');
-  $('workSteps').innerHTML = s1 + s2 + s3 + s4;
+  $('workSteps').innerHTML = vwDuel ? s1 + s2 : s1 + s2 + s3 + s4;
 }
 function workPill() {
   if (!VW) return;
@@ -746,6 +782,7 @@ function workLoopStop() {
 on('btnWorkBg', () => vwPost('bg'));
 
 async function startAnalysis(file) {
+  if (vwDuel) { duelAnalysis(file); return; }
   pendingFile = file;
   current = { id: String(Date.now()), created: Date.now(), exercise: { id: selected.id, name: selected.name, en: selected.en, type: selected.type || null }, signal: selected.signal };
   if (VW && pick && !isAutoPick()) {
@@ -805,6 +842,101 @@ function workMeasured(sm, clip) {
   if (AN.isHold) $('workTitle').textContent = 'Analyzujem tvoju výdrž';
   AN.stage = 'ai'; renderSteps(); workPill();
   workLoopStart(clip);
+}
+
+// ---------- Súboj: spočítanie v mobile (bez rozboru AI) a výsledok s videom pre appku ----------
+let DUEL = null; // { file, url, val, cam, hold, adj, dur, live }
+function duelClear() { if (DUEL && DUEL.url) URL.revokeObjectURL(DUEL.url); DUEL = null; }
+async function duelAnalysis(file) {
+  pendingFile = file;
+  const hold = isHold(selected);
+  const live = hold ? Math.floor(LIVE.best || 0) : (LIVE.cnt ? LIVE.cnt.count : 0);
+  current = { id: String(Date.now()), created: Date.now(), exercise: { id: selected.id, name: selected.name, en: selected.en, type: selected.type || null }, signal: selected.signal, vwName: pick.name, duel: true };
+  $('workErr').hidden = true;
+  workReset('model');
+  go('#/praca'); show('vWork');
+  const done = (val, sm, note) => {
+    duelClear();
+    DUEL = { file, url: URL.createObjectURL(file), val, cam: val, hold, adj: false, live, note: note || '',
+      dur: Math.round((sm && sm.video && sm.video.duration_s) || 0) };
+    go('#/suboj');
+  };
+  try {
+    const onProgress = (p, t) => {
+      setProgress(p, t);
+      const st = /model/i.test(t || '') ? 'model' : p >= 0.91 ? 'frames' : p > 0 ? 'scan' : AN.stage;
+      if (st !== AN.stage || st === 'scan') { AN.stage = st; AN.p = Math.min(1, Math.max(0, (p - 0.05) / 0.85)); renderSteps(); }
+    };
+    // dlhšia séria → viac snímok (aspoň ~6 za sekundu), aby sa nestratilo ani rýchle opakovanie
+    const { summary: sm, clip } = await analyzeVideo(file, { signal: selected.signal, posture: selected.posture ?? null, minAmp: selected.minAmp ?? 25, start: selected.start ?? null,
+      type: selected.type ?? null, target: selected.target ?? null, holdJoint: selected.holdJoint ?? null, maxSeconds: maxRec(), maxFrames: hold ? 500 : 900, onProgress, onFrame: workFrame });
+    workMeasured(sm, clip);
+    let val = hold ? Math.round(sm.hold?.duration_s || 0) : (sm.exercise_type === 'hold' ? 0 : (sm.reps_detected || 0));
+    if (!val && live) val = live; // celé video nedalo výsledok – počet z nahrávania
+    done(val, sm);
+  } catch (e) {
+    console.error(e);
+    if (live > 0) { done(live, null, 'live'); return; } // aspoň počet z nahrávania (kostra počas natáčania)
+    showError(e && e.user ? e.message : 'Video sa nepodarilo spracovať. Skús to znova, prípadne natoč sériu znova.', false, !(e && e.again === false));
+    $('workTitle').textContent = AN.isHold ? 'Výdrž sa nepodarilo zmerať' : 'Opakovania sa nepodarilo spočítať';
+    $('btnBack').textContent = 'Natočiť znova';
+    current = null;
+  }
+}
+function renderDuel() {
+  const D = DUEL, g = vwDuel, hold = D.hold;
+  const unit = (n) => hold ? plural(n, 'sekunda', 'sekundy', 'sekúnd') : plural(n, 'opakovanie', 'opakovania', 'opakovaní');
+  const who = g.who || 'súper';
+  $('vResult').innerHTML = `
+    <div class="du">
+      <h1 class="du-h1">${esc(pick.name)}</h1>
+      <div class="du-vid"><video id="duVid" playsinline muted loop autoplay controls preload="auto"></video></div>
+      <section class="du-card" aria-live="polite">
+        <div class="du-row">
+          <div class="du-num"><b id="duN"></b><span id="duU"></span></div>
+          <div class="du-step" role="group" aria-label="Upraviť počet">
+            <button type="button" id="duMinus" aria-label="O jedno menej">−</button>
+            <button type="button" id="duPlus" aria-label="O jedno viac">+</button>
+          </div>
+        </div>
+        <div class="du-ver" id="duVer"></div>
+        ${g.goal ? '<div class="du-cmp" id="duCmp"></div>' : ''}
+      </section>
+      <p class="du-note" id="duNote"></p>
+      <div class="stickybar vwbar">
+        <button class="btn pri" id="btnDuelUse">${ICON_CHECK}Zapísať do výzvy</button>
+        <button class="btn sec" id="btnDuelAgain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Natočiť znova</button>
+      </div>
+    </div>`;
+  const v = $('duVid'); v.src = D.url; v.play().catch(() => {});
+  const upd = () => {
+    D.adj = D.val !== D.cam;
+    $('duN').textContent = D.val; $('duU').textContent = unit(D.val);
+    const ver = $('duVer');
+    ver.className = 'du-ver' + (D.adj ? ' adj' : !D.val ? ' none' : '');
+    ver.innerHTML = D.adj ? `Upravené ručne · kamera ${hold ? 'namerala' : 'napočítala'} ${D.cam}${hold ? ' s' : ''}`
+      : !D.val ? (hold ? 'Výdrž som nenašiel' : 'Opakovania som nenašiel')
+      : `${IC.check}<span>${hold ? 'Zmerané kamerou' : 'Spočítané kamerou'}${D.note === 'live' ? ' počas nahrávania' : ''}</span>`;
+    if ($('duCmp')) {
+      const d0 = D.val - g.goal, n = Math.abs(d0);
+      $('duCmp').className = 'du-cmp' + (d0 > 0 ? ' win' : d0 < 0 ? ' lose' : '');
+      $('duCmp').textContent = d0 > 0 ? `Vyhrávaš – o ${n}${hold ? ' s' : ''} viac ako ${who} (${g.goal}${hold ? ' s' : ''})`
+        : d0 < 0 ? `${who} má ${g.goal}${hold ? ' s' : ''} – ${n === 1 ? 'chýba' : n <= 4 ? 'chýbajú' : 'chýba'} ti ${n}${hold ? ' s' : ''}` : `Remíza – ${who} má tiež ${g.goal}${hold ? ' s' : ''}`;
+    }
+    $('duNote').textContent = !D.val ? 'Natoč sériu znova – celé telo v zábere, zboku a pri dobrom svetle. Počet môžeš upraviť aj ručne.'
+      : `Číslo sa zapíše do výzvy a video uvidí ${who === 'súper' ? 'súper' : who}. Ak počet nesedí, uprav ho – pri výsledku bude vidno, že je upravený.`;
+    $('duMinus').disabled = D.val <= 0;
+    $('btnDuelUse').disabled = D.val <= 0;
+  };
+  upd();
+  $('duMinus').onclick = () => { if (D.val > 0) { D.val -= 1; upd(); } };
+  $('duPlus').onclick = () => { if (D.val < 100000) { D.val += 1; upd(); } };
+  $('btnDuelUse').onclick = () => {
+    if (D.val <= 0) return;
+    $('btnDuelUse').disabled = true;
+    vwPost('duel', { val: D.val, cam: D.cam, adj: D.adj, hold: D.hold, dur: D.dur, live: D.note === 'live', file: D.file, mime: D.file.type || '', size: D.file.size || 0 });
+  };
+  $('btnDuelAgain').onclick = () => { duelClear(); go('#/nova'); };
 }
 
 // true = server chce kód a ten uložený nesedí; pri výpadku siete pokračujeme (chyba príde neskôr)
@@ -924,7 +1056,7 @@ on('btnErrPro', () => vwPost('pro'));
 $('btnRetry').onclick = () => {
   if (!$('codeBox').hidden) ls.set('vt-code', $('codeInput').value.trim());
   $('workErr').hidden = true;
-  if (current && current.summary) { go('#/praca'); runAi(); }
+  if (current && current.summary && !vwDuel) { go('#/praca'); runAi(); }
   else if (pendingFile) startAnalysis(pendingFile);
 };
 $('btnBack').onclick = () => { go('#/nova'); };

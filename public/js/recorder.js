@@ -11,13 +11,15 @@ export class Recorder {
   constructor(videoEl, { onState = () => {}, onTick = () => {} } = {}) {
     this.video = videoEl; this.onState = onState; this.onTick = onTick;
     this.facing = 'environment'; this.stream = null; this.rec = null; this.timers = []; this.audio = null;
+    // rozlíšenie a dátový tok nahrávky (Súboj: menšie video, aby sa dalo rýchlo poslať súperovi)
+    this.size = { w: 1280, h: 720 }; this.bps = 4_000_000;
   }
 
   async open() {
     this.close();
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: { facingMode: { ideal: this.facing }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+      video: { facingMode: { ideal: this.facing }, width: { ideal: this.size.w }, height: { ideal: this.size.h }, frameRate: { ideal: 30 } },
     });
     this.video.srcObject = this.stream;
     this.video.classList.toggle('mirror', this.facing === 'user');
@@ -65,7 +67,7 @@ export class Recorder {
     return new Promise((resolve, reject) => {
       const mime = MIME_CANDIDATES.find(m => MediaRecorder.isTypeSupported(m)) || '';
       let rec;
-      try { rec = new MediaRecorder(this.stream, mime ? { mimeType: mime, videoBitsPerSecond: 4_000_000 } : undefined); }
+      try { rec = new MediaRecorder(this.stream, mime ? { mimeType: mime, videoBitsPerSecond: this.bps } : undefined); }
       catch (e) { reject(new Error('Nahrávanie videa tento prehliadač nepodporuje.')); return; }
       this.rec = rec;
       const chunks = [];

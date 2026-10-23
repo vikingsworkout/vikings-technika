@@ -1,11 +1,22 @@
 // Režim „v appke Viking's Workout“: Technika je otvorená v hlavnej appke (iframe).
-// Parametre: ?vw=1&ex=<názov cviku z appky>&from=detail|set|home&theme=dark|light&po=<origin appky>&r=<id rozboru>&n=<názov>&e=<id cviku>
+// Parametre: ?vw=1&ex=<názov cviku z appky>&from=detail|set|home|duel&theme=dark|light&po=<origin appky>&r=<id rozboru>&n=<názov>&e=<id cviku>
 //   &img=<cesta k náhľadu cviku na videa.vikingsworkout.com>&box=<poloha postavy na náhľade>&boxp=<na plnom náhľade>&day=<JSON dnešného tréningu z plánu>
 const q = new URLSearchParams(location.search);
 
 export const VW = q.get('vw') === '1';
-export const vwFrom = ['detail', 'set', 'home'].includes(q.get('from')) ? q.get('from') : 'home';
+export const vwFrom = ['detail', 'set', 'home', 'duel'].includes(q.get('from')) ? q.get('from') : 'home';
 export const vwExName = (q.get('ex') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+// Súboj 1 na 1 z appky (?from=duel&dx=zhyby|kliky|drepy|plank&goal=<výsledok súpera>&who=<meno>&rl=<pravidlá>):
+// natočí sa jedna séria (výdrž), appka spočíta opakovania (zmeria sekundy) priamo v mobile, bez rozboru AI,
+// a výsledok aj s videom vráti appke do výzvy.
+const DUEL_EX = { zhyby: 'pritah-hrazda', kliky: 'klik', drepy: 'drep', plank: 'plank' };
+const num0 = (v, max) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(n, max) : 0; };
+export const vwDuel = VW && vwFrom === 'duel' && DUEL_EX[q.get('dx')] ? {
+  dx: q.get('dx'), id: DUEL_EX[q.get('dx')],
+  goal: num0(q.get('goal'), 100000),
+  who: (q.get('who') || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+  rules: (q.get('rl') || '').replace(/\s+/g, ' ').trim().slice(0, 400),
+} : null;
 export const vwResultId = (q.get('r') || '').slice(0, 40);
 // k uloženému rozboru aj názov a id cviku z appky – keď sa rozbor v telefóne nenájde, ukážeme ostatné rozbory tohto cviku
 export const vwResultName = (q.get('n') || '').replace(/\s+/g, ' ').trim().slice(0, 80);

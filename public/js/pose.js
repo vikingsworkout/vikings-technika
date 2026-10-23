@@ -387,7 +387,7 @@ function detectReps(values, { minAmp = 25, startType = null } = {}) {
 }
 
 // ---------- hlavná funkcia ----------
-export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, onProgress = () => {}, onFrame = null } = {}) {
+export async function analyzeVideo(file, { signal = null, posture = null, minAmp = 25, start: startType = null, type = null, target = null, holdJoint = null, maxSeconds = MAX_SECONDS, maxFrames = 400, onProgress = () => {}, onFrame = null } = {}) {
   onProgress(0, 'Načítavam model na rozpoznanie postavy…');
   let engine, v;
   try { [engine, v] = await Promise.all([getEngine(), loadVideo(file)]); }
@@ -402,7 +402,7 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
   const fullDuration = v.duration;
   if (!W || !H || !isFinite(fullDuration)) throw userErr('Toto video sa nepodarilo prečítať. Skús ho nahrať znova alebo vyber iné.', false);
   const duration = Math.min(fullDuration, maxSeconds);
-  const step = Math.max(1 / 15, duration / 400); // hustejšie snímkovanie (max. 400 snímok)
+  const step = Math.max(1 / 15, duration / maxFrames); // hustejšie snímkovanie (predvolene max. 400 snímok, Súboj viac – dlhšia séria)
   const base = lastTs + 1000;
   const times = [];
   for (let t = 0; t < duration; t += step) times.push(t);
