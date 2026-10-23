@@ -1,6 +1,10 @@
 # Testovacie videá so známym počtom opakovaní / sekúnd výdrže z overených úsekov (jedno celé opakovanie, začína aj končí hore).
 # Premenné: BASE (základné videá, slučky v BASE/slucka), OUT (videá), TMP_DIR, TESTS (zoznam), SHARD=k/n (vyrobí len svoju časť).
 import json, os, subprocess, sys
+try:
+    import static_ffmpeg; static_ffmpeg.add_paths()  # na GitHube ffmpeg z pip (apt býva pomalé)
+except ImportError:
+    pass
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.abspath(os.environ.get('BASE', HERE + '/../mpa/videa')) + '/'
 OUT = os.path.abspath(os.environ.get('OUT', HERE + '/vids')) + '/'

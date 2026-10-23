@@ -1,6 +1,6 @@
 # Skúšky presnosti počítania v Súboji (dočasná vetva, po skúškach sa zmaže):
 # testovacie videá so známym počtom opakovaní → body tela zo skutočného MediaPipe (rovnako ako v Technike)
-# → výsledky do vetvy test-presnost-out-<číslo behu>. Počítanie sa potom overuje bez prehliadača.
+# → každá časť do vlastnej vetvy test-presnost-o<beh>-<časť>. Počítanie sa potom overuje bez prehliadača.
 name: presnost
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -18,10 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Nástroje
+        timeout-minutes: 8
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
-          pip install -q playwright==1.48.0
-          python3 -m playwright install --with-deps chromium > /dev/null
+          pip install -q playwright==1.48.0 static-ffmpeg
+          python3 -c "import static_ffmpeg; static_ffmpeg.add_paths(); import subprocess; subprocess.run(['ffmpeg', '-version'], check=True, capture_output=True)"
+          google-chrome --version
       - name: Videá z R2 (vetva test-mp-files)
         uses: actions/checkout@v4
         with:
@@ -32,44 +33,40 @@ jobs:
         with:
           ref: test-presnost-files
           path: slf
-      - name: Základné videá
-        run: |
-          mkdir -p t && cp -r mpf/videa t/base && cp -r slf/slucka t/base/slucka
-          ls t/base | wc -l; ls t/base/slucka | wc -l; du -sh t/base
       - name: Testovacie videá
+        timeout-minutes: 12
         env:
           BASE: t/base
           OUT: t/vids
           TMP_DIR: t/tmp
           TESTS: t/tests.json
           SHARD: "${{ matrix.shard }}/16"
-        run: python3 .github/presnost/gen2.py && ls t/vids | wc -l
+        run: |
+          mkdir -p t && cp -r mpf/videa t/base && cp -r slf/slucka t/base/slucka
+          python3 .github/presnost/gen2.py && ls t/vids | wc -l
       - name: Body tela
+        timeout-minutes: 25
         env:
           VIDS: t/vids
+          CHROME: '1'
         run: |
           (python3 -m http.server 8080 --directory public > /dev/null 2>&1 &)
           sleep 1
-          python3 .github/presnost/scan.py 8080 t/tests.json t/frames ${{ matrix.shard }}/16 --cdn
+          mkdir -p t/frames
+          python3 .github/presnost/scan.py 8080 t/tests.json t/frames ${{ matrix.shard }}/16 --cdn 2>&1 | tee t/frames/_log.txt
           cp t/tests.json t/frames/tests.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: frames-${{ matrix.shard }}
-          path: t/frames
-          retention-days: 2
-  vysledky:
-    needs: scan
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: frames-*
-          path: out
-          merge-multiple: true
+          python3 - <<'PY'
+          import gzip, json, glob
+          errs = []
+          for f in glob.glob('t/frames/*.json.gz'):
+              d = json.load(gzip.open(f, 'rt'))
+              if not d.get('frames'): errs.append(d.get('name', f) + ': ' + str(d.get('err'))[:180])
+          print(f'::warning::chyby {len(errs)}: ' + (' | '.join(errs[:2]) if errs else 'žiadne'))
+          PY
       - name: Uloženie do vetvy
+        if: always()
         run: |
-          cd out && ls | wc -l && du -sh .
+          cd t/frames 2>/dev/null || { mkdir -p t/frames && cd t/frames && echo "bez výsledkov" > prazdne.txt; }
           git init -q && git config user.name "github-actions" && git config user.email "actions@github.com"
-          git add -A && git commit -qm "Body tela z testovacích videí (beh ${{ github.run_number }})"
-          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:test-presnost-out-${{ github.run_number }}
+          git add -A && git commit -qm "Body tela (beh ${{ github.run_number }}, časť ${{ matrix.shard }})"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:test-presnost-o${{ github.run_number }}-${{ matrix.shard }}

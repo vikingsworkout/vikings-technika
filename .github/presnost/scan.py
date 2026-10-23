@@ -46,7 +46,7 @@ SCAN = """async ([name, hold]) => {
 
 done = 0
 with sync_playwright() as p:
-    b = p.chromium.launch()
+    b = p.chromium.launch(channel='chrome') if os.environ.get('CHROME') else p.chromium.launch()  # Chrome na GitHube vie H.264
     ctx = b.new_context(viewport={'width': 390, 'height': 844}, service_workers='block')
     ctx.route('**/*', handler)
     for t in T:
