@@ -1,0 +1,244 @@
+{
+ "dip": {
+  "file": "slucka/r7.mp4",
+  "a": 0.93,
+  "b": 3.33,
+  "joint": "elbow",
+  "ex": "Dipy",
+  "alt": [
+   {
+    "id": "kruhy",
+    "ex": "Dipy na kruhoch"
+   }
+  ]
+ },
+ "most": {
+  "file": "slucka/e19.mp4",
+  "a": 0.6,
+  "b": 2.67,
+  "joint": "hip",
+  "ex": "Mostík"
+ },
+ "hipt": {
+  "file": "slucka/z9.mp4",
+  "a": 0.0,
+  "b": 2.07,
+  "joint": "hip",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ "pike": {
+  "file": "slucka/e3.mp4",
+  "a": 0.87,
+  "b": 3.07,
+  "joint": "elbow",
+  "ex": "Pike kliky"
+ },
+ "krk": {
+  "file": "slucka/r4.mp4",
+  "a": 1.33,
+  "b": 3.53,
+  "joint": "elbow",
+  "ex": "Kliky na kruhoch"
+ },
+ "trxk": {
+  "file": "slucka/t2.mp4",
+  "parts": [
+   [
+    1.73,
+    3.2
+   ],
+   [
+    0.0,
+    1.73
+   ]
+  ],
+  "joint": "elbow",
+  "ex": "TRX kliky"
+ },
+ "klv": {
+  "file": "slucka/v1.mp4",
+  "a": 0.8,
+  "b": 2.27,
+  "joint": "elbow",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ "pist": {
+  "file": "slucka/e22.mp4",
+  "a": 0.87,
+  "b": 3.47,
+  "joint": "knee",
+  "ex": "Pistol squat",
+  "alt": [
+   {
+    "id": "sk",
+    "ex": "Drepy na jednej nohe"
+   }
+  ]
+ },
+ "bulh": {
+  "file": "slucka/v50.mp4",
+  "a": 0.93,
+  "b": 2.73,
+  "joint": "knee",
+  "ex": "Bulharské drepy"
+ },
+ "vyp": {
+  "file": "slucka/t4.mp4",
+  "a": 1.13,
+  "b": 3.27,
+  "joint": "knee",
+  "ex": "Výpady"
+ },
+ "lav": {
+  "file": "slucka/v56.mp4",
+  "a": 2.13,
+  "b": 5.13,
+  "joint": "knee",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ "sumo": {
+  "file": "slucka/e24.mp4",
+  "a": 0.87,
+  "b": 2.47,
+  "joint": "knee",
+  "ex": "Sumo drepy"
+ },
+ "mup": {
+  "file": "slucka/h5.mp4",
+  "parts": [
+   [
+    1.33,
+    3.2
+   ],
+   [
+    0.0,
+    1.33
+   ]
+  ],
+  "joint": "elbow",
+  "ex": "Muscle-up",
+  "alt": [
+   {
+    "id": "sk",
+    "ex": "Muscle upy"
+   }
+  ]
+ },
+ "tlies": {
+  "file": "slucka/v15.mp4",
+  "a": 0.8,
+  "b": 2.93,
+  "joint": "elbow",
+  "ex": "Zhyby s tlieskaním"
+ },
+ "rprit": {
+  "file": "slucka/r2b.mp4",
+  "a": 1.0,
+  "b": 2.8,
+  "joint": "elbow",
+  "ex": "Príťahy na kruhoch"
+ },
+ "lzhyb": {
+  "file": "slucka/v21.mp4",
+  "a": 1.13,
+  "b": 3.27,
+  "joint": "elbow",
+  "ex": "L-sit zhyby"
+ },
+ "vup": {
+  "file": "slucka/e15.mp4",
+  "a": 0.67,
+  "b": 2.4,
+  "joint": "hip",
+  "ex": "Sklapovačky",
+  "alt": [
+   {
+    "id": "en",
+    "ex": "V-up"
+   }
+  ]
+ },
+ "nohy": {
+  "file": "slucka/v31.mp4",
+  "a": 1.13,
+  "b": 3.67,
+  "joint": "hip",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ "vyst": {
+  "file": "slucka/e23.mp4",
+  "a": 2.33,
+  "b": 4.47,
+  "joint": "knee",
+  "ex": "Výstupy na lavičku"
+ },
+ "bvyp": {
+  "file": "slucka/v52.mp4",
+  "a": 1.4,
+  "b": 3.8,
+  "joint": "knee",
+  "ex": "Bočné výpady"
+ },
+ "skok": {
+  "file": "slucka/v62.mp4",
+  "a": 2.07,
+  "b": 4.13,
+  "joint": "knee",
+  "ex": "Výskoky z drepu"
+ },
+ "hbok": {
+  "file": "slucka/e10.mp4",
+  "kind": "hold",
+  "ex": "Bočný plank"
+ },
+ "hlod": {
+  "file": "slucka/e11.mp4",
+  "kind": "hold",
+  "ex": "Lodička"
+ },
+ "hsto": {
+  "file": "slucka/e21.mp4",
+  "kind": "hold",
+  "ex": "Stolička pri stene"
+ },
+ "hls": {
+  "file": "slucka/h9.mp4",
+  "kind": "hold",
+  "ex": "L-sit"
+ },
+ "hlsk": {
+  "file": "slucka/r8.mp4",
+  "kind": "hold",
+  "ex": "L-sit na kruhoch"
+ },
+ "hvis": {
+  "file": "slucka/r1.mp4",
+  "kind": "hold",
+  "ex": "Vis na kruhoch"
+ },
+ "hfl": {
+  "file": "slucka/s1.mp4",
+  "kind": "hold",
+  "ex": "Tuck front lever"
+ },
+ "hzab": {
+  "file": "slucka/v5.mp4",
+  "kind": "hold",
+  "ex": "Žabka"
+ },
+ "hpl": {
+  "file": "slucka/v6.mp4",
+  "kind": "hold",
+  "ex": "Tuck planche"
+ },
+ "hkol": {
+  "file": "slucka/z5.mp4",
+  "kind": "hold",
+  "ex": "Plank na kolenách"
+ },
+ "hvzp": {
+  "file": "slucka/r6.mp4",
+  "kind": "hold",
+  "ex": "Vzpor na kruhoch"
+ }
+}
