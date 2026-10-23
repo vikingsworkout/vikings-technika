@@ -1,0 +1,21 @@
+v13_n1.mp4: 31 snímok, 6.0 s, worker CPU, {'scan_s': 1.8, 'seek_ms': 37, 'det_ms': 70}
+h2_pauza1.mp4: 229 snímok, 15.1 s, worker CPU, {'scan_s': 13.1, 'seek_ms': 34, 'det_ms': 75}
+v11_zrkadlo.mp4: 145 snímok, 10.1 s, worker CPU, {'scan_s': 7.8, 'seek_ms': 35, 'det_ms': 68}
+e1_pauza3.mp4: 433 snímok, 25.4 s, worker CPU, {'scan_s': 23.3, 'seek_ms': 38, 'det_ms': 65}
+n2_polovicne.mp4: 160 snímok, 10.8 s, worker CPU, {'scan_s': 8.9, 'seek_ms': 36, 'det_ms': 69}
+e17_pauza1.mp4: 283 snímok, 18.8 s, worker CPU, {'scan_s': 16.5, 'seek_ms': 39, 'det_ms': 73}
+t3_tempo.mp4: 300 snímok, 22.8 s, worker CPU, {'scan_s': 20.7, 'seek_ms': 58, 'det_ms': 76}
+plank30.mp4: 455 snímok, 26.7 s, worker CPU, {'scan_s': 24.7, 'seek_ms': 37, 'det_ms': 67}
+most_n12.mp4: 379 snímok, 22.2 s, worker CPU, {'scan_s': 19.9, 'seek_ms': 31, 'det_ms': 69}
+pike_n12.mp4: 397 snímok, 24.5 s, worker CPU, {'scan_s': 22.4, 'seek_ms': 40, 'det_ms': 68}
+trxk_n12.mp4: 582 snímok, 40.5 s, worker CPU, {'scan_s': 38, 'seek_ms': 55, 'det_ms': 72}
+pist_n12.mp4: 469 snímok, 28.6 s, worker CPU, {'scan_s': 26.5, 'seek_ms': 41, 'det_ms': 68}
+vyp_n5.mp4: 163 snímok, 11.5 s, worker CPU, {'scan_s': 9.7, 'seek_ms': 45, 'det_ms': 69}
+sumo_n5.mp4: 121 snímok, 7.9 s, worker CPU, {'scan_s': 6.2, 'seek_ms': 27, 'det_ms': 70}
+tlies_n1.mp4: 33 snímok, 3.8 s, worker CPU, {'scan_s': 2.1, 'seek_ms': 47, 'det_ms': 73}
+lzhyb_n1.mp4: 33 snímok, 3.7 s, worker CPU, {'scan_s': 2.1, 'seek_ms': 49, 'det_ms': 71}
+vup_n8_en.mp4: 209 snímok, 12.7 s, worker CPU, {'scan_s': 10.7, 'seek_ms': 29, 'det_ms': 68}
+vyst_polovicne.mp4: 145 snímok, 9.4 s, worker CPU, {'scan_s': 7.7, 'seek_ms': 33, 'det_ms': 68}
+skok_polovicne.mp4: 139 snímok, 8.9 s, worker CPU, {'scan_s': 7.2, 'seek_ms': 30, 'det_ms': 69}
+hzab_hold_stoj.mp4: 367 snímok, 24.7 s, worker CPU, {'scan_s': 22.8, 'seek_ms': 49, 'det_ms': 71}
+hotovo 20
