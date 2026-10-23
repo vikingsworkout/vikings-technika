@@ -27,15 +27,14 @@ jobs:
         with:
           ref: test-mp-files
           path: mpf
-      - name: Slučky cvikov z webu
+      - name: Slučky cvikov (vetva test-presnost-files)
         uses: actions/checkout@v4
         with:
-          repository: vikingsworkout/vikingsworkout-web
-          path: web
-          sparse-checkout: videa-slucka
+          ref: test-presnost-files
+          path: slf
       - name: Základné videá
         run: |
-          mkdir -p t && cp -r mpf/videa t/base && cp -r web/videa-slucka t/base/slucka
+          mkdir -p t && cp -r mpf/videa t/base && cp -r slf/slucka t/base/slucka
           ls t/base | wc -l; ls t/base/slucka | wc -l; du -sh t/base
       - name: Testovacie videá
         env:
