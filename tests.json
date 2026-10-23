@@ -1,0 +1,2190 @@
+[
+ {
+  "name": "h1_n1.mp4",
+  "dx": "zhyby",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "h1_n3.mp4",
+  "dx": "zhyby",
+  "exp": 3,
+  "note": "3 opakovaní za sebou"
+ },
+ {
+  "name": "h1_n8.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "8 opakovaní za sebou"
+ },
+ {
+  "name": "h1_n15.mp4",
+  "dx": "zhyby",
+  "exp": 15,
+  "note": "15 opakovaní za sebou"
+ },
+ {
+  "name": "h1_pauza1.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "h1_pauza3.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "h1_pripr.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "h1_tempo.mp4",
+  "dx": "zhyby",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "h1_koniecdole.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "5 + posledný zhyb hore bez spustenia (platí)"
+ },
+ {
+  "name": "h1_polovicne.mp4",
+  "dx": "zhyby",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "h1_zrkadlo.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "h1_720.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "vyššie rozlíšenie 720p"
+ },
+ {
+  "name": "h1_vysku.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "mobil na výšku 540×960"
+ },
+ {
+  "name": "v13_n1.mp4",
+  "dx": "zhyby",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "v13_n3.mp4",
+  "dx": "zhyby",
+  "exp": 3,
+  "note": "3 opakovaní za sebou"
+ },
+ {
+  "name": "v13_n8.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "8 opakovaní za sebou"
+ },
+ {
+  "name": "v13_n15.mp4",
+  "dx": "zhyby",
+  "exp": 15,
+  "note": "15 opakovaní za sebou"
+ },
+ {
+  "name": "v13_pauza1.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "v13_pauza3.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "v13_pripr.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "v13_tempo.mp4",
+  "dx": "zhyby",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "v13_koniecdole.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "5 + posledný zhyb hore bez spustenia (platí)"
+ },
+ {
+  "name": "v13_polovicne.mp4",
+  "dx": "zhyby",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "v13_zrkadlo.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "v13_720.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "vyššie rozlíšenie 720p"
+ },
+ {
+  "name": "v13_vysku.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "mobil na výšku 540×960"
+ },
+ {
+  "name": "h2_n1.mp4",
+  "dx": "zhyby",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "h2_n3.mp4",
+  "dx": "zhyby",
+  "exp": 3,
+  "note": "3 opakovaní za sebou"
+ },
+ {
+  "name": "h2_n8.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "8 opakovaní za sebou"
+ },
+ {
+  "name": "h2_pauza1.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "h2_pauza3.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "h2_pripr.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "h2_tempo.mp4",
+  "dx": "zhyby",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "h2_koniecdole.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "5 + posledný zhyb hore bez spustenia (platí)"
+ },
+ {
+  "name": "h2_polovicne.mp4",
+  "dx": "zhyby",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "h2_zrkadlo.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "v11_n1.mp4",
+  "dx": "zhyby",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "v11_n3.mp4",
+  "dx": "zhyby",
+  "exp": 3,
+  "note": "3 opakovaní za sebou"
+ },
+ {
+  "name": "v11_n8.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "8 opakovaní za sebou"
+ },
+ {
+  "name": "v11_pauza1.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "v11_pauza3.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "v11_pripr.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "v11_tempo.mp4",
+  "dx": "zhyby",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "v11_koniecdole.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "5 + posledný zhyb hore bez spustenia (platí)"
+ },
+ {
+  "name": "v11_polovicne.mp4",
+  "dx": "zhyby",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "v11_zrkadlo.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "r5_n1.mp4",
+  "dx": "zhyby",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "r5_n3.mp4",
+  "dx": "zhyby",
+  "exp": 3,
+  "note": "3 opakovaní za sebou"
+ },
+ {
+  "name": "r5_n8.mp4",
+  "dx": "zhyby",
+  "exp": 8,
+  "note": "8 opakovaní za sebou"
+ },
+ {
+  "name": "r5_pauza1.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "r5_pauza3.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "r5_pripr.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "r5_tempo.mp4",
+  "dx": "zhyby",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "r5_koniecdole.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "5 + posledný zhyb hore bez spustenia (platí)"
+ },
+ {
+  "name": "r5_polovicne.mp4",
+  "dx": "zhyby",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "r5_zrkadlo.mp4",
+  "dx": "zhyby",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "e1_n1.mp4",
+  "dx": "kliky",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "e1_n5.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 opakovaní za sebou"
+ },
+ {
+  "name": "e1_n12.mp4",
+  "dx": "kliky",
+  "exp": 12,
+  "note": "12 opakovaní za sebou"
+ },
+ {
+  "name": "e1_n30.mp4",
+  "dx": "kliky",
+  "exp": 30,
+  "note": "30 opakovaní za sebou"
+ },
+ {
+  "name": "e1_pauza1.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "e1_pauza3.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "e1_pripr.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "e1_tempo.mp4",
+  "dx": "kliky",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "e1_koniecdole.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 + posledné len dole (nedokončené, neplatí)"
+ },
+ {
+  "name": "e1_polovicne.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "e1_zrkadlo.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "e1_720.mp4",
+  "dx": "kliky",
+  "exp": 8,
+  "note": "vyššie rozlíšenie 720p"
+ },
+ {
+  "name": "n2_n1.mp4",
+  "dx": "kliky",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "n2_n5.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 opakovaní za sebou"
+ },
+ {
+  "name": "n2_n12.mp4",
+  "dx": "kliky",
+  "exp": 12,
+  "note": "12 opakovaní za sebou"
+ },
+ {
+  "name": "n2_n30.mp4",
+  "dx": "kliky",
+  "exp": 30,
+  "note": "30 opakovaní za sebou"
+ },
+ {
+  "name": "n2_pauza1.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "n2_pauza3.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "n2_pripr.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "n2_tempo.mp4",
+  "dx": "kliky",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "n2_koniecdole.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 + posledné len dole (nedokončené, neplatí)"
+ },
+ {
+  "name": "n2_polovicne.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "n2_zrkadlo.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "n2_720.mp4",
+  "dx": "kliky",
+  "exp": 8,
+  "note": "vyššie rozlíšenie 720p"
+ },
+ {
+  "name": "e2_n1.mp4",
+  "dx": "kliky",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "e2_n5.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 opakovaní za sebou"
+ },
+ {
+  "name": "e2_pauza1.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "e2_pauza3.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "e2_pripr.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "e2_tempo.mp4",
+  "dx": "kliky",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "e2_koniecdole.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 + posledné len dole (nedokončené, neplatí)"
+ },
+ {
+  "name": "e2_polovicne.mp4",
+  "dx": "kliky",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "e2_zrkadlo.mp4",
+  "dx": "kliky",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "e17_n1.mp4",
+  "dx": "drepy",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "e17_n5.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 opakovaní za sebou"
+ },
+ {
+  "name": "e17_n12.mp4",
+  "dx": "drepy",
+  "exp": 12,
+  "note": "12 opakovaní za sebou"
+ },
+ {
+  "name": "e17_n40.mp4",
+  "dx": "drepy",
+  "exp": 40,
+  "note": "40 opakovaní za sebou"
+ },
+ {
+  "name": "e17_pauza1.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "e17_pauza3.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "e17_pripr.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "e17_tempo.mp4",
+  "dx": "drepy",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "e17_koniecdole.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 + posledné len dole (nedokončené, neplatí)"
+ },
+ {
+  "name": "e17_polovicne.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "e17_zrkadlo.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "e17_720.mp4",
+  "dx": "drepy",
+  "exp": 8,
+  "note": "vyššie rozlíšenie 720p"
+ },
+ {
+  "name": "e17_vysku.mp4",
+  "dx": "drepy",
+  "exp": 8,
+  "note": "mobil na výšku 540×960"
+ },
+ {
+  "name": "t3_n1.mp4",
+  "dx": "drepy",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "t3_n5.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 opakovaní za sebou"
+ },
+ {
+  "name": "t3_n12.mp4",
+  "dx": "drepy",
+  "exp": 12,
+  "note": "12 opakovaní za sebou"
+ },
+ {
+  "name": "t3_n40.mp4",
+  "dx": "drepy",
+  "exp": 40,
+  "note": "40 opakovaní za sebou"
+ },
+ {
+  "name": "t3_pauza1.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "t3_pauza3.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "t3_pripr.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "t3_tempo.mp4",
+  "dx": "drepy",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "t3_koniecdole.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 + posledné len dole (nedokončené, neplatí)"
+ },
+ {
+  "name": "t3_polovicne.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "t3_zrkadlo.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "t3_720.mp4",
+  "dx": "drepy",
+  "exp": 8,
+  "note": "vyššie rozlíšenie 720p"
+ },
+ {
+  "name": "t3_vysku.mp4",
+  "dx": "drepy",
+  "exp": 8,
+  "note": "mobil na výšku 540×960"
+ },
+ {
+  "name": "z7_n1.mp4",
+  "dx": "drepy",
+  "exp": 1,
+  "note": "1 opakovaní za sebou"
+ },
+ {
+  "name": "z7_n5.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 opakovaní za sebou"
+ },
+ {
+  "name": "z7_pauza1.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "pauza 1 s hore po každom"
+ },
+ {
+  "name": "z7_pauza3.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "pauza 3 s hore (oddych pri únave)"
+ },
+ {
+  "name": "z7_pripr.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "2,5 s v polohe pred aj po"
+ },
+ {
+  "name": "z7_tempo.mp4",
+  "dx": "drepy",
+  "exp": 7,
+  "note": "rýchle aj pomalé (únava 2,2× pomalšie)"
+ },
+ {
+  "name": "z7_koniecdole.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 + posledné len dole (nedokončené, neplatí)"
+ },
+ {
+  "name": "z7_polovicne.mp4",
+  "dx": "drepy",
+  "exp": 5,
+  "note": "5 celých + 2 do polovice"
+ },
+ {
+  "name": "z7_zrkadlo.mp4",
+  "dx": "drepy",
+  "exp": 6,
+  "note": "zrkadlovo (druhá strana)"
+ },
+ {
+  "name": "plank10.mp4",
+  "dx": "plank",
+  "exp": 10.1,
+  "note": "len plank 10 s",
+  "tol": 1.5
+ },
+ {
+  "name": "plank30.mp4",
+  "dx": "plank",
+  "exp": 30.3,
+  "note": "len plank 30 s",
+  "tol": 1.5
+ },
+ {
+  "name": "plank60.mp4",
+  "dx": "plank",
+  "exp": 60.6,
+  "note": "len plank 61 s",
+  "tol": 1.5
+ },
+ {
+  "name": "plank120.mp4",
+  "dx": "plank",
+  "exp": 121.2,
+  "note": "len plank 121 s",
+  "tol": 1.5
+ },
+ {
+  "name": "plank30_stoj.mp4",
+  "dx": "plank",
+  "exp": 30.3,
+  "note": "stoj 3 s, plank ~30 s, stoj 3 s",
+  "tol": 1.5
+ },
+ {
+  "name": "plank30_kolena.mp4",
+  "dx": "plank",
+  "exp": 30.3,
+  "note": "plank ~30 s, potom na kolenách (nemá sa rátať)",
+  "tol": 1.5
+ },
+ {
+  "name": "dip_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Dipy: 1 za sebou",
+  "ex": "Dipy"
+ },
+ {
+  "name": "dip_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Dipy: 5 za sebou",
+  "ex": "Dipy"
+ },
+ {
+  "name": "dip_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Dipy: 12 za sebou",
+  "ex": "Dipy"
+ },
+ {
+  "name": "dip_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Dipy: pauza 3 s po každom",
+  "ex": "Dipy"
+ },
+ {
+  "name": "dip_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Dipy: 2,5 s v polohe pred aj po",
+  "ex": "Dipy"
+ },
+ {
+  "name": "dip_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Dipy: rýchle aj pomalé",
+  "ex": "Dipy"
+ },
+ {
+  "name": "dip_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Dipy: zrkadlovo",
+  "ex": "Dipy"
+ },
+ {
+  "name": "dip_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Dipy: 4 celé + 1 do polovice",
+  "ex": "Dipy"
+ },
+ {
+  "name": "dip_n8_kruhy.mp4",
+  "dx": "vlastny",
+  "exp": 8,
+  "note": "Dipy na kruhoch: 8 za sebou",
+  "ex": "Dipy na kruhoch"
+ },
+ {
+  "name": "most_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Mostík: 1 za sebou",
+  "ex": "Mostík"
+ },
+ {
+  "name": "most_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Mostík: 5 za sebou",
+  "ex": "Mostík"
+ },
+ {
+  "name": "most_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Mostík: 12 za sebou",
+  "ex": "Mostík"
+ },
+ {
+  "name": "most_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Mostík: pauza 3 s po každom",
+  "ex": "Mostík"
+ },
+ {
+  "name": "most_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Mostík: 2,5 s v polohe pred aj po",
+  "ex": "Mostík"
+ },
+ {
+  "name": "most_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Mostík: rýchle aj pomalé",
+  "ex": "Mostík"
+ },
+ {
+  "name": "most_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Mostík: zrkadlovo",
+  "ex": "Mostík"
+ },
+ {
+  "name": "most_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Mostík: 4 celé + 1 do polovice",
+  "ex": "Mostík"
+ },
+ {
+  "name": "hipt_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Hip thrust na jednej nohe: 1 za sebou",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ {
+  "name": "hipt_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Hip thrust na jednej nohe: 5 za sebou",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ {
+  "name": "hipt_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Hip thrust na jednej nohe: 12 za sebou",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ {
+  "name": "hipt_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Hip thrust na jednej nohe: pauza 3 s po každom",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ {
+  "name": "hipt_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Hip thrust na jednej nohe: 2,5 s v polohe pred aj po",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ {
+  "name": "hipt_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Hip thrust na jednej nohe: rýchle aj pomalé",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ {
+  "name": "hipt_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Hip thrust na jednej nohe: zrkadlovo",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ {
+  "name": "hipt_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Hip thrust na jednej nohe: 4 celé + 1 do polovice",
+  "ex": "Hip thrust na jednej nohe"
+ },
+ {
+  "name": "pike_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Pike kliky: 1 za sebou",
+  "ex": "Pike kliky"
+ },
+ {
+  "name": "pike_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Pike kliky: 5 za sebou",
+  "ex": "Pike kliky"
+ },
+ {
+  "name": "pike_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Pike kliky: 12 za sebou",
+  "ex": "Pike kliky"
+ },
+ {
+  "name": "pike_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Pike kliky: pauza 3 s po každom",
+  "ex": "Pike kliky"
+ },
+ {
+  "name": "pike_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Pike kliky: 2,5 s v polohe pred aj po",
+  "ex": "Pike kliky"
+ },
+ {
+  "name": "pike_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Pike kliky: rýchle aj pomalé",
+  "ex": "Pike kliky"
+ },
+ {
+  "name": "pike_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Pike kliky: zrkadlovo",
+  "ex": "Pike kliky"
+ },
+ {
+  "name": "pike_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Pike kliky: 4 celé + 1 do polovice",
+  "ex": "Pike kliky"
+ },
+ {
+  "name": "krk_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Kliky na kruhoch: 1 za sebou",
+  "ex": "Kliky na kruhoch"
+ },
+ {
+  "name": "krk_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Kliky na kruhoch: 5 za sebou",
+  "ex": "Kliky na kruhoch"
+ },
+ {
+  "name": "krk_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Kliky na kruhoch: 12 za sebou",
+  "ex": "Kliky na kruhoch"
+ },
+ {
+  "name": "krk_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Kliky na kruhoch: pauza 3 s po každom",
+  "ex": "Kliky na kruhoch"
+ },
+ {
+  "name": "krk_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Kliky na kruhoch: 2,5 s v polohe pred aj po",
+  "ex": "Kliky na kruhoch"
+ },
+ {
+  "name": "krk_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Kliky na kruhoch: rýchle aj pomalé",
+  "ex": "Kliky na kruhoch"
+ },
+ {
+  "name": "krk_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Kliky na kruhoch: zrkadlovo",
+  "ex": "Kliky na kruhoch"
+ },
+ {
+  "name": "krk_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Kliky na kruhoch: 4 celé + 1 do polovice",
+  "ex": "Kliky na kruhoch"
+ },
+ {
+  "name": "trxk_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "TRX kliky: 1 za sebou",
+  "ex": "TRX kliky"
+ },
+ {
+  "name": "trxk_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "TRX kliky: 5 za sebou",
+  "ex": "TRX kliky"
+ },
+ {
+  "name": "trxk_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "TRX kliky: 12 za sebou",
+  "ex": "TRX kliky"
+ },
+ {
+  "name": "trxk_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "TRX kliky: pauza 3 s po každom",
+  "ex": "TRX kliky"
+ },
+ {
+  "name": "trxk_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "TRX kliky: 2,5 s v polohe pred aj po",
+  "ex": "TRX kliky"
+ },
+ {
+  "name": "trxk_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "TRX kliky: rýchle aj pomalé",
+  "ex": "TRX kliky"
+ },
+ {
+  "name": "trxk_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "TRX kliky: zrkadlovo",
+  "ex": "TRX kliky"
+ },
+ {
+  "name": "trxk_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "TRX kliky: 4 celé + 1 do polovice",
+  "ex": "TRX kliky"
+ },
+ {
+  "name": "klv_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Kliky s nohami na lavičke: 1 za sebou",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ {
+  "name": "klv_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Kliky s nohami na lavičke: 5 za sebou",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ {
+  "name": "klv_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Kliky s nohami na lavičke: 12 za sebou",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ {
+  "name": "klv_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Kliky s nohami na lavičke: pauza 3 s po každom",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ {
+  "name": "klv_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Kliky s nohami na lavičke: 2,5 s v polohe pred aj po",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ {
+  "name": "klv_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Kliky s nohami na lavičke: rýchle aj pomalé",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ {
+  "name": "klv_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Kliky s nohami na lavičke: zrkadlovo",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ {
+  "name": "klv_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Kliky s nohami na lavičke: 4 celé + 1 do polovice",
+  "ex": "Kliky s nohami na lavičke"
+ },
+ {
+  "name": "pist_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Pistol squat: 1 za sebou",
+  "ex": "Pistol squat"
+ },
+ {
+  "name": "pist_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Pistol squat: 5 za sebou",
+  "ex": "Pistol squat"
+ },
+ {
+  "name": "pist_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Pistol squat: 12 za sebou",
+  "ex": "Pistol squat"
+ },
+ {
+  "name": "pist_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Pistol squat: pauza 3 s po každom",
+  "ex": "Pistol squat"
+ },
+ {
+  "name": "pist_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Pistol squat: 2,5 s v polohe pred aj po",
+  "ex": "Pistol squat"
+ },
+ {
+  "name": "pist_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Pistol squat: rýchle aj pomalé",
+  "ex": "Pistol squat"
+ },
+ {
+  "name": "pist_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Pistol squat: zrkadlovo",
+  "ex": "Pistol squat"
+ },
+ {
+  "name": "pist_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Pistol squat: 4 celé + 1 do polovice",
+  "ex": "Pistol squat"
+ },
+ {
+  "name": "pist_n8_sk.mp4",
+  "dx": "vlastny",
+  "exp": 8,
+  "note": "Drepy na jednej nohe: 8 za sebou",
+  "ex": "Drepy na jednej nohe"
+ },
+ {
+  "name": "bulh_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Bulharské drepy: 1 za sebou",
+  "ex": "Bulharské drepy"
+ },
+ {
+  "name": "bulh_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Bulharské drepy: 5 za sebou",
+  "ex": "Bulharské drepy"
+ },
+ {
+  "name": "bulh_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Bulharské drepy: 12 za sebou",
+  "ex": "Bulharské drepy"
+ },
+ {
+  "name": "bulh_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Bulharské drepy: pauza 3 s po každom",
+  "ex": "Bulharské drepy"
+ },
+ {
+  "name": "bulh_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Bulharské drepy: 2,5 s v polohe pred aj po",
+  "ex": "Bulharské drepy"
+ },
+ {
+  "name": "bulh_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Bulharské drepy: rýchle aj pomalé",
+  "ex": "Bulharské drepy"
+ },
+ {
+  "name": "bulh_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Bulharské drepy: zrkadlovo",
+  "ex": "Bulharské drepy"
+ },
+ {
+  "name": "bulh_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Bulharské drepy: 4 celé + 1 do polovice",
+  "ex": "Bulharské drepy"
+ },
+ {
+  "name": "vyp_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Výpady: 1 za sebou",
+  "ex": "Výpady"
+ },
+ {
+  "name": "vyp_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Výpady: 5 za sebou",
+  "ex": "Výpady"
+ },
+ {
+  "name": "vyp_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Výpady: 12 za sebou",
+  "ex": "Výpady"
+ },
+ {
+  "name": "vyp_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výpady: pauza 3 s po každom",
+  "ex": "Výpady"
+ },
+ {
+  "name": "vyp_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výpady: 2,5 s v polohe pred aj po",
+  "ex": "Výpady"
+ },
+ {
+  "name": "vyp_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Výpady: rýchle aj pomalé",
+  "ex": "Výpady"
+ },
+ {
+  "name": "vyp_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výpady: zrkadlovo",
+  "ex": "Výpady"
+ },
+ {
+  "name": "vyp_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Výpady: 4 celé + 1 do polovice",
+  "ex": "Výpady"
+ },
+ {
+  "name": "lav_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Drepy na lavičku jednou nohou: 1 za sebou",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ {
+  "name": "lav_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Drepy na lavičku jednou nohou: 5 za sebou",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ {
+  "name": "lav_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Drepy na lavičku jednou nohou: 12 za sebou",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ {
+  "name": "lav_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Drepy na lavičku jednou nohou: pauza 3 s po každom",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ {
+  "name": "lav_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Drepy na lavičku jednou nohou: 2,5 s v polohe pred aj po",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ {
+  "name": "lav_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Drepy na lavičku jednou nohou: rýchle aj pomalé",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ {
+  "name": "lav_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Drepy na lavičku jednou nohou: zrkadlovo",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ {
+  "name": "lav_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Drepy na lavičku jednou nohou: 4 celé + 1 do polovice",
+  "ex": "Drepy na lavičku jednou nohou"
+ },
+ {
+  "name": "sumo_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Sumo drepy: 1 za sebou",
+  "ex": "Sumo drepy"
+ },
+ {
+  "name": "sumo_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Sumo drepy: 5 za sebou",
+  "ex": "Sumo drepy"
+ },
+ {
+  "name": "sumo_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Sumo drepy: 12 za sebou",
+  "ex": "Sumo drepy"
+ },
+ {
+  "name": "sumo_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Sumo drepy: pauza 3 s po každom",
+  "ex": "Sumo drepy"
+ },
+ {
+  "name": "sumo_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Sumo drepy: 2,5 s v polohe pred aj po",
+  "ex": "Sumo drepy"
+ },
+ {
+  "name": "sumo_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Sumo drepy: rýchle aj pomalé",
+  "ex": "Sumo drepy"
+ },
+ {
+  "name": "sumo_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Sumo drepy: zrkadlovo",
+  "ex": "Sumo drepy"
+ },
+ {
+  "name": "sumo_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Sumo drepy: 4 celé + 1 do polovice",
+  "ex": "Sumo drepy"
+ },
+ {
+  "name": "mup_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Muscle-up: 1 za sebou",
+  "ex": "Muscle-up"
+ },
+ {
+  "name": "mup_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Muscle-up: 5 za sebou",
+  "ex": "Muscle-up"
+ },
+ {
+  "name": "mup_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Muscle-up: 12 za sebou",
+  "ex": "Muscle-up"
+ },
+ {
+  "name": "mup_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Muscle-up: pauza 3 s po každom",
+  "ex": "Muscle-up"
+ },
+ {
+  "name": "mup_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Muscle-up: 2,5 s v polohe pred aj po",
+  "ex": "Muscle-up"
+ },
+ {
+  "name": "mup_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Muscle-up: rýchle aj pomalé",
+  "ex": "Muscle-up"
+ },
+ {
+  "name": "mup_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Muscle-up: zrkadlovo",
+  "ex": "Muscle-up"
+ },
+ {
+  "name": "mup_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Muscle-up: 4 celé + 1 do polovice",
+  "ex": "Muscle-up"
+ },
+ {
+  "name": "mup_n8_sk.mp4",
+  "dx": "vlastny",
+  "exp": 8,
+  "note": "Muscle upy: 8 za sebou",
+  "ex": "Muscle upy"
+ },
+ {
+  "name": "tlies_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Zhyby s tlieskaním: 1 za sebou",
+  "ex": "Zhyby s tlieskaním"
+ },
+ {
+  "name": "tlies_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Zhyby s tlieskaním: 5 za sebou",
+  "ex": "Zhyby s tlieskaním"
+ },
+ {
+  "name": "tlies_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Zhyby s tlieskaním: 12 za sebou",
+  "ex": "Zhyby s tlieskaním"
+ },
+ {
+  "name": "tlies_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Zhyby s tlieskaním: pauza 3 s po každom",
+  "ex": "Zhyby s tlieskaním"
+ },
+ {
+  "name": "tlies_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Zhyby s tlieskaním: 2,5 s v polohe pred aj po",
+  "ex": "Zhyby s tlieskaním"
+ },
+ {
+  "name": "tlies_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Zhyby s tlieskaním: rýchle aj pomalé",
+  "ex": "Zhyby s tlieskaním"
+ },
+ {
+  "name": "tlies_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Zhyby s tlieskaním: zrkadlovo",
+  "ex": "Zhyby s tlieskaním"
+ },
+ {
+  "name": "tlies_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Zhyby s tlieskaním: 4 celé + 1 do polovice",
+  "ex": "Zhyby s tlieskaním"
+ },
+ {
+  "name": "rprit_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Príťahy na kruhoch: 1 za sebou",
+  "ex": "Príťahy na kruhoch"
+ },
+ {
+  "name": "rprit_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Príťahy na kruhoch: 5 za sebou",
+  "ex": "Príťahy na kruhoch"
+ },
+ {
+  "name": "rprit_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Príťahy na kruhoch: 12 za sebou",
+  "ex": "Príťahy na kruhoch"
+ },
+ {
+  "name": "rprit_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Príťahy na kruhoch: pauza 3 s po každom",
+  "ex": "Príťahy na kruhoch"
+ },
+ {
+  "name": "rprit_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Príťahy na kruhoch: 2,5 s v polohe pred aj po",
+  "ex": "Príťahy na kruhoch"
+ },
+ {
+  "name": "rprit_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Príťahy na kruhoch: rýchle aj pomalé",
+  "ex": "Príťahy na kruhoch"
+ },
+ {
+  "name": "rprit_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Príťahy na kruhoch: zrkadlovo",
+  "ex": "Príťahy na kruhoch"
+ },
+ {
+  "name": "rprit_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Príťahy na kruhoch: 4 celé + 1 do polovice",
+  "ex": "Príťahy na kruhoch"
+ },
+ {
+  "name": "lzhyb_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "L-sit zhyby: 1 za sebou",
+  "ex": "L-sit zhyby"
+ },
+ {
+  "name": "lzhyb_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "L-sit zhyby: 5 za sebou",
+  "ex": "L-sit zhyby"
+ },
+ {
+  "name": "lzhyb_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "L-sit zhyby: 12 za sebou",
+  "ex": "L-sit zhyby"
+ },
+ {
+  "name": "lzhyb_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "L-sit zhyby: pauza 3 s po každom",
+  "ex": "L-sit zhyby"
+ },
+ {
+  "name": "lzhyb_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "L-sit zhyby: 2,5 s v polohe pred aj po",
+  "ex": "L-sit zhyby"
+ },
+ {
+  "name": "lzhyb_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "L-sit zhyby: rýchle aj pomalé",
+  "ex": "L-sit zhyby"
+ },
+ {
+  "name": "lzhyb_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "L-sit zhyby: zrkadlovo",
+  "ex": "L-sit zhyby"
+ },
+ {
+  "name": "lzhyb_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "L-sit zhyby: 4 celé + 1 do polovice",
+  "ex": "L-sit zhyby"
+ },
+ {
+  "name": "vup_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Sklapovačky: 1 za sebou",
+  "ex": "Sklapovačky"
+ },
+ {
+  "name": "vup_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Sklapovačky: 5 za sebou",
+  "ex": "Sklapovačky"
+ },
+ {
+  "name": "vup_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Sklapovačky: 12 za sebou",
+  "ex": "Sklapovačky"
+ },
+ {
+  "name": "vup_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Sklapovačky: pauza 3 s po každom",
+  "ex": "Sklapovačky"
+ },
+ {
+  "name": "vup_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Sklapovačky: 2,5 s v polohe pred aj po",
+  "ex": "Sklapovačky"
+ },
+ {
+  "name": "vup_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Sklapovačky: rýchle aj pomalé",
+  "ex": "Sklapovačky"
+ },
+ {
+  "name": "vup_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Sklapovačky: zrkadlovo",
+  "ex": "Sklapovačky"
+ },
+ {
+  "name": "vup_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Sklapovačky: 4 celé + 1 do polovice",
+  "ex": "Sklapovačky"
+ },
+ {
+  "name": "vup_n8_en.mp4",
+  "dx": "vlastny",
+  "exp": 8,
+  "note": "V-up: 8 za sebou",
+  "ex": "V-up"
+ },
+ {
+  "name": "nohy_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Zdvihy nôh vo vise: 1 za sebou",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ {
+  "name": "nohy_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Zdvihy nôh vo vise: 5 za sebou",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ {
+  "name": "nohy_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Zdvihy nôh vo vise: 12 za sebou",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ {
+  "name": "nohy_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Zdvihy nôh vo vise: pauza 3 s po každom",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ {
+  "name": "nohy_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Zdvihy nôh vo vise: 2,5 s v polohe pred aj po",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ {
+  "name": "nohy_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Zdvihy nôh vo vise: rýchle aj pomalé",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ {
+  "name": "nohy_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Zdvihy nôh vo vise: zrkadlovo",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ {
+  "name": "nohy_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Zdvihy nôh vo vise: 4 celé + 1 do polovice",
+  "ex": "Zdvihy nôh vo vise"
+ },
+ {
+  "name": "vyst_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Výstupy na lavičku: 1 za sebou",
+  "ex": "Výstupy na lavičku"
+ },
+ {
+  "name": "vyst_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Výstupy na lavičku: 5 za sebou",
+  "ex": "Výstupy na lavičku"
+ },
+ {
+  "name": "vyst_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Výstupy na lavičku: 12 za sebou",
+  "ex": "Výstupy na lavičku"
+ },
+ {
+  "name": "vyst_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výstupy na lavičku: pauza 3 s po každom",
+  "ex": "Výstupy na lavičku"
+ },
+ {
+  "name": "vyst_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výstupy na lavičku: 2,5 s v polohe pred aj po",
+  "ex": "Výstupy na lavičku"
+ },
+ {
+  "name": "vyst_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Výstupy na lavičku: rýchle aj pomalé",
+  "ex": "Výstupy na lavičku"
+ },
+ {
+  "name": "vyst_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výstupy na lavičku: zrkadlovo",
+  "ex": "Výstupy na lavičku"
+ },
+ {
+  "name": "vyst_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Výstupy na lavičku: 4 celé + 1 do polovice",
+  "ex": "Výstupy na lavičku"
+ },
+ {
+  "name": "bvyp_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Bočné výpady: 1 za sebou",
+  "ex": "Bočné výpady"
+ },
+ {
+  "name": "bvyp_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Bočné výpady: 5 za sebou",
+  "ex": "Bočné výpady"
+ },
+ {
+  "name": "bvyp_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Bočné výpady: 12 za sebou",
+  "ex": "Bočné výpady"
+ },
+ {
+  "name": "bvyp_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Bočné výpady: pauza 3 s po každom",
+  "ex": "Bočné výpady"
+ },
+ {
+  "name": "bvyp_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Bočné výpady: 2,5 s v polohe pred aj po",
+  "ex": "Bočné výpady"
+ },
+ {
+  "name": "bvyp_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Bočné výpady: rýchle aj pomalé",
+  "ex": "Bočné výpady"
+ },
+ {
+  "name": "bvyp_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Bočné výpady: zrkadlovo",
+  "ex": "Bočné výpady"
+ },
+ {
+  "name": "bvyp_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Bočné výpady: 4 celé + 1 do polovice",
+  "ex": "Bočné výpady"
+ },
+ {
+  "name": "skok_n1.mp4",
+  "dx": "vlastny",
+  "exp": 1,
+  "note": "Výskoky z drepu: 1 za sebou",
+  "ex": "Výskoky z drepu"
+ },
+ {
+  "name": "skok_n5.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Výskoky z drepu: 5 za sebou",
+  "ex": "Výskoky z drepu"
+ },
+ {
+  "name": "skok_n12.mp4",
+  "dx": "vlastny",
+  "exp": 12,
+  "note": "Výskoky z drepu: 12 za sebou",
+  "ex": "Výskoky z drepu"
+ },
+ {
+  "name": "skok_pauza3.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výskoky z drepu: pauza 3 s po každom",
+  "ex": "Výskoky z drepu"
+ },
+ {
+  "name": "skok_pripr.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výskoky z drepu: 2,5 s v polohe pred aj po",
+  "ex": "Výskoky z drepu"
+ },
+ {
+  "name": "skok_tempo.mp4",
+  "dx": "vlastny",
+  "exp": 5,
+  "note": "Výskoky z drepu: rýchle aj pomalé",
+  "ex": "Výskoky z drepu"
+ },
+ {
+  "name": "skok_zrkadlo.mp4",
+  "dx": "vlastny",
+  "exp": 6,
+  "note": "Výskoky z drepu: zrkadlovo",
+  "ex": "Výskoky z drepu"
+ },
+ {
+  "name": "skok_polovicne.mp4",
+  "dx": "vlastny",
+  "exp": 4,
+  "note": "Výskoky z drepu: 4 celé + 1 do polovice",
+  "ex": "Výskoky z drepu"
+ },
+ {
+  "name": "hbok_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.3,
+  "note": "Bočný plank: výdrž ~20 s",
+  "ex": "Bočný plank",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hbok_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.3,
+  "note": "Bočný plank: stoj 3 s, výdrž ~20 s, stoj 3 s",
+  "ex": "Bočný plank",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hlod_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 18.1,
+  "note": "Lodička: výdrž ~18 s",
+  "ex": "Lodička",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hlod_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 18.1,
+  "note": "Lodička: stoj 3 s, výdrž ~18 s, stoj 3 s",
+  "ex": "Lodička",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hsto_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.4,
+  "note": "Stolička pri stene: výdrž ~20 s",
+  "ex": "Stolička pri stene",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hsto_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.4,
+  "note": "Stolička pri stene: stoj 3 s, výdrž ~20 s, stoj 3 s",
+  "ex": "Stolička pri stene",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hls_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.8,
+  "note": "L-sit: výdrž ~21 s",
+  "ex": "L-sit",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hls_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.8,
+  "note": "L-sit: stoj 3 s, výdrž ~21 s, stoj 3 s",
+  "ex": "L-sit",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hlsk_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 21.0,
+  "note": "L-sit na kruhoch: výdrž ~21 s",
+  "ex": "L-sit na kruhoch",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hlsk_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 21.0,
+  "note": "L-sit na kruhoch: stoj 3 s, výdrž ~21 s, stoj 3 s",
+  "ex": "L-sit na kruhoch",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hvis_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.4,
+  "note": "Vis na kruhoch: výdrž ~20 s",
+  "ex": "Vis na kruhoch",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hvis_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.4,
+  "note": "Vis na kruhoch: stoj 3 s, výdrž ~20 s, stoj 3 s",
+  "ex": "Vis na kruhoch",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hfl_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 21.7,
+  "note": "Tuck front lever: výdrž ~22 s",
+  "ex": "Tuck front lever",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hfl_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 21.7,
+  "note": "Tuck front lever: stoj 3 s, výdrž ~22 s, stoj 3 s",
+  "ex": "Tuck front lever",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hzab_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 18.4,
+  "note": "Žabka: výdrž ~18 s",
+  "ex": "Žabka",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hzab_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 18.4,
+  "note": "Žabka: stoj 3 s, výdrž ~18 s, stoj 3 s",
+  "ex": "Žabka",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hpl_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.3,
+  "note": "Tuck planche: výdrž ~20 s",
+  "ex": "Tuck planche",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hpl_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 20.3,
+  "note": "Tuck planche: stoj 3 s, výdrž ~20 s, stoj 3 s",
+  "ex": "Tuck planche",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hkol_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 21.1,
+  "note": "Plank na kolenách: výdrž ~21 s",
+  "ex": "Plank na kolenách",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hkol_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 21.1,
+  "note": "Plank na kolenách: stoj 3 s, výdrž ~21 s, stoj 3 s",
+  "ex": "Plank na kolenách",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hvzp_hold.mp4",
+  "dx": "vlastny-s",
+  "exp": 21.0,
+  "note": "Vzpor na kruhoch: výdrž ~21 s",
+  "ex": "Vzpor na kruhoch",
+  "kind": "hold",
+  "tol": 2.0
+ },
+ {
+  "name": "hvzp_hold_stoj.mp4",
+  "dx": "vlastny-s",
+  "exp": 21.0,
+  "note": "Vzpor na kruhoch: stoj 3 s, výdrž ~21 s, stoj 3 s",
+  "ex": "Vzpor na kruhoch",
+  "kind": "hold",
+  "tol": 2.0
+ }
+]
