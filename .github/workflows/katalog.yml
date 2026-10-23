@@ -1,0 +1,43 @@
+# Všetky videá cvikov z appky (dočasná vetva, po skúškach sa zmaže): kontaktné listy a body tela zo skutočného MediaPipe
+# → každá časť do vetvy test-katalog-o<beh>-<časť>.
+name: katalog
+on:
+  push:
+    branches: [test-katalog]
+permissions:
+  contents: write
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nástroje
+        timeout-minutes: 8
+        run: pip install -q playwright==1.48.0 static-ffmpeg pillow
+      - name: Videá cvikov
+        timeout-minutes: 15
+        env:
+          SBKEY: 'sb_publishable_9jpWzOvaa2SbG2FNwgfvOQ_5GCDAguJ'
+        run: python3 .github/katalog/katalog.py ${{ matrix.shard }}/10 t
+      - name: Body tela
+        timeout-minutes: 20
+        env:
+          VIDS: t/vids
+          CHROME: '1'
+        run: |
+          (python3 -m http.server 8080 --directory public > /dev/null 2>&1 &)
+          sleep 1
+          mkdir -p t/frames
+          python3 .github/presnost/scan.py 8080 t/tests.json t/frames 1/1 --cdn 2>&1 | tee t/frames/_log.txt
+      - name: Uloženie do vetvy
+        if: always()
+        run: |
+          mkdir -p t/out && cp -r t/frames t/sheets t/out/ 2>/dev/null; cp t/tests.json t/zoznam.json t/out/ 2>/dev/null
+          cd t/out && git init -q && git config user.name "github-actions" && git config user.email "actions@github.com"
+          git add -A && git commit -qm "Katalóg cvikov (beh ${{ github.run_number }}, časť ${{ matrix.shard }})"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:test-katalog-o${{ github.run_number }}-${{ matrix.shard }}
