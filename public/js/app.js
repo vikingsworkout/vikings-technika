@@ -3,7 +3,7 @@ import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive
 import { createLiveCounter } from './livecount.js';
 import * as db from './db.js';
 import { Recorder, recorderSupported } from './recorder.js';
-import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwAdmin, vwToken, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap, vwDuel } from './vw.js';
+import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwHz, vwToken, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap, vwDuel } from './vw.js';
 import { fixResultSk } from './sk.js';
 import { IC, frameSvg, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
 
@@ -952,16 +952,16 @@ async function accessDenied() {
   } catch { return false; }
 }
 
-// hlavičky pre server: prístupový kód (správca) a v appke prihlásenie používateľa (token z appky)
+// hlavičky pre server: prístupový kód (hrazda) a v appke prihlásenie používateľa (token z appky)
 async function apiHeaders(force = false) {
   const h = { 'x-access-code': ls.get('vt-code') || '' };
   if (VW) { const tk = await vwToken(force); if (tk) h.Authorization = 'Bearer ' + tk; }
   return h;
 }
-// prístupový kód zadáva len správca; ostatní v appke používajú prihlásenie
-const needCodeBox = () => !VW || vwAdmin;
+// prístupový kód zadáva len hrazda; ostatní v appke používajú prihlásenie
+const needCodeBox = () => !VW || vwHz;
 
-// ---------- v appke: počet rozborov (bez Pro 3 spolu, s Pro 10 mesačne; správca bez obmedzenia) ----------
+// ---------- v appke: počet rozborov (bez Pro 3 spolu, s Pro 10 mesačne; hrazda bez obmedzenia) ----------
 let QUOTA = null; // { plan: 'free' | 'pro', used, limit, left, reset?, pro? }
 let quotaAt = 0;
 async function loadQuota(force = false) {
@@ -976,7 +976,7 @@ async function loadQuota(force = false) {
 }
 function setQuota(j) {
   if (!j || typeof j !== 'object') return;
-  QUOTA = (j.plan === 'free' || j.plan === 'pro') && typeof j.left === 'number' ? j : null; // správca: bez obmedzenia
+  QUOTA = (j.plan === 'free' || j.plan === 'pro') && typeof j.left === 'number' ? j : null; // hrazda: bez obmedzenia
   quotaAt = Date.now();
   renderQuota();
 }
@@ -1588,7 +1588,7 @@ function renderResult(item) {
       </div>
       <button class="btn ghost" id="btnDel" style="margin:4px auto 0;display:block;color:var(--mu)">Vymazať z histórie</button>
     </div>
-    ${VW && vwAdmin ? '<div id="cmpBox"></div>' : ''}
+    ${VW && vwHz ? '<div id="cmpBox"></div>' : ''}
     ${VW ? '<div id="resHist"></div>' : ''}
 
     ${VW ? `<div class="stickybar vwbar">
@@ -1598,7 +1598,7 @@ function renderResult(item) {
   `;
   if ($('btnVwMain')) $('btnVwMain').onclick = () => { if (vwUse) vwPost('use', { reps: vwUse.reps || 0, hold: vwUse.hold || 0 }); else vwPost('close'); };
   if (VW) fillResHist(item);
-  if (VW && vwAdmin) fillCmp(item);
+  if (VW && vwHz) fillCmp(item);
 
   if ($('btnSee')) $('btnSee').onclick = () => hasClip ? openPlayer(item.clip, errT, today) : openViewer(frame);
   $('vResult').querySelectorAll('.frames button').forEach(b => b.onclick = () => openViewer(item.keyframes[Number(b.dataset.k)]));
@@ -1692,7 +1692,7 @@ async function fillResHist(item) {
   $('btnHistAll').onclick = () => { histCtx = { eid, name }; go('#/rozbory'); };
 }
 
-// ---------- v appke, len správca: porovnanie modelov AI ----------
+// ---------- v appke, len hrazda: porovnanie modelov AI ----------
 // Tie isté údaje a snímky z videa vyhodnotí Sonnet aj Haiku naraz; ukáže skóre, čas, cenu a celé rozbory vedľa seba.
 // Výsledok sa uloží v tomto zariadení (aby sa porovnanie neplatilo znova), do profilu ani do appky nejde.
 const CMP_KEY = 'vt-porovnania';

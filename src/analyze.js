@@ -4,7 +4,7 @@
 //
 // Premenné prostredia (Cloudflare → Workers & Pages → vikings-technika → Settings → Variables and Secrets):
 //   ANTHROPIC_API_KEY  (povinné, typ Secret)
-//   ACCESS_CODE        (odporúčané – prístupový kód, ktorý zadáš raz v appke)
+//   ACCESS_CODE        (voliteľné – kód pre rozbor mimo appky; bez neho funguje len prihlásenie z appky)
 //   CLAUDE_MODEL       (voliteľné, predvolene claude-sonnet-5-5)
 
 import { fixResultSk, hasCzech, collectTexts, applyTexts } from '../public/js/sk.js';
@@ -12,7 +12,7 @@ import { access, quotaTake, quotaGive, quotaGet, quotaInfo, limitText } from './
 
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const FIX_MODEL = 'claude-haiku-5-5'; // rýchla jazyková oprava, keď v rozbore ostane čeština (CLAUDE_FIX_MODEL ho prepíše)
-// Modely, ktoré si appka smie vyžiadať (porovnanie modelov v admin teste), a ich cena v $ za milión tokenov [vstup, výstup].
+// Modely, ktoré si appka smie vyžiadať (porovnanie modelov pre hrazdu), a ich cena v $ za milión tokenov [vstup, výstup].
 const MODELS = { 'claude-sonnet-5-5': [2, 10], 'claude-haiku-5-5': [0.10, 0.50] };
 const SEARCH_USD = 0.01; // jedno vyhľadávanie na webe
 function usdOf(model, u) {
@@ -99,15 +99,15 @@ function apiError(status, msg) {
 }
 
 export async function onRequestPost({ request, env }) {
-  // prístup: správca (bez obmedzenia) alebo prihlásený používateľ appky s počtom rozborov (pozri quota.js)
+  // prístup: hrazda (bez obmedzenia) alebo prihlásený používateľ appky s počtom rozborov (pozri quota.js)
   let gate;
   try { gate = await access(env, request); } catch (e) { return json({ error: 'Na serveri sa niečo pokazilo. Skús to o chvíľu znova.', code: 'server', detail: String(e?.message || e).slice(0, 200) }, 500); }
   if (!gate.ok) return json({ error: gate.error, code: 'auth' }, 401);
   let body;
   try { body = await request.json(); } catch { return json({ error: 'Video sa na server neodoslalo celé. Skús to znova.', code: 'bad' }, 400); }
   if (!body || typeof body !== 'object') body = {};
-  if (gate.plan === 'admin') return analyzeBody(body, env);
-  delete body.model; delete body.noSearch; // výber modelu len pre správcu (porovnanie modelov)
+  if (gate.plan === 'hz') return analyzeBody(body, env);
+  delete body.model; delete body.noSearch; // výber modelu len pre hrazdu (porovnanie modelov)
   const held = await quotaTake(env, gate.user.id, gate.plan);
   if (!held.ok) return json({ error: limitText(gate.plan), code: 'limit', quota: quotaInfo(gate.plan, held.used) }, 402);
   const res = await analyzeBody(body, env);
@@ -124,7 +124,7 @@ export async function onQuota({ request, env }) {
   let gate;
   try { gate = await access(env, request); } catch { return json({ error: 'Na serveri sa niečo pokazilo.', code: 'server' }, 500); }
   if (!gate.ok) return json({ error: gate.error, code: 'auth' }, 401);
-  if (gate.plan === 'admin') return json({ plan: 'admin' });
+  if (gate.plan === 'hz') return json({ plan: 'hz' });
   const r = await quotaGet(env, gate.user.id, gate.plan);
   return json(quotaInfo(gate.plan, r.used));
 }

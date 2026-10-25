@@ -1,13 +1,13 @@
 // Prístup k rozboru techniky a počet rozborov.
 //
-// - Správca (prístupový kód ACCESS_CODE alebo admin účet v appke): bez obmedzenia.
+// - Hrazda (prístupový kód ACCESS_CODE alebo účet, ktorý určí databáza Supabase cez vw_flags – len s čerstvým
+//   dvojstupňovým overením): bez obmedzenia. V kóde nie je žiadny e-mail ani zoznam účtov.
 // - Prihlásený používateľ appky Viking's Workout (token zo Supabase, ktorý Technike pošle appka):
 //     bez Pro 3 rozbory spolu, s Pro 10 rozborov každý mesiac (kalendárny mesiac v UTC).
 // - Počíta sa len ohodnotený rozbor; keď AI zlyhá alebo sa video nedá ohodnotiť, rozbor sa vráti.
 // Počty sú na serveri (Durable Object Quota, jeden na používateľa), aby sa nedali obísť vymazaním appky.
 
 export const LIMITS = { free: 3, pro: 10 };
-const ADMINS = ['kurcik.michal@gmail.com'];
 // verejné údaje appky (rovnaké sú v appke); dajú sa prepísať premennými SB_URL, SB_KEY, PAY_URL
 const SB_URL = 'https://cehbqshhjwahfxbzcpdl.supabase.co';
 const SB_KEY = 'sb_publishable_9jpWzOvaa2SbG2FNwgfvOQ_5GCDAguJ';
@@ -22,6 +22,38 @@ async function getJson(url, headers, ms = 8000) {
   } catch { return null; } finally { clearTimeout(t); }
 }
 
+async function postJson(url, headers, body, ms = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { method: 'POST', headers, body, signal: ctrl.signal });
+    return r.ok ? await r.json().catch(() => null) : null;
+  } catch { return null; } finally { clearTimeout(t); }
+}
+
+// hrazda: rozhodne databáza podľa tokenu (vyžaduje aj čerstvé dvojstupňové overenie)
+async function isHz(env, token) {
+  const f = await postJson((env.SB_URL || SB_URL) + '/rest/v1/rpc/vw_flags',
+    { apikey: env.SB_KEY || SB_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, '{}');
+  return !!(f && f.h === true);
+}
+
+// porovnanie kódu bez úniku informácie cez čas odpovede
+function sameCode(a, b) {
+  const x = new TextEncoder().encode(String(a)), y = new TextEncoder().encode(String(b));
+  let d = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) d |= (x[i] || 0) ^ (y[i] || 0);
+  return d === 0;
+}
+// skúšanie kódov: najviac 20 nesprávnych za hodinu z jednej IP adresy, potom sa kód z nej neberie do úvahy
+async function codeFails(env, ip, add) {
+  try {
+    const stub = env.QUOTA.get(env.QUOTA.idFromName('ip:' + ip));
+    const r = await stub.fetch('https://quota/', { method: 'POST', body: JSON.stringify({ op: add ? 'fail' : 'fails' }) });
+    return Number((await r.json()).n) || 0;
+  } catch { return 0; }
+}
+
 // používateľ podľa tokenu zo Supabase
 async function whoAmI(env, token) {
   const u = await getJson((env.SB_URL || SB_URL) + '/auth/v1/user', { apikey: env.SB_KEY || SB_KEY, Authorization: 'Bearer ' + token });
@@ -30,7 +62,7 @@ async function whoAmI(env, token) {
 
 // Pro: zaplatené cez Stripe (služba platieb) alebo Pro v appke (skúšobná doba, odcvičený mesiac zadarmo)
 async function planOf(env, token, user) {
-  if (ADMINS.includes(user.email)) return 'admin';
+  if (await isHz(env, token)) return 'hz';
   const auth = { Authorization: 'Bearer ' + token };
   const [paid, rows] = await Promise.all([
     getJson((env.PAY_URL || PAY_URL) + '/pro', auth),
@@ -41,17 +73,23 @@ async function planOf(env, token, user) {
   return (paid && paid.active) || local ? 'pro' : 'free';
 }
 
-// Kto volá: { ok, plan: 'admin' | 'pro' | 'free', user } alebo { ok: false, error }
+// Kto volá: { ok, plan: 'hz' | 'pro' | 'free', user } alebo { ok: false, error }
 export async function access(env, req) {
   const code = req.headers.get('x-access-code') || '';
-  if (env.ACCESS_CODE && code === env.ACCESS_CODE) return { ok: true, plan: 'admin' };
+  if (code && env.ACCESS_CODE) {
+    const ip = req.headers.get('cf-connecting-ip') || 'x';
+    if ((await codeFails(env, ip, false)) < 20) {
+      if (sameCode(code, env.ACCESS_CODE)) return { ok: true, plan: 'hz' };
+      await codeFails(env, ip, true);
+    }
+  }
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (token) {
     const user = await whoAmI(env, token);
     if (!user) return { ok: false, error: 'Prihlásenie v appke vypršalo. Zatvor Techniku a otvor ju znova.' };
     return { ok: true, plan: await planOf(env, token, user), user };
   }
-  if (!env.ACCESS_CODE) return { ok: true, plan: 'admin' }; // bez nastaveného kódu (vývoj)
+  // bez tokenu a bez správneho kódu nič (ani keď ACCESS_CODE nie je nastavený)
   return { ok: false, error: 'Nesprávny alebo chýbajúci prístupový kód.' };
 }
 
@@ -97,6 +135,13 @@ export class Quota {
   async fetch(req) {
     const d = await req.json().catch(() => ({}));
     const st = this.state.storage;
+    // nesprávne prístupové kódy z jednej IP adresy (posledná hodina)
+    if (d.op === 'fail' || d.op === 'fails') {
+      const now = Date.now();
+      const arr = ((await st.get('fails')) || []).filter(t => now - t < 3600e3);
+      if (d.op === 'fail') { arr.push(now); await st.put('fails', arr.slice(-60)); }
+      return Response.json({ n: arr.length });
+    }
     const key = typeof d.key === 'string' && /^(free|m:\d{4}-\d{2})$/.test(d.key) ? d.key : null;
     if (!key) return Response.json({ error: 'kľúč' }, { status: 400 });
     const used = Number(await st.get(key)) || 0;

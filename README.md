@@ -13,7 +13,7 @@ Webová appka (PWA): natočíš alebo nahráš video cviku a dostaneš rozbor te
 - Projekt je Cloudflare Worker so statickými súbormi (`wrangler.jsonc`, súbory appky v `public/`). Workers Builds ho po pushi na GitHub nasadí sám.
 - Premenné (Settings → Variables and Secrets):
   - `ANTHROPIC_API_KEY`: Secret, povinné
-  - `ACCESS_CODE`: Secret, odporúčané. Appka si ho vypýta pri prvej analýze.
+  - `ACCESS_CODE`: Secret, voliteľné. Kód pre rozbor mimo appky (appka si ho vypýta pri prvej analýze). Bez neho funguje len prihlásenie z appky.
   - `CLAUDE_MODEL`: voliteľné, predvolene `claude-sonnet-5-5`
 - V Claude Console musí byť povolený web search.
 

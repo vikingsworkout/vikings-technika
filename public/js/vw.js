@@ -22,8 +22,8 @@ export const vwResultId = (q.get('r') || '').slice(0, 40);
 // k uloženému rozboru aj názov a id cviku z appky – keď sa rozbor v telefóne nenájde, ukážeme ostatné rozbory tohto cviku
 export const vwResultName = (q.get('n') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
 export const vwResultEid = (q.get('e') || '').slice(0, 60);
-// správca appky (porovnanie modelov AI, prístupový kód); ostatní používajú prihlásenie z appky
-export const vwAdmin = VW && q.get('adm') === '1';
+// hrazda (porovnanie modelov AI, prístupový kód); ostatní používajú prihlásenie z appky – server to aj tak overí sám
+export const vwHz = VW && q.get('hz') === '1';
 
 // náhľad cviku z appky (ukážka záberu na obrazovke Natoč) – len obrázky z videa.vikingsworkout.com
 const IMG_PATH = /^[A-Za-z0-9._~%\/-]{1,200}\.(jpg|jpeg|webp|png)(\?[A-Za-z0-9._~%=&-]{0,80})?$/i;
