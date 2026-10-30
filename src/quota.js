@@ -3,11 +3,11 @@
 // - Hrazda (prístupový kód ACCESS_CODE alebo účet, ktorý určí databáza Supabase cez vw_flags – len s čerstvým
 //   dvojstupňovým overením): bez obmedzenia. V kóde nie je žiadny e-mail ani zoznam účtov.
 // - Prihlásený používateľ appky Viking's Workout (token zo Supabase, ktorý Technike pošle appka):
-//     bez Pro 3 rozbory spolu, s Pro 10 rozborov každý mesiac (kalendárny mesiac v UTC).
+//     bez Pro 2 rozbory spolu, s Pro 10 rozborov každý mesiac (kalendárny mesiac v UTC).
 // - Počíta sa len ohodnotený rozbor; keď AI zlyhá alebo sa video nedá ohodnotiť, rozbor sa vráti.
 // Počty sú na serveri (Durable Object Quota, jeden na používateľa), aby sa nedali obísť vymazaním appky.
 
-export const LIMITS = { free: 3, pro: 10 };
+export const LIMITS = { free: 2, pro: 10 };
 // verejné údaje appky (rovnaké sú v appke); dajú sa prepísať premennými SB_URL, SB_KEY, PAY_URL
 const SB_URL = 'https://cehbqshhjwahfxbzcpdl.supabase.co';
 const SB_KEY = 'sb_publishable_9jpWzOvaa2SbG2FNwgfvOQ_5GCDAguJ';

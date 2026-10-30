@@ -961,7 +961,7 @@ async function apiHeaders(force = false) {
 // prístupový kód zadáva len hrazda; ostatní v appke používajú prihlásenie
 const needCodeBox = () => !VW || vwHz;
 
-// ---------- v appke: počet rozborov (bez Pro 3 spolu, s Pro 10 mesačne; hrazda bez obmedzenia) ----------
+// ---------- v appke: počet rozborov (bez Pro 2 spolu, s Pro 10 mesačne; hrazda bez obmedzenia) ----------
 let QUOTA = null; // { plan: 'free' | 'pro', used, limit, left, reset?, pro? }
 let quotaAt = 0;
 async function loadQuota(force = false) {
