@@ -2,8 +2,9 @@ import { EXERCISES, AUTO, findExercise, matchExercise, isHold, maxSecondsFor, du
 import { analyzeVideo, preload, CLIP_PTS, CLIP_BONES, liveLandmarker, detectLive } from './pose.js';
 import { createLiveCounter } from './livecount.js';
 import * as db from './db.js';
+import * as cloud from './cloud.js';
 import { Recorder, recorderSupported } from './recorder.js';
-import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwHz, vwToken, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap, vwDuel } from './vw.js';
+import { VW, vwFrom, vwExName, vwResultId, vwResultName, vwResultEid, vwResultSum, vwHz, vwToken, vwPost, vwImg, vwBox, vwBoxP, vwDay, vwEmbedded, vwNoMap, vwDuel } from './vw.js';
 import { fixResultSk } from './sk.js';
 import { IC, frameSvg, NEW_HTML, PICK_HTML, REC_HTML, WORK_HTML, PLAYER_HTML } from './vwui.js';
 
@@ -99,8 +100,13 @@ async function route() {
   }
   if (h === '#/nahravanie') { show('vRec'); openRecorder(); return; }
   if (h.startsWith('#/r/')) {
-    const item = (current && current.id === h.slice(4)) ? current : await db.get(h.slice(4));
+    let item = (current && current.id === h.slice(4)) ? current : await db.get(h.slice(4));
     if (location.hash !== h) return; // medzitým iná obrazovka
+    if (!(item && item.result) && VW) { // v telefóne nie je – skúsime rozbor uložený pri účte
+      const c = await cloud.get(h.slice(4));
+      if (location.hash !== h) return;
+      if (c) { item = c; db.save(c).catch(() => {}); }
+    }
     if (item && item.result) { current = item; renderResult(item); show('vResult'); return; }
     if (VW) { await renderHist({ missing: true, eid: vwResultEid, name: vwResultName }); show('vHist'); return; }
   }
@@ -1032,6 +1038,7 @@ async function runAi() {
     current.result = data.result; current.sources = data.sources || [];
     const sv = await db.save(current);
     current.saveSt = sv.st; current.saveErr = sv.err || '';
+    cloud.save(current).catch(() => {}); // aj k účtu (bez videa a snímok), aby sa otvoril na každom zariadení
     db.pruneClips(15);
     if (VW) { vwPost('result', { data: vwSummary(current) }); AN.stage = 'done'; renderSteps(); } // hlavná appka si uloží skóre (domov, profil)
     setProgress(1, 'Hotovo');
@@ -1622,6 +1629,7 @@ function renderResult(item) {
   };
   $('btnDel').onclick = async () => {
     await db.remove(item.id);
+    cloud.remove(item.id).catch(() => {});
     if (VW) { histCtx = { eid: item.vwEid || '', name: itemName(item) }; go('#/rozbory'); } else go('#/');
   };
   $('btnRe').onclick = () => {
@@ -1661,28 +1669,47 @@ function histRow(it) {
 function bindHist(root) {
   root.querySelectorAll('.hs-row').forEach(b => b.onclick = () => go('#/r/' + b.dataset.id));
 }
+// rozbory z tohto telefónu aj tie uložené pri účte (z iných zariadení), od najnovšieho
+async function allItems() {
+  const [loc, rem] = await Promise.all([db.list(), VW ? cloud.list() : Promise.resolve([])]);
+  const L = loc.filter(it => it && it.result), ids = new Set(L.map(x => String(x.id)));
+  return [...L, ...rem.filter(x => !ids.has(String(x.id)))].sort((a, b) => (b.created || 0) - (a.created || 0));
+}
 async function renderHist({ missing = false, eid = '', name = '' } = {}) {
-  const all = (await db.list()).filter(it => it && it.result);
+  const all = await allItems();
   const nm = normNm(name);
   const mine = eid || nm ? all.filter(it => sameEx(it, eid, nm)) : [];
   const rest = all.filter(it => !mine.includes(it)).slice(0, 40);
   $('vHist').innerHTML = `
     <h1 class="pk-h1">Moje rozbory</h1>
-    ${missing ? `<div class="vw-card hs-miss" role="status"><b>Tento rozbor sa nepodarilo otvoriť</b>
-      <span>V telefóne sa nenašiel – starší rozbor sa pravdepodobne neuložil. Nové rozbory sa už ukladajú správne.</span></div>` : ''}
+    ${missing ? missCard(name) : ''}
     ${mine.length ? `<div class="vw-cap">${esc(name.toUpperCase())}</div><section class="vw-card pk-list">${mine.map(histRow).join('')}</section>` : ''}
     ${rest.length ? `<div class="vw-cap${mine.length ? ' hs-cap2' : ''}">${mine.length ? 'OSTATNÉ CVIKY' : 'VŠETKY ROZBORY'}</div><section class="vw-card pk-list">${rest.map(histRow).join('')}</section>` : ''}
-    ${!all.length ? '<p class="hs-empty">Zatiaľ tu nemáš žiadne uložené rozbory.</p>' : ''}
+    ${!all.length && !missing ? '<p class="hs-empty">Zatiaľ tu nemáš žiadne uložené rozbory.</p>' : ''}
     <div class="vw-bottom"><button class="btn pri" id="btnHistNew"><span class="dot"></span>${name ? 'Natočiť ' + esc(lowerName(name)) : 'Natočiť cvik'}</button></div>`;
   bindHist($('vHist'));
   $('btnHistNew').onclick = () => {
     if (name) { applyPick(makePick('list', name, { eid })); go('#/nova'); } else go('#/vyber');
   };
 }
+// rozbor sa nenašiel ani v telefóne, ani pri účte (starší rozbor sa na iPhone neuložil): ukážeme aspoň súhrn,
+// ktorý si pamätá appka (skóre, opakovania alebo výdrž, hlavná rada)
+function missCard(name) {
+  const S = vwResultSum;
+  const note = 'Nové rozbory sa ukladajú aj k tvojmu účtu, takže ich otvoríš na každom zariadení.';
+  if (!S) return `<div class="vw-card hs-miss" role="status"><b>Celý rozbor sa nenašiel</b><span>Starší rozbor sa v telefóne neuložil. ${note}</span></div>`;
+  const what = S.hold ? `výdrž ${S.hold} s` : S.reps ? `${S.reps} ${plural(S.reps, 'opakovanie', 'opakovania', 'opakovaní')}` : '';
+  const when = S.t ? whenLabel(S.t) : '';
+  return `<div class="vw-card hs-sum" role="status">
+    <div class="hs-sum-top"><span class="hs-sum-sc" style="color:${scoreColor(S.score)}">${S.score}<small>/100</small></span>
+      <span class="hs-sum-tx"><b>${esc(name || 'Rozbor techniky')}</b><span>${esc([when, what].filter(Boolean).join(' · '))}</span></span></div>
+    ${S.tip ? `<p class="hs-sum-tip"><b>Na čo sa zamerať:</b> ${esc(S.tip)}</p>` : ''}
+    <p class="hs-sum-note">Z tohto rozboru ostal len súhrn – celý rozbor s videom a radami sa v telefóne neuložil. ${note}</p></div>`;
+}
 async function fillResHist(item) {
   const box = $('resHist');
   if (!box) return;
-  const all = (await db.list()).filter(it => it && it.result && it.id !== item.id);
+  const all = (await allItems()).filter(it => it.id !== item.id);
   if (!box.isConnected || current !== item || !all.length) return;
   const eid = item.vwEid || '', name = itemName(item);
   const same = all.filter(it => sameEx(it, eid, normNm(name)));
@@ -1801,3 +1828,4 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 if (VW && vwResultId && !location.hash) location.replace('#/r/' + vwResultId); // z appky: otvoriť uložený rozbor
 route();
 if (VW) vwPost('ready');
+if (VW) setTimeout(() => { db.list().then(cloud.backfill).catch(() => {}); }, 4000); // rozbory len v tomto telefóne → aj k účtu

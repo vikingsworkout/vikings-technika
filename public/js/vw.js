@@ -1,5 +1,6 @@
 // Režim „v appke Viking's Workout“: Technika je otvorená v hlavnej appke (iframe).
 // Parametre: ?vw=1&ex=<názov cviku z appky>&from=detail|set|home|duel&theme=dark|light&po=<origin appky>&r=<id rozboru>&n=<názov>&e=<id cviku>
+//   &sc=<skóre>&rp=<opakovania>&ho=<výdrž s>&tp=<hlavná rada>&ts=<čas rozboru> (súhrn uloženého rozboru)
 //   &img=<cesta k náhľadu cviku na videa.vikingsworkout.com>&box=<poloha postavy na náhľade>&boxp=<na plnom náhľade>&day=<JSON dnešného tréningu z plánu>
 const q = new URLSearchParams(location.search);
 
@@ -22,6 +23,12 @@ export const vwResultId = (q.get('r') || '').slice(0, 40);
 // k uloženému rozboru aj názov a id cviku z appky – keď sa rozbor v telefóne nenájde, ukážeme ostatné rozbory tohto cviku
 export const vwResultName = (q.get('n') || '').replace(/\s+/g, ' ').trim().slice(0, 80);
 export const vwResultEid = (q.get('e') || '').slice(0, 60);
+// súhrn rozboru z appky (skóre, opakovania, výdrž, hlavná rada, čas) – ukáže sa, keď sa celý rozbor nenájde
+const nn = (v, max) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : 0; };
+export const vwResultSum = vwResultId && q.get('sc') != null && Number.isFinite(Number(q.get('sc'))) ? {
+  score: nn(q.get('sc'), 100), reps: nn(q.get('rp'), 100000), hold: nn(q.get('ho'), 100000),
+  tip: (q.get('tp') || '').replace(/\s+/g, ' ').trim().slice(0, 140), t: nn(q.get('ts'), 4102444800000),
+} : null;
 // hrazda (porovnanie modelov AI, prístupový kód); ostatní používajú prihlásenie z appky – server to aj tak overí sám
 export const vwHz = VW && q.get('hz') === '1';
 
