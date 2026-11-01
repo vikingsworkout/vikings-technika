@@ -8,7 +8,7 @@
 //   CLAUDE_MODEL       (voliteľné, predvolene claude-sonnet-5-5)
 
 import { fixResultSk, hasCzech, collectTexts, applyTexts } from '../public/js/sk.js';
-import { access, quotaTake, quotaGive, quotaGet, quotaInfo, limitText } from './quota.js';
+import { access, quotaTake, quotaGive, quotaGet, quotaInfo, limitText, spendAdd, spendGet, budgetSet, overBudget } from './quota.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const FIX_MODEL = 'claude-haiku-5-5'; // rýchla jazyková oprava, keď v rozbore ostane čeština (CLAUDE_FIX_MODEL ho prepíše)
@@ -16,8 +16,8 @@ const FIX_MODEL = 'claude-haiku-5-5'; // rýchla jazyková oprava, keď v rozbor
 const MODELS = { 'claude-sonnet-5-5': [2, 10], 'claude-haiku-5-5': [0.10, 0.50] };
 const SEARCH_USD = 0.01; // jedno vyhľadávanie na webe
 function usdOf(model, u) {
-  const p = MODELS[model];
-  if (!p || !u) return 0;
+  const p = MODELS[model] || MODELS[DEFAULT_MODEL]; // neznámy model: odhad podľa predvoleného
+  if (!u) return 0;
   const inTok = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
   return inTok * p[0] / 1e6 + (u.output_tokens || 0) * p[1] / 1e6 + ((u.server_tool_use && u.server_tool_use.web_search_requests) || 0) * SEARCH_USD;
 }
@@ -98,7 +98,7 @@ function apiError(status, msg) {
   return { error: 'AI má práve výpadok. Skús to o chvíľu znova – video netreba nahrávať znova.', code: 'down' };
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, ctx }) {
   // prístup: hrazda (bez obmedzenia) alebo prihlásený používateľ appky s počtom rozborov (pozri quota.js)
   let gate;
   try { gate = await access(env, request); } catch (e) { return json({ error: 'Na serveri sa niečo pokazilo. Skús to o chvíľu znova.', code: 'server', detail: String(e?.message || e).slice(0, 200) }, 500); }
@@ -106,11 +106,16 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: 'Video sa na server neodoslalo celé. Skús to znova.', code: 'bad' }, 400); }
   if (!body || typeof body !== 'object') body = {};
-  if (gate.plan === 'hz') return analyzeBody(body, env);
+  // spotreba AI sa zapíše po každom rozbore (aj neúspešnom) – správca ju vidí v appke
+  const track = (plan) => (s, ok) => { const p = spendAdd(env, s, plan, ok); if (ctx && ctx.waitUntil) ctx.waitUntil(p); };
+  if (gate.plan === 'hz') return analyzeBody(body, env, track('hz'));
   delete body.model; delete body.noSearch; // výber modelu len pre hrazdu (porovnanie modelov)
+  if (overBudget(await spendGet(env))) {
+    return json({ error: 'Rozbor techniky je teraz dočasne nedostupný. Skús to prosím neskôr.', code: 'budget' }, 503);
+  }
   const held = await quotaTake(env, gate.user.id, gate.plan);
   if (!held.ok) return json({ error: limitText(gate.plan), code: 'limit', quota: quotaInfo(gate.plan, held.used) }, 402);
-  const res = await analyzeBody(body, env);
+  const res = await analyzeBody(body, env, track(gate.plan));
   let j = null;
   try { j = await res.clone().json(); } catch { j = null; }
   // počíta sa len ohodnotený rozbor; inak sa rezervácia vráti
@@ -129,7 +134,17 @@ export async function onQuota({ request, env }) {
   return json(quotaInfo(gate.plan, r.used));
 }
 
-async function analyzeBody(body, env) {
+async function analyzeBody(body, env, onSpend) {
+  // spotreba a cena všetkých volaní AI pri tomto rozbore (aj pokračovania po vyhľadávaní a jazykovej opravy)
+  const spend = { usd: 0, in: 0, out: 0, search: 0 };
+  const addUse = (m, u) => {
+    if (!u) return;
+    spend.usd += usdOf(m, u);
+    spend.in += (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+    spend.out += u.output_tokens || 0;
+    spend.search += (u.server_tool_use && u.server_tool_use.web_search_requests) || 0;
+  };
+  let scored = false;
   try {
     if (!env.ANTHROPIC_API_KEY) {
       return json({ error: 'Rozbor je teraz nedostupný (server nie je nastavený). Skús to neskôr.', code: 'config', detail: 'Na serveri chýba ANTHROPIC_API_KEY (nastav ho v Cloudflare).' }, 500);
@@ -168,15 +183,6 @@ async function analyzeBody(body, env) {
     const noSearch = body.noSearch === true; // bez vyhľadávania na webe (lacnejší model by inak platil viac za hľadanie než za rozbor)
     let resp, data, noTemp = false;
     const started = Date.now();
-    // spotreba a cena všetkých volaní AI pri tomto rozbore (aj pokračovania po vyhľadávaní a jazykovej opravy)
-    const spend = { usd: 0, in: 0, out: 0, search: 0 };
-    const addUse = (m, u) => {
-      if (!u) return;
-      spend.usd += usdOf(m, u);
-      spend.in += (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
-      spend.out += u.output_tokens || 0;
-      spend.search += (u.server_tool_use && u.server_tool_use.web_search_requests) || 0;
-    };
     // web search môže vrátiť pause_turn – vtedy pokračujeme, ale len kým neprekročíme časový limit,
     // aby používateľ nečakal donekonečna
     for (let round = 0; round < 4; round++) {
@@ -237,10 +243,42 @@ async function analyzeBody(body, env) {
       }
     }
     const cost = { usd: Math.round(spend.usd * 100000) / 100000, in: spend.in, out: spend.out, search: spend.search };
+    scored = typeof result.score === 'number';
     return json({ result, sources: sources.slice(0, 10), model: data.model, usage: data.usage, cost, ms: Date.now() - started, ...(skFixed ? { sk: skFixed } : {}) });
   } catch (e) {
     return json({ error: 'Na serveri sa niečo pokazilo. Skús to o chvíľu znova – video netreba nahrávať znova.', code: 'server', detail: String(e?.message || e).slice(0, 300) }, 500);
+  } finally {
+    if (onSpend && (spend.in > 0 || spend.out > 0)) { try { onSpend(spend, scored); } catch (e) { console.error('spend', e); } }
   }
+}
+
+// Správca: spotreba AI a mesačný limit. GET = prehľad, POST { budget } = nový limit v USD (0 = bez limitu).
+const USAGE_ORIGIN = /^https:\/\/(www\.)?vikingsworkout\.com$|^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
+export function usageCors(request, res) {
+  const o = request.headers.get('Origin') || '';
+  if (USAGE_ORIGIN.test(o)) {
+    res.headers.set('Access-Control-Allow-Origin', o);
+    res.headers.set('Vary', 'Origin');
+    res.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.headers.set('Access-Control-Max-Age', '600');
+  }
+  return res;
+}
+export async function onUsage({ request, env }) {
+  let gate;
+  try { gate = await access(env, request); } catch { return usageCors(request, json({ error: 'Na serveri sa niečo pokazilo.' }, 500)); }
+  if (!gate.ok) return usageCors(request, json({ error: gate.error }, 401));
+  if (gate.plan !== 'hz') return usageCors(request, json({ error: 'Len pre správcu (s dvojstupňovým overením).' }, 403));
+  if (request.method === 'POST') {
+    const d = await request.json().catch(() => ({}));
+    const v = Number(String(d && d.budget != null ? d.budget : '').replace(',', '.'));
+    if (!isFinite(v) || v < 0 || v > 100000) return usageCors(request, json({ error: 'Zadaj limit v dolároch (0 = bez limitu).' }, 400));
+    await budgetSet(env, v);
+  }
+  const sp = await spendGet(env);
+  if (!sp) return usageCors(request, json({ error: 'Počítadlo spotreby neodpovedá.' }, 500));
+  return usageCors(request, json({ ...sp, prices: { model: env.CLAUDE_MODEL || DEFAULT_MODEL, usdPerMTok: MODELS[env.CLAUDE_MODEL || DEFAULT_MODEL] || MODELS[DEFAULT_MODEL], search: SEARCH_USD } }));
 }
 
 // GET slúži aj na rýchle overenie prístupového kódu ešte pred analýzou videa.

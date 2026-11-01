@@ -114,6 +114,28 @@ export async function quotaGet(env, uid, plan) {
   try { return await call(env, uid, { op: 'get', key: plan === 'pro' ? monthKey() : 'free' }); } catch (e) { console.error('quota get', e); return { used: null }; }
 }
 
+// Spotreba AI (všetky rozbory spolu, aj správcu) – jeden Durable Object 'spend':
+// 'spend:RRRR-MM' = { usd, in, out, search, n (ohodnotené rozbory), fail (neúspešné pokusy), nHz }, 'spend:all' = spolu,
+// 'budget' = mesačný limit v USD (0 = bez limitu). Správca to vidí v appke (Nastavenia → Hrazda).
+const spendKey = (d = new Date()) => 'spend:' + d.toISOString().slice(0, 7);
+async function spendCall(env, data) {
+  const stub = env.QUOTA.get(env.QUOTA.idFromName('spend'));
+  const r = await stub.fetch('https://quota/', { method: 'POST', body: JSON.stringify(data) });
+  return r.json();
+}
+export async function spendAdd(env, s, plan, ok) {
+  try {
+    if (!s || !((s.usd || 0) > 0 || (s.in || 0) > 0)) return;
+    await spendCall(env, { op: 'spend-add', key: spendKey(), usd: s.usd, in: s.in, out: s.out, search: s.search, plan, ok: !!ok });
+  } catch (e) { console.error('spend add', e); }
+}
+export async function spendGet(env) {
+  try { return await spendCall(env, { op: 'spend-get', key: spendKey() }); } catch (e) { console.error('spend get', e); return null; }
+}
+export async function budgetSet(env, usd) { return spendCall(env, { op: 'budget-set', usd }); }
+// minutý mesačný limit: rozbory (okrem správcu) sa do konca mesiaca pozastavia
+export function overBudget(sp) { return !!(sp && sp.budget > 0 && sp.cur && sp.cur.usd >= sp.budget); }
+
 // stav pre appku: koľko rozborov zostáva (pri Pro aj kedy sa počet obnoví)
 export function quotaInfo(plan, used) {
   const limit = LIMITS[plan] || 0;
@@ -141,6 +163,30 @@ export class Quota {
       const arr = ((await st.get('fails')) || []).filter(t => now - t < 3600e3);
       if (d.op === 'fail') { arr.push(now); await st.put('fails', arr.slice(-60)); }
       return Response.json({ n: arr.length });
+    }
+    if (d.op === 'budget-set') {
+      const v = Math.max(0, Math.min(100000, Math.round((Number(d.usd) || 0) * 100) / 100));
+      await st.put('budget', v);
+      return Response.json({ ok: true, budget: v });
+    }
+    if (d.op === 'spend-add' || d.op === 'spend-get') {
+      const sk = typeof d.key === 'string' && /^spend:\d{4}-\d{2}$/.test(d.key) ? d.key : null;
+      if (!sk) return Response.json({ error: 'kľúč' }, { status: 400 });
+      const empty = () => ({ usd: 0, in: 0, out: 0, search: 0, n: 0, fail: 0, nHz: 0 });
+      if (d.op === 'spend-add') {
+        const add = (r) => { r.usd += Math.max(0, Number(d.usd) || 0); r.in += Math.max(0, Number(d.in) || 0); r.out += Math.max(0, Number(d.out) || 0);
+          r.search += Math.max(0, Number(d.search) || 0); if (d.ok) r.n += 1; else r.fail += 1; if (d.plan === 'hz') r.nHz += 1; return r; };
+        await st.put(sk, add({ ...empty(), ...((await st.get(sk)) || {}) }));
+        await st.put('spend:all', add({ ...empty(), ...((await st.get('spend:all')) || {}) }));
+        const ms = (await st.get('months')) || [];
+        if (!ms.includes(sk)) { ms.push(sk); await st.put('months', ms.slice(-24)); }
+        return Response.json({ ok: true });
+      }
+      const ms = (await st.get('months')) || [];
+      const months = [];
+      for (const k of ms.slice(-12)) months.push({ m: k.slice(6), ...empty(), ...((await st.get(k)) || {}) });
+      return Response.json({ month: sk.slice(6), cur: { ...empty(), ...((await st.get(sk)) || {}) }, all: { ...empty(), ...((await st.get('spend:all')) || {}) },
+        budget: Number(await st.get('budget')) || 0, months });
     }
     const key = typeof d.key === 'string' && /^(free|m:\d{4}-\d{2})$/.test(d.key) ? d.key : null;
     if (!key) return Response.json({ error: 'kľúč' }, { status: 400 });
