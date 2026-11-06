@@ -637,6 +637,11 @@ html.vw.vw-light .sh-chips span { background: #FFFFFF; border-color: var(--line2
 .rc-btn.stop span { width: 30px; height: 30px; border-radius: 8px; }
 .rc-btn.cancel span { width: 26px; height: 26px; border-radius: 6px; background: rgba(255,255,255,.85); }
 .rc-hint { font-size: 13px; font-weight: 600; color: #D6DEE7; text-align: center; padding: 0 20px; }
+/* odpočet pred nahrávaním: 5 / 10 / 15 s (pri náročnejšom cviku je viac času nastaviť sa) */
+.rc-cdopt { display: flex; gap: 4px; padding: 4px; border-radius: 99px; background: rgba(11,16,29,.6); border: 1px solid rgba(255,255,255,.16); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.rc-cdopt[hidden] { display: none; }
+.rc-cdopt button { appearance: none; border: 0; background: transparent; color: #D6DEE7; font: inherit; font-size: 13.5px; font-weight: 800; height: 32px; min-width: 56px; padding: 0 12px; border-radius: 99px; cursor: pointer; font-variant-numeric: tabular-nums; transition: background .2s ease, color .2s ease; }
+.rc-cdopt button[aria-pressed="true"] { color: #FFFFFF; background: linear-gradient(135deg, #FF7A3D 0%, #FF5A1F 55%, #E8450F 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
 
 /* analýza */
 .an-kick { display: flex; align-items: center; justify-content: center; height: 42px; margin-bottom: 16px; padding: 0 8px; }

@@ -80,8 +80,9 @@ export const REC_HTML = `
     <div class="rc-cd" id="recCd" hidden><div><span id="recCdNum">5</span><small>Priprav sa</small></div></div>
     <div class="rc-bot">
       <span class="rc-status" id="recStatus"><i></i><span id="recStatusT">Zapínam kameru…</span></span>
+      <div class="rc-cdopt" id="recCdOpt" role="group" aria-label="Odpočet pred nahrávaním"><button type="button" data-cd="5">5 s</button><button type="button" data-cd="10">10 s</button><button type="button" data-cd="15">15 s</button></div>
       <button class="rc-btn" id="btnRecBig" aria-label="Spustiť nahrávanie"><span></span></button>
-      <span class="rc-hint" id="recHint">Ťukni a máš 5 sekúnd na prípravu</span>
+      <span class="rc-hint" id="recHint">Ťukni a máš chvíľu na prípravu</span>
     </div>
   </div>`;
 

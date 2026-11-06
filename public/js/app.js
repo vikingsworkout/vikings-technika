@@ -448,6 +448,16 @@ for (const id of ['inCam', 'inFile', 'inFilePick']) {
 
 // ---------- nahrávanie s odpočtom ----------
 let recState = 'off';
+// odpočet pred nahrávaním: 5, 10 alebo 15 s – voľba sa pamätá v zariadení
+const CD_OPTS = [5, 10, 15];
+let cdSec = (() => { try { const v = Number(localStorage.getItem('vwtk-cd')); return CD_OPTS.includes(v) ? v : 5; } catch { return 5; } })();
+const cdSync = () => { document.querySelectorAll('#recCdOpt [data-cd]').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.cd) === cdSec ? 'true' : 'false')); };
+document.querySelectorAll('#recCdOpt [data-cd]').forEach(b => b.addEventListener('click', (e) => {
+  e.stopPropagation(); const v = Number(b.dataset.cd); if (!CD_OPTS.includes(v)) return;
+  cdSec = v; try { localStorage.setItem('vwtk-cd', String(v)); } catch { /* bez pamäte */ }
+  cdSync(); if (recState === 'ready' && VW) $('recHint').textContent = `Polož mobil a ťukni – máš ${cdSec} sekúnd na prípravu`;
+}));
+cdSync();
 const recorder = new Recorder($('recVideo'), {
   onState: (st, n) => {
     recState = st;
@@ -463,7 +473,8 @@ const recorder = new Recorder($('recVideo'), {
       b.className = 'rc-btn' + (st === 'recording' ? ' stop' : st === 'countdown' ? ' cancel' : '');
       b.setAttribute('aria-label', st === 'recording' ? 'Zastaviť a analyzovať' : st === 'countdown' ? 'Zrušiť odpočet' : 'Spustiť nahrávanie');
       $('recHint').textContent = st === 'recording' ? (vwDuel && pickHold() ? 'Ťukni, keď výdrž skončí' : 'Ťukni, keď dokončíš sériu')
-        : st === 'countdown' ? 'Zaujmi polohu · ťuknutím odpočet zrušíš' : 'Polož mobil a ťukni – máš 5 sekúnd na prípravu';
+        : st === 'countdown' ? 'Zaujmi polohu · ťuknutím odpočet zrušíš' : `Polož mobil a ťukni – máš ${cdSec} sekúnd na prípravu`;
+      hide('recCdOpt', st !== 'ready');
       if (st === 'recording') { liveReset(); hide('recCount', false); $('recTime').textContent = '0:00'; }
       else hide('recCount', true);
       liveStatus(true);
@@ -471,7 +482,7 @@ const recorder = new Recorder($('recVideo'), {
     }
     $('recHint').textContent = st === 'recording'
       ? (selected.id === 'auto' ? `Cvič alebo drž polohu. Potom stlač Zastaviť (najneskôr po ${maxSecondsFor(selected)} s).` : `Cvič. Nahrávanie sa zastaví samo po ${maxSecondsFor(selected)} s.`)
-      : st === 'countdown' ? 'Zaujmi polohu…' : 'Polož mobil, zaujmi polohu. Po stlačení máš 5 sekúnd.';
+      : st === 'countdown' ? 'Zaujmi polohu…' : `Polož mobil, zaujmi polohu. Po stlačení máš ${cdSec} sekúnd.`;
   },
   onTick: (sec, max) => {
     const left = Math.max(0, Math.ceil(max - sec));
@@ -503,7 +514,7 @@ async function openRecorder() {
 }
 async function recStart() {
   try {
-    const file = await recorder.start({ countdown: 5, maxSeconds: maxRec() });
+    const file = await recorder.start({ countdown: cdSec, maxSeconds: maxRec() });
     recorder.close(); liveStop();
     startAnalysis(file);
   } catch (e) { if (e) console.error(e); }
