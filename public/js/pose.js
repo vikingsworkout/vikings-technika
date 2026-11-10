@@ -713,7 +713,7 @@ export function measureFrames(frames, { W, H, step, duration, fullDuration = dur
     active_segment: { start_s: r1(frames[actFrom].t), end_s: r1(frames[actTo].t), body_posture: actPosture,
       note: 'Hodnoť len tento úsek. Pohyb pred ním a po ňom je príprava alebo odchod (napr. zaujatie polohy) a nie je súčasť cviku.' },
     posture_timeline: segments.map(sg => ({ from_s: r1(frames[sg.from].t), to_s: r1(frames[sg.to].t), posture: { H: 'vodorovná', P: 'visenie', V: 'vzpriamená' }[sg.p] })),
-    angle_notes: 'Uhly v stupňoch, 2D z kamery (meraná strana tela). knee/hip/elbow/shoulder: 180 = vystreté. body_line: rameno–bok–členok, 180 = telo v rovine (kliky, vzpor, visenie). neck: ucho–rameno–bok, ~170–180 = hlava v predĺžení trupu, menej = predsunutá alebo zaklonená hlava. ankle: koleno–členok–špička, menej = väčší predklon holene. forearm: odklon predlaktia od zvislice (0 = zápästie presne nad/pod lakťom). trunk_lean/shin: odklon od zvislice (0 = kolmo). heel_lift_pct: zdvih päty v % dĺžky trupu (>8 = päta sa odlepuje). wrist_horizontal_travel_pct: vodorovný pohyb rúk/činky v % dĺžky trupu. Pohľad spredu/zozadu: knee_to_ankle_width_ratio < 1 = kolená idú dovnútra; left_right_*_diff = rozdiel ľavej a pravej strany; shoulder/hip_tilt_pct = naklonenie; hip_side_shift_pct = posun bokov do strany. main_joint = hlavný kĺb opakovania (top = horná poloha na začiatku, bottom = krajná poloha, top_end = horná poloha na konci, range = rozsah). Tempo (z hlavného kĺbu, presnosť ~0,1 s): down_s = spúšťanie od opustenia hornej polohy po príchod do krajnej polohy, pause_bottom_s = výdrž dole, up_s = návrat hore, pause_top_before_s = oddych hore pred opakovaním. Meria sa bez pomalého rozbehu a dobehu pohybu, takže vnímané tempo je asi o 20–25 % dlhšie. rom_pct = rozsah opakovania v % najväčšieho rozsahu v sérii (pod 80 = neúplný rozsah).',
+    angle_notes: 'Uhly v stupňoch, 2D z kamery (meraná strana tela). knee/hip/elbow/shoulder: 180 = vystreté. body_line: rameno–bok–členok, 180 = telo v rovine (kliky, vzpor, visenie). neck: ucho–rameno–bok, ~170–180 = hlava v predĺžení trupu, menej = predsunutá alebo zaklonená hlava. ankle: koleno–členok–špička, menej = väčší predklon holene. forearm: odklon predlaktia od zvislice (0 = zápästie presne nad/pod lakťom). trunk_lean/shin: odklon od zvislice (0 = kolmo). heel_lift_pct: zdvih päty v % dĺžky trupu (>8 = päta sa odlepuje). wrist_horizontal_travel_pct: vodorovný pohyb rúk/činky v % dĺžky trupu. Pohľad spredu/zozadu: knee_to_ankle_width_ratio < 1 = kolená idú dovnútra; left_right_*_diff = rozdiel ľavej a pravej strany; shoulder/hip_tilt_pct = naklonenie; hip_side_shift_pct = posun bokov do strany. main_joint = hlavný kĺb opakovania (top = horná poloha na začiatku, bottom = bod obratu (kde sa pohyb otočí), top_end = horná poloha na konci, range = rozsah). Tempo (z hlavného kĺbu, presnosť ~0,1 s): down_s = spúšťanie od opustenia hornej polohy po príchod do bodu obratu, pause_bottom_s = výdrž dole, up_s = návrat hore, pause_top_before_s = oddych hore pred opakovaním. Meria sa bez pomalého rozbehu a dobehu pohybu, takže vnímané tempo je asi o 20–25 % dlhšie. rom_pct = rozsah opakovania v % najväčšieho rozsahu v sérii (pod 80 = neúplný rozsah).',
     overall_active_segment: metricsOf(actFrom, actTo),
     reps: repData,
     tempo,
@@ -873,21 +873,21 @@ export async function analyzeVideo(file, { signal = null, posture = null, minAmp
     }
     if (a - pad > 0) picks.push({ i: Math.max(0, a - pad), label: 'Pred výdržou' });
     picks.push({ i: a, label: 'Výdrž: začiatok' }, { i: at(0.25), label: 'Výdrž: štvrtina' }, { i: at(0.5), label: 'Výdrž: polovica' },
-      { i: at(0.75), label: 'Výdrž: tri štvrtiny' }, { i: b, label: 'Výdrž: koniec' }, { i: worst, label: 'Výdrž: najväčšia odchýlka polohy' });
+      { i: at(0.75), label: 'Výdrž: tri štvrtiny' }, { i: b, label: 'Výdrž: koniec' }, { i: worst, label: 'Výdrž: najhoršia poloha' });
   } else if (isHoldResult) {
     for (let q = 0; q <= 7; q++) picks.push({ i: Math.round(q * (frames.length - 1) / 7), label: `Snímka ${q + 1}` });
   } else {
   picks.push({ i: reps.length ? reps[0].start : firstOk, label: 'Východisková poloha' });
   if (reps.length) {
-    // prvé, stredné, posledné a najslabšie (najmenší rozsah) opakovanie – každé v 3 fázach
+    // prvé, stredné, posledné a najslabšie (najkratší pohyb) opakovanie – každé v 3 fázach
     const weakest = reps.reduce((a, r, k) => (r.amp < reps[a].amp ? k : a), 0);
     const sel = [...new Set([0, Math.floor((reps.length - 1) / 2), reps.length - 1, weakest])].sort((a, b) => a - b);
     for (const k of sel) {
       const r = reps[k];
       const medAmp = [...reps.map(x => x.amp)].sort((x, y) => x - y)[Math.floor(reps.length / 2)];
-      const tag = k === weakest && reps.length > 2 && r.amp < 0.9 * medAmp ? ' (najmenší rozsah)' : '';
+      const tag = k === weakest && reps.length > 2 && r.amp < 0.9 * medAmp ? ' (najkratší pohyb)' : '';
       picks.push({ i: Math.round((r.start + r.bottom) / 2), label: `Opakovanie ${k + 1}${tag}: pohyb dole` });
-      picks.push({ i: r.bottom, label: `Opakovanie ${k + 1}${tag}: krajná poloha` });
+      picks.push({ i: r.bottom, label: `Opakovanie ${k + 1}${tag}: bod obratu` });
       picks.push({ i: Math.round((r.bottom + r.end) / 2), label: `Opakovanie ${k + 1}${tag}: pohyb späť` });
     }
     picks.push({ i: reps[reps.length - 1].end, label: 'Záverečná poloha' });

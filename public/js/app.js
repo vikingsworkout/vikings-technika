@@ -1177,13 +1177,15 @@ function focusFrame(item, today) {
   if (!kf.length) return null;
   const n = Number(today?.frame);
   if (n >= 1 && n <= kf.length) return kf[n - 1];
-  return kf.find(k => /najmenší rozsah/.test(k.label) && /krajná/.test(k.label))
-    || [...kf].reverse().find(k => /krajná poloha/.test(k.label)) || kf[Math.floor(kf.length / 2)];
+  return kf.find(k => /najmenší rozsah|najkratší pohyb/.test(k.label) && /krajná|bod obratu/.test(k.label))
+    || [...kf].reverse().find(k => /krajná poloha|bod obratu/.test(k.label)) || kf[Math.floor(kf.length / 2)];
 }
+// popis snímky bežnými slovami (staršie rozbory majú ešte odborné popisy)
+const kfLabel = (s) => String(s || '').replace(/najmenší rozsah/g, 'najkratší pohyb').replace(/krajná poloha/g, 'bod obratu').replace(/najväčšia odchýlka polohy/g, 'najhoršia poloha');
 
 function openViewer(k) {
   $('viewerImg').src = k.dataUrl;
-  $('viewerCap').innerHTML = `${esc(k.label)}<span>${fmtT(k.t)} vo videu · oranžová = rozpoznaná kostra</span>`;
+  $('viewerCap').innerHTML = `${esc(kfLabel(k.label))}<span>${fmtT(k.t)} vo videu · oranžová = rozpoznaná kostra</span>`;
   $('viewer').hidden = false;
 }
 function closeViewer() { $('viewer').hidden = true; }
@@ -1525,7 +1527,7 @@ function renderResult(item) {
       <span style="flex:1"><b>Pozri si video analýzy</b><span>Kostra a body, ktoré appka sledovala${errT != null ? ` · chyba v ${fmtT(errT)}` : ''}</span></span>
     </button>` : frame ? `<button class="seeframe" id="btnSee">
       <span class="th"><img src="${frame.dataUrl}" alt=""><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>
-      <span style="flex:1"><b>${today && !today.good ? 'Pozri, kde sa to stalo' : 'Pozri si snímku'}</b><span>${esc(frame.label)} · ${fmtT(frame.t)}</span></span>
+      <span style="flex:1"><b>${today && !today.good ? 'Pozri, kde sa to stalo' : 'Pozri si snímku'}</b><span>${esc(kfLabel(frame.label))} · ${fmtT(frame.t)}</span></span>
     </button>` : ''}
 
     ${item.saveSt === '' && item.saveErr ? `<div class="card err savewarn"><b>Rozbor sa nepodarilo uložiť do telefónu.</b> Teraz ho vidíš, ale po zatvorení sa k nemu už nevrátiš. Skús uvoľniť miesto v telefóne.<small>${esc(item.saveErr)}</small></div>`
@@ -1597,7 +1599,7 @@ function renderResult(item) {
 
       ${r.camera_limits ? `<details class="card"><summary>Uhol kamery</summary><p style="margin:0;font-size:16px">${esc(r.camera_limits)}</p></details>` : ''}
 
-      ${item.keyframes?.length ? `<details class="card"><summary>Snímky z videa</summary><div class="frames">${item.keyframes.map((k, i) => `<button data-k="${i}"><img src="${k.dataUrl}" alt=""><span>${esc(k.label)} · ${fmtT(k.t)}</span></button>`).join('')}</div></details>` : ''}
+      ${item.keyframes?.length ? `<details class="card"><summary>Snímky z videa</summary><div class="frames">${item.keyframes.map((k, i) => `<button data-k="${i}"><img src="${k.dataUrl}" alt=""><span>${esc(kfLabel(k.label))} · ${fmtT(k.t)}</span></button>`).join('')}</div></details>` : ''}
 
       <div class="card"><h2 style="margin-bottom:6px">Iný cvik?</h2>
         <p class="small mu">Ak AI rozpoznala cvik zle, vyber správny a rozbor sa zopakuje.</p>

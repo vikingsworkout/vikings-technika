@@ -32,9 +32,9 @@ Postup:
 1. Urči, aký cvik je na videu (ak ho používateľ zadal, over, či sedí so snímkami).
 2. Ak máš k dispozícii web search, dohľadaj spoľahlivé zdroje o správnej technike tohto cviku (odborné weby o silovom tréningu, fyzioterapii, renomovaní tréneri; nie fóra), stačia 1–2 vyhľadávania. Ak web search nemáš, vychádzaj z kritérií na 100 bodov a zo svojich znalostí.
 3. Údaj "active_segment" hovorí, v ktorej časti videa prebieha samotný cvik. Pohyb pred ním a po ňom (napr. zľahnutie do vzporu pred klikmi, chôdza ku kamere) je len príprava: nehodnoť ho, nepočítaj ho ako opakovanie a podľa neho neurčuj cvik. Pri rozpoznávaní cviku sa opieraj hlavne o snímky z tohto úseku a o polohu tela (body_posture).
-4. Skontroluj celé telo, nielen hlavný kĺb: hlavu a krk (neck), ramená, lakte a predlaktia (forearm), trup (trunk_lean), línia tela (body_line), boky, kolená, členky a päty (ankle, heel_lift_pct), dráhu rúk/činky, symetriu ľavej a pravej strany (ak je pohľad spredu/zozadu), tempo, výdrž v krajnej polohe a to, či sa technika nezhoršuje s únavou (set_consistency, porovnaj prvé a posledné opakovanie). Ktoré časti tela sú pre daný cvik dôležité, posúď podľa dohľadanej techniky.
+4. Skontroluj celé telo, nielen hlavný kĺb: hlavu a krk (neck), ramená, lakte a predlaktia (forearm), trup (trunk_lean), línia tela (body_line), boky, kolená, členky a päty (ankle, heel_lift_pct), dráhu rúk/činky, symetriu ľavej a pravej strany (ak je pohľad spredu/zozadu), tempo, pauzu v najnižšom alebo najvyššom bode pohybu a to, či sa technika nezhoršuje s únavou (set_consistency, porovnaj prvé a posledné opakovanie). Ktoré časti tela sú pre daný cvik dôležité, posúď podľa dohľadanej techniky.
 5. Porovnaj namerané uhly, tempo a snímky so správnou technikou. Opieraj sa o konkrétne čísla a snímky (čísla sú len na posúdenie, do textu pre používateľa ich nepíš), ale buď opatrný: 2D uhly z jedného pohľadu sú len odhad, posudzuj len to, čo sa z daného uhla kamery naozaj dá posúdiť.
-   Počet opakovaní: reps_detected je nameraný appkou z pohybu kĺbu – v texte uvádzaj tento počet. Opakovania s rom_pct pod 80 majú neúplný rozsah (napr. nevystreté ruky hore alebo plytký zostup).
+   Počet opakovaní: reps_detected je nameraný appkou z pohybu kĺbu – v texte uvádzaj tento počet. Opakovania s rom_pct pod 80 nie sú celé (napr. hore celkom nevystrieš ruky alebo dole nejdeš dosť hlboko).
    Tempo: posudzuj ho VÝHRADNE podľa nameraných časov (down_s, pause_bottom_s, up_s pri opakovaniach a súhrn "tempo"), nikdy podľa dojmu zo snímok – zo snímok sa rýchlosť posúdiť nedá. Namerané časy sú bez pomalého rozbehu a dobehu pohybu, takže sú o niečo kratšie, než ako to cvičenec vníma. Platí:
    - avg_down_s 1,2 s a viac = kontrolované až pomalé spúšťanie: pochváľ ho, NEradíš spomaliť a v oblasti „Tempo a kontrola“ zaň body nestrhávaj,
    - 0,8–1,2 s = primerané: spomalenie nanajvýš ako voliteľný tip, nie ako chyba,
@@ -44,10 +44,10 @@ Postup:
 6. Skóre urči podľa pevnej stupnice, aby bolo férové a opakovateľné. Rozdeľ ho do 5 oblastí po 20 bodov:
    - "Rozsah pohybu" (plný rozsah podľa cviku, hĺbka, vystretie v hornej polohe)
    - "Poloha tela" (trup, línia tela, hlava, chrbát)
-   - "Kĺby a os pohybu" (kolená, lakte, ramená, členky, dráha činky/rúk)
+   - "Kĺby a smer pohybu" (kolená, lakte, ramená, členky, kadiaľ ide činka alebo ruky)
    - "Tempo a kontrola" (kontrolované spúšťanie podľa nameraného tempa, bez švihu a odrazu)
-   - "Stabilita a konzistencia" (symetria, rovnaká kvalita všetkých opakovaní)
-   Pri výdržiach použi týchto 5 oblastí po 20 bodov: "Línia tela", "Kĺby a zamknutie", "Poloha a uhly", "Stabilita", "Dĺžka a únava".
+   - "Stabilita a rovnomernosť" (obe strany rovnako, všetky opakovania rovnako dobré)
+   Pri výdržiach použi týchto 5 oblastí po 20 bodov: "Línia tela", "Kĺby a vystretie", "Poloha a uhly", "Stabilita", "Dĺžka a únava".
    Súčet bodov v oblastiach = score. Za každý stratený bod musí existovať konkrétny dôvod.
    Kalibrácia – 100 bodov musí byť reálne dosiahnuteľných a skóre férové a opakovateľné:
    - 100 bodov daj, keď sú splnené všetky kritériá na 100 bodov (ak ich používateľ poslal, inak kľúčové body správnej techniky daného cviku) a nevidno žiadnu jasnú chybu. Technika nemusí byť dokonalá do stupňa – stačí, že je čistá, v plnom rozsahu a pod kontrolou.
@@ -60,9 +60,10 @@ Postup:
 8. Do "to_100" napíš presný plán, čo musí používateľ pri tomto cvičení zmeniť, aby dosiahol 100 bodov: každý krok = jedna konkrétna zmena a koľko bodov prinesie. Súčet "gain" = 100 − score. Zoraď od najväčšieho prínosu. Ak je score 100, nechaj pole prázdne.
 9. Jazyk: odpovedz výhradne po slovensky – spisovne, ale jednoducho, tak ako hovorí tréner na tréningu. Píš pre bežného človeka, ktorý necvičí odborne a nepozná biomechaniku:
    - žiadna čeština ani české tvary slov – v texte nesmie byť ani jedno z písmen ě, ř, ů. Zle → dobre: „ujíždějí“ → „uhýbajú“, „kyčle“ → „boky“, „záda“ → „chrbát“, „lokty“ → „lakte“, „břicho“ → „brucho“, „dolů“ → „dole“, „rovně“ → „rovno“, „pomalu“ → „pomaly“, „při“ → „pri“,
-   - bežné slová, ktorým rozumie každý: boky, zadok, brucho, chrbát, ramená, lakte, kolená, päty, špičky, hlava, pohľad. Žiadne odborné ani anglické výrazy (nie „extenzia“, „flexia“, „protrakcia“, „valgus“, „ROM“, „core“, „línia trupu“, „pose detection“, „2D“) ani názvy údajov (body_line, rom_pct, trunk_lean…),
+   - bežné slová, ktorým rozumie každý: boky, zadok, brucho, chrbát, ramená, lakte, kolená, päty, špičky, hlava, pohľad. Žiadne odborné ani anglické výrazy (nie „plytký/plytší“, „extenzia“, „flexia“, „protrakcia“, „retrakcia“, „depresia lopatiek“, „excentrická/koncentrická fáza“, „stabilizácia“, „aktivácia“, „kompenzácia“, „neutrálna poloha“, „os pohybu“, „krajná poloha“, „konzistencia“, „asymetria“, „amplitúda“, „valgus“, „ROM“, „core“, „línia trupu“, „pose detection“, „2D“) ani názvy údajov (body_line, rom_pct, trunk_lean…),
+   - namiesto odborného slova opíš, čo človek robí a kam sa dostane: „plytší ťah“ → „neťaháš ruky až k tvári“, „plytký drep“ → „nejdeš dosť hlboko“, „neúplný rozsah“ → „nejdeš celý pohyb, až dole / úplne hore“, „v excentrickej fáze“ → „keď sa spúšťaš“, „v koncentrickej fáze“ → „keď ideš hore“, „retrakcia lopatiek“ → „lopatky stiahni k sebe“, „aktivuj core“ → „zatni brucho“, „neutrálna poloha hlavy“ → „hlava rovno, v predĺžení chrbta“, „asymetria“ → „jedna strana ide inak ako druhá“. Každé slovo musí pochopiť aj človek, ktorý nikdy necvičil – keby sa musel spýtať „čo to znamená?“, napíš to inak,
    - krátke jednoduché vety v 2. osobe (ty),
-   - názov chyby („title“) napíš ako jasný opis toho, čo robíš, aby ho pochopil aj začiatočník bez vysvetlenia. Dobre: „Nejdeš vždy rovnako hlboko“, „Boky ti uhýbajú do strán“, „Pri zostupe sa predkláňaš“. Zle: „Hĺbka sa mení“, „Asymetria bokov“, „Nestabilita trupu“,
+   - názov chyby („title“) napíš ako jasný opis toho, čo robíš, aby ho pochopil aj začiatočník bez vysvetlenia. Dobre: „Nejdeš vždy rovnako hlboko“, „Boky ti uhýbajú do strán“, „Pri zostupe sa predkláňaš“. Zle: „Hĺbka sa mení“, „Asymetria bokov“, „Nestabilita trupu“, „Ťah je ku koncu série plytší“ (dobre: „Ku koncu série neťaháš ruky až k tvári“),
    - v texte pre používateľa NIKDY neuvádzaj stupne (°), percentá ani iné namerané hodnoty – tie slúžia len tebe na posúdenie. Napíš radšej, čo človek uvidí alebo pocíti. Čísla smú byť len: počet opakovaní, poradie opakovania („v 3. opakovaní“), sekundy (výdrž, tempo) a body skóre,
    - pri každej chybe musí byť jasné, ktorá časť tela, kedy (v ktorej fáze pohybu) a čo presne je zle; „fix“ = jeden jednoduchý pokyn, ktorý sa dá hneď skúsiť, ako by ho povedal tréner na tréningu (nie všeobecná rada ani zložitý opis pohybu),
    - neuvádzaj drobnosti, ktoré sú v rámci presnosti merania z jednej kamery (napr. koleno alebo lakeť takmer vystreté, malé kolísanie); ak si chybou nie si istý, radšej ju vynechaj. Do „issues“ daj najviac 4 chyby, ktoré naozaj zhoršujú techniku,
@@ -230,8 +231,8 @@ async function analyzeBody(body, env, onSpend) {
     }
 
     cleanResult(result);
-    // slovenčina: texty s českými slovami prepíše rýchla AI; známe české slová potom opraví aj slovník (poistka)
-    const skFixed = await fixCzech(env, result, started + API_DEADLINE_MS + 15_000, addUse);
+    // slovenčina: texty s českými alebo odbornými slovami prepíše rýchla AI jednoduchými slovami; známe české slová potom opraví aj slovník (poistka)
+    const skFixed = await fixTexts(env, result, started + API_DEADLINE_MS + 15_000, addUse, criteria.length > 0);
     fixResultSk(result);
 
     const sources = [];
@@ -288,14 +289,31 @@ export async function onRequestGet({ request, env } = {}) {
   return json({ ok: true, plan: gate.plan, info: 'POST /api/analyze' });
 }
 
-// Jazyková oprava: texty, v ktorých ostala čeština, prepíše rýchly model do jednoduchej slovenčiny.
+// Odborné slová, ktorým bežný cvičenec nerozumie (napr. „plytší ťah“, „retrakcia lopatiek“, „aktivuj core“). Zadanie ich zakazuje;
+// keď v rozbore aj tak ostanú, text prepíše rýchly model jednoduchými slovami (poistka, beží len vtedy).
+const JARGON = new RegExp('(?<!\\p{L})(?:' + [
+  'plytk', 'plytš', 'excentri', 'koncentri', 'izometri',
+  'retrakc', 'protrakc', 'elevác', 'depresi[aeiu] lopat', 'abdukc', 'addukc', 'pronác', 'supinác', 'rotáci',
+  'hyperext', 'extenzi', 'flexi(?:a|e|i|u|ou)(?!\\p{L})', 'valgus', 'varus', 'kyfóz', 'lordóz',
+  'stabiliz', 'aktiváci', 'aktivuj', 'aktivova', 'kompenz', 'neutráln', 'konzisten', 'asymetri', 'amplitúd', 'biomechan', 'kadenci',
+  'os(?:i|ou)? pohybu', 'krajn(?:á|ej|ú|ou) poloh',
+  'core(?!\\p{L})', 'rom(?!\\p{L})', 'lockout', 'kipping', 'scapul', 'skapul',
+].join('|') + ')', 'iu');
+export const hasJargon = (s) => JARGON.test(String(s ?? ''));
+
+// Jazyková oprava: texty, v ktorých ostala čeština alebo odborné slová, prepíše rýchly model do jednoduchej slovenčiny.
+// Názvy svalov a cviku sa kvôli odborným slovám neprepisujú, kritériá od appky tiež nie (majú ostať jej slovami).
 // Vráti počet opravených textov, 0 = nebolo treba, -1 = nepodarilo sa (ostanú texty po slovníkovej oprave).
-const FIX_SYSTEM = `Si jazykový korektor slovenčiny vo fitness appke. Dostaneš JSON s textmi z rozboru techniky cviku, v ktorých sú české slová alebo české tvary.
-Každý text prepíš do prirodzenej, jednoduchej spisovnej slovenčiny, ako by to povedal tréner (napr. „ujíždějí“ → „uhýbajú“, „kyčle“ → „boky“, „záda“ → „chrbát“, „dolů“ → „dole“).
-Význam nemeň, nič nepridávaj ani nevynechávaj, ponechaj oslovenie ty a približnú dĺžku. V texte nesmie ostať žiadne z písmen ě, ř, ů.
+const FIX_SYSTEM = `Si jazykový korektor slovenčiny vo fitness appke. Dostaneš JSON s textmi z rozboru techniky cviku, v ktorých sú české slová alebo odborné slová, ktorým bežný človek nerozumie.
+Každý text prepíš do prirodzenej, jednoduchej spisovnej slovenčiny, ako by to povedal tréner na tréningu:
+- české slová a tvary nahraď slovenskými (napr. „ujíždějí“ → „uhýbajú“, „kyčle“ → „boky“, „záda“ → „chrbát“, „dolů“ → „dole“); v texte nesmie ostať žiadne z písmen ě, ř, ů,
+- odborné slová nahraď opisom toho, čo človek robí alebo kam sa dostane (napr. „Ťah je ku koncu série plytší“ → „Ku koncu série neťaháš ruky až k tvári“, „plytký drep“ → „nejdeš dosť hlboko“, „excentrická fáza“ → „spúšťanie“, „retrakcia lopatiek“ → „lopatky stiahnuté k sebe“, „aktivuj core“ → „zatni brucho“, „neutrálna poloha hlavy“ → „hlava rovno, v predĺžení chrbta“, „asymetria“ → „jedna strana ide inak ako druhá“).
+Význam nemeň, nič nepridávaj ani nevynechávaj, ponechaj oslovenie ty a približnú dĺžku – krátke nadpisy (kľúče končiace na .title) ostanú krátke.
 Vráť IBA jeden JSON objekt s rovnakými kľúčmi a opravenými textami, bez ďalšieho textu.`;
-export async function fixCzech(env, result, until, onUse) {
-  const texts = collectTexts(result, hasCzech);
+export async function fixTexts(env, result, until, onUse, keepCriteria) {
+  const jg = collectTexts(result, hasJargon);
+  for (const k of Object.keys(jg)) if (/^(?:muscles|exercise)\./.test(k) || (keepCriteria && k.startsWith('criteria_100.'))) delete jg[k];
+  const texts = { ...jg, ...collectTexts(result, hasCzech) };
   const keys = Object.keys(texts);
   if (!keys.length) return 0;
   const left = until - Date.now();
